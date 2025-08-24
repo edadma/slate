@@ -18,6 +18,9 @@ add_executable(bitty
     src/line_editor.c
 )
 
+# Link math library for main executable
+target_link_libraries(bitty m)
+
 # Tests executable (using Unity framework)
 option(BUILD_TESTS "Build unit tests" ON)
 
@@ -51,6 +54,9 @@ if(BUILD_TESTS)
         src/vm.c
         src/library_impl.c
     )
+    
+    # Link math library for tests executable
+    target_link_libraries(bitty_tests m)
     
     # Define Unity config for all test files
     target_compile_definitions(bitty_tests PRIVATE UNITY_INCLUDE_CONFIG_H)

@@ -185,6 +185,7 @@ binary_operator token_to_binary_op(token_type_t type) {
         case TOKEN_MINUS: return BIN_SUBTRACT;
         case TOKEN_MULTIPLY: return BIN_MULTIPLY;
         case TOKEN_DIVIDE: return BIN_DIVIDE;
+        case TOKEN_MOD: return BIN_MOD;
         case TOKEN_EQUAL: return BIN_EQUAL;
         case TOKEN_NOT_EQUAL: return BIN_NOT_EQUAL;
         case TOKEN_LESS: return BIN_LESS;
@@ -570,7 +571,7 @@ ast_node* parse_term(parser_t* parser) {
 ast_node* parse_factor(parser_t* parser) {
     ast_node* expr = parse_unary(parser);
     
-    while (parser_match(parser, TOKEN_MULTIPLY) || parser_match(parser, TOKEN_DIVIDE)) {
+    while (parser_match(parser, TOKEN_MULTIPLY) || parser_match(parser, TOKEN_DIVIDE) || parser_match(parser, TOKEN_MOD)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
         int op_line = parser->previous.line;
         int op_column = parser->previous.column;

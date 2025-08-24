@@ -1,5 +1,6 @@
 #include "vm.h"
 #include <assert.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -505,6 +506,8 @@ const char* opcode_name(opcode op) {
         return "MULTIPLY";
     case OP_DIVIDE:
         return "DIVIDE";
+    case OP_MOD:
+        return "MOD";
     case OP_NEGATE:
         return "NEGATE";
     case OP_EQUAL:
@@ -839,6 +842,43 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             break;
         }
 
+        case OP_MOD: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
+                if (b.as.number == 0) {
+                    vm_runtime_error_with_values(vm, "Modulo by zero", &a, &b, NULL);
+                    vm_release(a);
+                    vm_release(b);
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
+                // Use fmod for floating point modulo
+                vm_push(vm, make_number_with_debug(fmod(a.as.number, b.as.number), a.debug));
+            } else {
+                // For modulo, determine which operand is problematic
+                debug_location* error_debug = NULL;
+                if (a.type != VAL_NUMBER && b.type == VAL_NUMBER) {
+                    error_debug = a.debug;  // Left operand is problematic
+                } else if (a.type == VAL_NUMBER && b.type != VAL_NUMBER) {
+                    error_debug = b.debug;  // Right operand is problematic
+                } else {
+                    error_debug = a.debug;  // Both problematic, use left
+                }
+                
+                vm_runtime_error_with_values(vm, "Cannot compute modulo of %s and %s", &a, &b, error_debug);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
         case OP_NEGATE: {
             value_t a = vm_pop(vm);
             if (a.type == VAL_NUMBER) {
@@ -1013,6 +1053,65 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             free(elements);
 
             vm_push(vm, make_array(array));
+            break;
+        }
+
+        case OP_BUILD_OBJECT: {
+            uint16_t pair_count = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+
+            // Create new dynamic object
+            do_object object = do_create(NULL);  // NULL release function for now
+            if (!object) {
+                vm_runtime_error_with_debug(vm, "Failed to create object");
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+
+            // Pop key-value pairs from stack (they're in reverse order)
+            for (int i = 0; i < pair_count; i++) {
+                value_t value = vm_pop(vm);
+                value_t key = vm_pop(vm);
+                
+                // Check if trying to store undefined (not a first-class value)
+                if (value.type == VAL_UNDEFINED) {
+                    vm_runtime_error_with_debug(vm, "Cannot store 'undefined' in object - it is not a value");
+                    do_release(&object);
+                    vm_release(key);
+                    vm_release(value);
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
+
+                // Key must be a string
+                if (key.type != VAL_STRING) {
+                    vm_runtime_error_with_debug(vm, "Object key must be a string");
+                    do_release(&object);
+                    vm_release(key);
+                    vm_release(value);
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
+
+                // Set property in object
+                if (do_set(object, key.as.string, &value, sizeof(value_t)) != 0) {
+                    vm_runtime_error_with_debug(vm, "Failed to set object property");
+                    do_release(&object);
+                    vm_release(key);
+                    vm_release(value);
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
+
+                // Clean up key (value is now owned by the object)
+                vm_release(key);
+            }
+
+            vm_push(vm, make_object(object));
             break;
         }
 
@@ -1368,7 +1467,15 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         
         case OP_JUMP: {
             uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2 + offset;
+            vm->ip += 2;
+            
+            // Handle both forward and backward jumps
+            if (offset > 32767) { // If > 2^15-1, treat as negative (backward jump)
+                int16_t backward_offset = (int16_t)offset;
+                vm->ip += backward_offset;
+            } else {
+                vm->ip += offset; // Forward jump
+            }
             break;
         }
         

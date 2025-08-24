@@ -538,7 +538,7 @@ void ast_print(ast_node* node, int indent) {
         
         case AST_BINARY_OP: {
             ast_binary_op* bin_node = (ast_binary_op*)node;
-            const char* op_names[] = {"+", "-", "*", "/", "==", "!=", "<", "<=", ">", ">=", "&&", "||"};
+            const char* op_names[] = {"+", "-", "*", "/", "mod", "==", "!=", "<", "<=", ">", ">=", "&&", "||"};
             printf(": %s\n", op_names[bin_node->op]);
             ast_print(bin_node->left, indent + 1);
             ast_print(bin_node->right, indent + 1);

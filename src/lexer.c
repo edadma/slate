@@ -34,6 +34,7 @@ static keyword_entry_t keywords[] = {
     {"and", TOKEN_AND},
     {"or", TOKEN_OR},
     {"not", TOKEN_NOT},
+    {"mod", TOKEN_MOD},
     {"true", TOKEN_TRUE},
     {"false", TOKEN_FALSE},
     {"null", TOKEN_NULL},
@@ -401,6 +402,7 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_MINUS: return "MINUS";
         case TOKEN_MULTIPLY: return "MULTIPLY";
         case TOKEN_DIVIDE: return "DIVIDE";
+        case TOKEN_MOD: return "MOD";
         case TOKEN_ASSIGN: return "ASSIGN";
         case TOKEN_EQUAL: return "EQUAL";
         case TOKEN_NOT_EQUAL: return "NOT_EQUAL";

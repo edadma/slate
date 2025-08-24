@@ -409,6 +409,7 @@ void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node) {
         case BIN_SUBTRACT:      codegen_emit_op(codegen, OP_SUBTRACT); break;
         case BIN_MULTIPLY:      codegen_emit_op(codegen, OP_MULTIPLY); break;
         case BIN_DIVIDE:        codegen_emit_op(codegen, OP_DIVIDE); break;
+        case BIN_MOD:           codegen_emit_op(codegen, OP_MOD); break;
         case BIN_EQUAL:         codegen_emit_op(codegen, OP_EQUAL); break;
         case BIN_NOT_EQUAL:     codegen_emit_op(codegen, OP_NOT_EQUAL); break;
         case BIN_LESS:          codegen_emit_op(codegen, OP_LESS); break;
@@ -565,8 +566,15 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     // Generate body
     codegen_emit_statement(codegen, node->body);
     
-    // Loop back
-    codegen_emit_loop(codegen, loop_start);
+    // Jump back to loop start using negative offset
+    size_t current_pos = codegen->chunk->count;
+    size_t backward_distance = current_pos - loop_start + 3; // +3 for the JUMP instruction itself
+    if (backward_distance > UINT16_MAX) {
+        codegen_error(codegen, "Loop body too large");
+        return;
+    }
+    // Emit backward jump (negative offset)
+    codegen_emit_op_operand(codegen, OP_JUMP, (uint16_t)(-backward_distance));
     
     // Patch exit jump
     codegen_patch_jump(codegen, exit_jump);

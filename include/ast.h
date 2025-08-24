@@ -53,6 +53,7 @@ typedef enum {
     BIN_SUBTRACT,    // -
     BIN_MULTIPLY,    // *
     BIN_DIVIDE,      // /
+    BIN_MOD,         // mod
     BIN_EQUAL,       // ==
     BIN_NOT_EQUAL,   // !=
     BIN_LESS,        // <

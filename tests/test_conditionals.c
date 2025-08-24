@@ -329,6 +329,67 @@ void test_while_loops(void) {
     TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
 }
 
+// Test while loops with modulo and complex conditions
+void test_while_loops_with_modulo(void) {
+    value_t result;
+
+    // While loop counting multiples of 3 up to 15
+    result = run_conditional_test("var i = 0\n"
+                                  "var count = 0\n"
+                                  "while i < 15\n"
+                                  "    i = i + 1\n"
+                                  "    if i mod 3 == 0\n"
+                                  "        count = count + 1\n"
+                                  "count");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number); // 3, 6, 9, 12, 15 = 5 multiples
+
+    // While loop with modulo for even numbers
+    result = run_conditional_test("var n = 0\n"
+                                  "var sum_evens = 0\n"
+                                  "while n < 10\n"
+                                  "    if n mod 2 == 0\n"
+                                  "        sum_evens = sum_evens + n\n"
+                                  "    n = n + 1\n"
+                                  "sum_evens");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number); // 0 + 2 + 4 + 6 + 8 = 20
+
+    // While loop with complex modulo condition
+    result = run_conditional_test("var x = 1\n"
+                                  "while x mod 7 != 0 or x <= 10\n"
+                                  "    x = x + 1\n"
+                                  "x");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(14.0, result.as.number); // First multiple of 7 > 10
+}
+
+// Test direct if blocks (without 'then' keyword)
+void test_direct_if_blocks(void) {
+    value_t result;
+
+    // Direct if without then
+    result = run_conditional_test("if true\n"
+                                  "    42");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+
+    // Direct if-else without then
+    result = run_conditional_test("if false\n"
+                                  "    10\n"
+                                  "else\n"
+                                  "    20");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number);
+
+    // Mixed: direct if with then else
+    result = run_conditional_test("if true\n"
+                                  "    5 + 5\n"
+                                  "else 99");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(10.0, result.as.number);
+}
+
 // Test comments in various positions
 void test_comments(void) {
     value_t result;
@@ -692,6 +753,8 @@ void test_conditionals_suite(void) {
     RUN_TEST(test_nested_if_expressions);
     RUN_TEST(test_end_markers);
     RUN_TEST(test_complex_block_expressions);
-    // RUN_TEST(test_while_loops); // LOOP instruction not implemented yet
+    RUN_TEST(test_while_loops); // Now implemented using OP_JUMP
+    RUN_TEST(test_while_loops_with_modulo);
+    RUN_TEST(test_direct_if_blocks);
     RUN_TEST(test_edge_cases);
 }

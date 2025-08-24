@@ -76,6 +76,46 @@ void test_vm_arithmetic(void)
     result = run_code("(2 + 3) * 4");
     TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
     TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number);
+
+    // Test modulo operations
+    result = run_code("10 mod 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+
+    result = run_code("7 mod 2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+
+    result = run_code("100 mod 7");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+
+    result = run_code("5 mod 5");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+
+    result = run_code("4 mod 5");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(4.0, result.as.number);
+
+    // Test floating point modulo
+    result = run_code("15.5 mod 4.2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.01, 2.9, result.as.number);
+
+    // Test modulo precedence (same as multiply/divide)
+    result = run_code("10 + 7 mod 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(11.0, result.as.number); // 10 + (7 mod 3) = 10 + 1 = 11
+
+    // Test mixed operator precedence with modulo
+    result = run_code("2 * 5 mod 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number); // (2 * 5) mod 3 = 10 mod 3 = 1
+
+    result = run_code("15 mod 4 + 1");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(4.0, result.as.number); // (15 mod 4) + 1 = 3 + 1 = 4
 }
 
 // Test unary operations
@@ -258,6 +298,47 @@ void test_vm_division_by_zero(void)
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
 }
 
+void test_vm_modulo_by_zero(void)
+{
+    value_t result;
+
+    // Modulo by zero should return null (error case)
+    result = run_code("10 mod 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    result = run_code("0 mod 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    // Negative modulo by zero
+    result = run_code("-5 mod 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    // Float modulo by zero
+    result = run_code("3.14 mod 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+}
+
+// Test object literals
+void test_vm_object_literals(void)
+{
+    value_t result;
+
+    // Empty object
+    result = run_code("{}");
+    TEST_ASSERT_EQUAL_INT(VAL_OBJECT, result.type);
+    vm_release(result);
+
+    // Object with one property
+    result = run_code("{\"key\": 42}");
+    TEST_ASSERT_EQUAL_INT(VAL_OBJECT, result.type);
+    vm_release(result);
+
+    // Object with multiple properties
+    result = run_code("{\"name\": \"test\", \"value\": 123}");
+    TEST_ASSERT_EQUAL_INT(VAL_OBJECT, result.type);
+    vm_release(result);
+}
+
 // Test advanced string concatenation edge cases
 void test_vm_string_concatenation_edge_cases(void)
 {
@@ -376,6 +457,16 @@ void test_vm_type_errors(void)
 
     // Cannot divide booleans
     result = run_code("true / false");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    // Cannot modulo with non-numbers
+    result = run_code("\"hello\" mod 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    result = run_code("5 mod \"world\"");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    result = run_code("true mod false");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
 
     // Cannot add booleans (no implicit string conversion without string operand)
@@ -574,6 +665,8 @@ void test_vm_suite(void)
     RUN_TEST(test_vm_value_equality);
     RUN_TEST(test_vm_is_falsy);
     RUN_TEST(test_vm_division_by_zero);
+    RUN_TEST(test_vm_modulo_by_zero);
+    RUN_TEST(test_vm_object_literals);
     RUN_TEST(test_vm_string_concatenation_edge_cases);
     RUN_TEST(test_vm_arrays_edge_cases);
     RUN_TEST(test_vm_string_indexing_edge_cases);
