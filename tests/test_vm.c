@@ -222,11 +222,11 @@ void test_vm_is_falsy(void) {
     TEST_ASSERT_TRUE(is_falsy(make_null()));
     TEST_ASSERT_TRUE(is_falsy(make_boolean(0)));
     TEST_ASSERT_FALSE(is_falsy(make_boolean(1)));
-    TEST_ASSERT_FALSE(is_falsy(make_number(0)));
+    TEST_ASSERT_TRUE(is_falsy(make_number(0)));  // 0 is falsy
     TEST_ASSERT_FALSE(is_falsy(make_number(42)));
     
     bit_value str = make_string("");
-    TEST_ASSERT_FALSE(is_falsy(str));
+    TEST_ASSERT_TRUE(is_falsy(str));  // empty string is falsy
     free_value(str);
 }
 

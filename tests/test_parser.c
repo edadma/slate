@@ -11,7 +11,7 @@ ast_node* parse_expression_helper(const char* source) {
     
     lexer_init(&lexer, source);
     parser_init(&parser, &lexer);
-    parser_advance(&parser);
+    // parser_init already advances to first token, don't advance again
     
     return parse_expression(&parser);
 }
