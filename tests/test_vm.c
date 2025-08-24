@@ -412,15 +412,15 @@ void test_vm_complex_expressions(void) {
 void test_vm_property_access_edge_cases(void) {
     bit_value result;
     
-    // Invalid properties should return null
+    // Invalid properties should return undefined
     result = run_code("[1, 2, 3].foo"); 
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    TEST_ASSERT_EQUAL_INT(VAL_UNDEFINED, result.type);
     
     result = run_code("\"hello\".foo");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    TEST_ASSERT_EQUAL_INT(VAL_UNDEFINED, result.type);
     
     result = run_code("42.length");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    TEST_ASSERT_EQUAL_INT(VAL_UNDEFINED, result.type);
     
     // Empty string length
     result = run_code("\"\".length");
@@ -429,7 +429,56 @@ void test_vm_property_access_edge_cases(void) {
     
     // Null property access
     result = run_code("null.length");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    TEST_ASSERT_EQUAL_INT(VAL_UNDEFINED, result.type);
+}
+
+// Test undefined value behavior
+void test_vm_undefined_behavior(void) {
+    bit_value result;
+    
+    // Undefined literal
+    result = run_code("undefined");
+    TEST_ASSERT_EQUAL_INT(VAL_UNDEFINED, result.type);
+    
+    // Undefined is falsy
+    TEST_ASSERT_TRUE(is_falsy(make_undefined()));
+    
+    // Undefined equality
+    TEST_ASSERT_TRUE(values_equal(make_undefined(), make_undefined()));
+    TEST_ASSERT_FALSE(values_equal(make_undefined(), make_null()));
+    TEST_ASSERT_FALSE(values_equal(make_undefined(), make_boolean(0)));
+    TEST_ASSERT_FALSE(values_equal(make_undefined(), make_number(0)));
+    
+    // Property access returns undefined
+    result = run_code("[1, 2, 3].nonExistent");
+    TEST_ASSERT_EQUAL_INT(VAL_UNDEFINED, result.type);
+    
+    result = run_code("\"hello\".nonExistent"); 
+    TEST_ASSERT_EQUAL_INT(VAL_UNDEFINED, result.type);
+    
+    result = run_code("42.anyProperty");
+    TEST_ASSERT_EQUAL_INT(VAL_UNDEFINED, result.type);
+}
+
+// Test undefined string concatenation
+void test_vm_undefined_string_concatenation(void) {
+    bit_value result;
+    
+    // Undefined + string
+    result = run_code("undefined + \" value\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("undefined value", result.as.string);
+    ds_release(&result.as.string);
+    
+    // String + undefined
+    result = run_code("\"value: \" + undefined");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("value: undefined", result.as.string);
+    ds_release(&result.as.string);
+    
+    // Undefined + undefined (should fail - no string operand)
+    result = run_code("undefined + undefined");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Error case
 }
 
 // Test suite runner
@@ -449,4 +498,6 @@ void test_vm_suite(void) {
     RUN_TEST(test_vm_type_errors);
     RUN_TEST(test_vm_complex_expressions);
     RUN_TEST(test_vm_property_access_edge_cases);
+    RUN_TEST(test_vm_undefined_behavior);
+    RUN_TEST(test_vm_undefined_string_concatenation);
 }

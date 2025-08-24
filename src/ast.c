@@ -61,6 +61,17 @@ ast_null* ast_create_null(int line, int column) {
     return node;
 }
 
+ast_undefined* ast_create_undefined(int line, int column) {
+    ast_undefined* node = malloc(sizeof(ast_undefined));
+    if (!node) return NULL;
+    
+    node->base.type = AST_UNDEFINED;
+    node->base.line = line;
+    node->base.column = column;
+    
+    return node;
+}
+
 ast_identifier* ast_create_identifier(const char* name, int line, int column) {
     ast_identifier* node = malloc(sizeof(ast_identifier));
     if (!node) return NULL;
@@ -292,6 +303,7 @@ void ast_free(ast_node* node) {
         case AST_NUMBER:
         case AST_BOOLEAN:
         case AST_NULL:
+        case AST_UNDEFINED:
             // No additional cleanup needed
             break;
             
@@ -443,6 +455,7 @@ const char* ast_node_type_name(ast_node_type type) {
         case AST_STRING: return "STRING";
         case AST_BOOLEAN: return "BOOLEAN";
         case AST_NULL: return "NULL";
+        case AST_UNDEFINED: return "UNDEFINED";
         case AST_IDENTIFIER: return "IDENTIFIER";
         case AST_ARRAY: return "ARRAY";
         case AST_BINARY_OP: return "BINARY_OP";
@@ -501,6 +514,10 @@ void ast_print(ast_node* node, int indent) {
         }
         
         case AST_NULL:
+            printf("\n");
+            break;
+            
+        case AST_UNDEFINED:
             printf("\n");
             break;
             

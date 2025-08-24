@@ -199,6 +199,12 @@ ast_node* parse_var_declaration(parser_t* parser) {
     
     if (parser_match(parser, TOKEN_ASSIGN)) {
         initializer = parse_expression(parser);
+        
+        // Check if trying to assign undefined
+        if (initializer && initializer->type == AST_UNDEFINED) {
+            parser_error_at_current(parser, "Cannot assign 'undefined' to variable.");
+            return NULL;
+        }
     }
     
     // Allow semicolon or newline to terminate statement
@@ -266,6 +272,12 @@ ast_node* parse_return_statement(parser_t* parser) {
     
     if (!parser_check(parser, TOKEN_SEMICOLON) && !parser_check(parser, TOKEN_NEWLINE)) {
         value = parse_expression(parser);
+        
+        // Check if trying to return undefined
+        if (value && value->type == AST_UNDEFINED) {
+            parser_error_at_current(parser, "Cannot return 'undefined' from function.");
+            return NULL;
+        }
     }
     
     if (!parser_match(parser, TOKEN_SEMICOLON)) {
@@ -328,6 +340,13 @@ ast_node* parse_assignment(parser_t* parser) {
     
     if (parser_match(parser, TOKEN_ASSIGN)) {
         ast_node* value = parse_assignment(parser);
+        
+        // Check if trying to assign undefined
+        if (value && value->type == AST_UNDEFINED) {
+            parser_error_at_current(parser, "Cannot assign 'undefined' to property.");
+            return NULL;
+        }
+        
         return (ast_node*)ast_create_assignment(expr, value,
                                                parser->previous.line, parser->previous.column);
     }
@@ -491,6 +510,10 @@ ast_node* parse_primary(parser_t* parser) {
     
     if (parser_match(parser, TOKEN_NULL)) {
         return (ast_node*)ast_create_null(parser->previous.line, parser->previous.column);
+    }
+    
+    if (parser_match(parser, TOKEN_UNDEFINED)) {
+        return (ast_node*)ast_create_undefined(parser->previous.line, parser->previous.column);
     }
     
     if (parser_match(parser, TOKEN_NUMBER)) {

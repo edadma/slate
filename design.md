@@ -175,6 +175,9 @@ var x = undefined;        // Compile error
 // ❌ Property assignment  
 obj.prop = undefined;     // Runtime error
 
+// ❌ Function return
+return undefined;         // Compile error
+
 // ❌ Function parameters
 func(undefined);          // Runtime error
 

@@ -106,6 +106,16 @@ void test_parser_null(void) {
     ast_free(node);
 }
 
+// Test parsing undefined literal
+void test_parser_undefined(void) {
+    ast_node* node;
+    
+    node = parse_expression_helper("undefined");
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_EQUAL_INT(AST_UNDEFINED, node->type);
+    ast_free(node);
+}
+
 // Test parsing parenthesized expressions
 void test_parser_parentheses(void) {
     ast_node* node;
@@ -117,6 +127,40 @@ void test_parser_parentheses(void) {
     ast_free(node);
 }
 
+// Test assignment restrictions for undefined
+void test_parser_undefined_assignment_restrictions(void) {
+    lexer_t lexer;
+    parser_t parser;
+    ast_node* node;
+    
+    // Test variable declaration with undefined should fail
+    lexer_init(&lexer, "var x = undefined");
+    parser_init(&parser, &lexer);
+    node = parse_declaration(&parser);
+    TEST_ASSERT_NULL(node);
+    TEST_ASSERT_TRUE(parser.had_error);
+    
+    // Reset parser error state
+    parser.had_error = 0;
+    
+    // Test assignment with undefined should fail  
+    lexer_init(&lexer, "x = undefined");
+    parser_init(&parser, &lexer);
+    node = parse_expression(&parser);
+    TEST_ASSERT_NULL(node);
+    TEST_ASSERT_TRUE(parser.had_error);
+    
+    // Reset parser error state
+    parser.had_error = 0;
+    
+    // Test return with undefined should fail
+    lexer_init(&lexer, "return undefined");
+    parser_init(&parser, &lexer);
+    node = parse_statement(&parser);
+    TEST_ASSERT_NULL(node);
+    TEST_ASSERT_TRUE(parser.had_error);
+}
+
 // Test suite runner
 void test_parser_suite(void) {
     RUN_TEST(test_parser_numbers);
@@ -125,5 +169,7 @@ void test_parser_suite(void) {
     RUN_TEST(test_parser_unary_expressions);
     RUN_TEST(test_parser_booleans);
     RUN_TEST(test_parser_null);
+    RUN_TEST(test_parser_undefined);
     RUN_TEST(test_parser_parentheses);
+    RUN_TEST(test_parser_undefined_assignment_restrictions);
 }

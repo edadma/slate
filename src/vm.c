@@ -744,7 +744,8 @@ vm_result vm_execute(bit_vm* vm, bit_function* function) {
                     if (prop_value) {
                         vm_push(vm, *prop_value);
                     } else {
-                        vm_push(vm, make_null());
+                        // Missing property returns undefined
+                        vm_push(vm, make_undefined());
                     }
                     if (args) free(args);
                 }
@@ -783,19 +784,15 @@ vm_result vm_execute(bit_vm* vm, bit_function* function) {
                     if (strcmp(prop_name, "length") == 0) {
                         vm_push(vm, make_number((double)da_length(object.as.array)));
                     } else {
-                        printf("Runtime error: Array has no property '%s'\n", prop_name);
-                        vm->frame_count--;
-                        closure_destroy(closure);
-                        return VM_RUNTIME_ERROR;
+                        // Invalid property returns undefined, not error
+                        vm_push(vm, make_undefined());
                     }
                 } else if (object.type == VAL_STRING) {
                     if (strcmp(prop_name, "length") == 0) {
                         vm_push(vm, make_number((double)ds_length(object.as.string)));
                     } else {
-                        printf("Runtime error: String has no property '%s'\n", prop_name);
-                        vm->frame_count--;
-                        closure_destroy(closure);
-                        return VM_RUNTIME_ERROR;
+                        // Invalid property returns undefined, not error
+                        vm_push(vm, make_undefined());
                     }
                 } else if (object.type == VAL_OBJECT) {
                     // Get property from dynamic object (returns bit_value*)
@@ -803,13 +800,12 @@ vm_result vm_execute(bit_vm* vm, bit_function* function) {
                     if (prop_value) {
                         vm_push(vm, *prop_value);
                     } else {
-                        vm_push(vm, make_null());
+                        // Missing property returns undefined
+                        vm_push(vm, make_undefined());
                     }
                 } else {
-                    printf("Runtime error: Cannot access property '%s' on this value type\n", prop_name);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
+                    // Property access on invalid types returns undefined
+                    vm_push(vm, make_undefined());
                 }
                 break;
             }

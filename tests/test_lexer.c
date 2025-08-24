@@ -92,7 +92,7 @@ void test_lexer_keywords(void) {
     lexer_t lexer;
     token_t token;
     
-    lexer_init(&lexer, "if else while return function var true false null");
+    lexer_init(&lexer, "if else while return function var true false null undefined");
     
     token = lexer_next_token(&lexer);
     TEST_ASSERT_EQUAL_INT(TOKEN_IF, token.type);
@@ -120,6 +120,9 @@ void test_lexer_keywords(void) {
     
     token = lexer_next_token(&lexer);
     TEST_ASSERT_EQUAL_INT(TOKEN_NULL, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_UNDEFINED, token.type);
 }
 
 // Test lexing identifiers

@@ -12,6 +12,7 @@ typedef enum {
     TOKEN_TRUE,          // true
     TOKEN_FALSE,         // false
     TOKEN_NULL,          // null
+    TOKEN_UNDEFINED,     // undefined
     
     // Keywords
     TOKEN_VAR,           // var

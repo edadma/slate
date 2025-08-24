@@ -132,6 +132,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_null(codegen, (ast_null*)expr);
             break;
             
+        case AST_UNDEFINED:
+            codegen_emit_undefined(codegen, (ast_undefined*)expr);
+            break;
+            
         case AST_IDENTIFIER:
             codegen_emit_identifier(codegen, (ast_identifier*)expr);
             break;
@@ -251,6 +255,11 @@ void codegen_emit_boolean(codegen_t* codegen, ast_boolean* node) {
 void codegen_emit_null(codegen_t* codegen, ast_null* node) {
     (void)node; // Unused parameter
     codegen_emit_op(codegen, OP_PUSH_NULL);
+}
+
+void codegen_emit_undefined(codegen_t* codegen, ast_undefined* node) {
+    (void)node; // Unused parameter
+    codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
 }
 
 void codegen_emit_identifier(codegen_t* codegen, ast_identifier* node) {

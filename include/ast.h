@@ -15,6 +15,7 @@ typedef enum {
     AST_STRING,
     AST_BOOLEAN,
     AST_NULL,
+    AST_UNDEFINED,
     AST_IDENTIFIER,
     AST_ARRAY,
     
@@ -95,6 +96,11 @@ typedef struct {
     ast_node base;
     // No additional data needed for null
 } ast_null;
+
+typedef struct {
+    ast_node base;
+    // No additional data needed for undefined
+} ast_undefined;
 
 typedef struct {
     ast_node base;
@@ -226,6 +232,7 @@ ast_number* ast_create_number(double value, int line, int column);
 ast_string* ast_create_string(const char* value, int line, int column);
 ast_boolean* ast_create_boolean(int value, int line, int column);
 ast_null* ast_create_null(int line, int column);
+ast_undefined* ast_create_undefined(int line, int column);
 ast_identifier* ast_create_identifier(const char* name, int line, int column);
 ast_array* ast_create_array(ast_node** elements, size_t count, int line, int column);
 

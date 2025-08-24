@@ -31,6 +31,7 @@ static keyword_entry_t keywords[] = {
     {"true", TOKEN_TRUE},
     {"false", TOKEN_FALSE},
     {"null", TOKEN_NULL},
+    {"undefined", TOKEN_UNDEFINED},
     {NULL, TOKEN_EOF} // Sentinel
 };
 
@@ -255,6 +256,7 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_TRUE: return "TRUE";
         case TOKEN_FALSE: return "FALSE";
         case TOKEN_NULL: return "NULL";
+        case TOKEN_UNDEFINED: return "UNDEFINED";
         case TOKEN_VAR: return "VAR";
         case TOKEN_FUNCTION: return "FUNCTION";
         case TOKEN_IF: return "IF";
