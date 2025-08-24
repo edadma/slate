@@ -17,6 +17,8 @@ static void print_tokens(const char* source) {
         printf("%-15s '%.*s'\n", token_type_name(token.type), (int)token.length, token.start);
     } while (token.type != TOKEN_EOF);
     printf("\n");
+    
+    lexer_cleanup(&lexer);
 }
 
 static void print_ast(ast_node* node) {
@@ -44,6 +46,7 @@ static void interpret_with_vm(const char* source, bitty_vm* vm) {
     ast_program* program = parse_program(&parser);
     if (parser.had_error || !program) {
         printf("Parse error\n");
+        lexer_cleanup(&lexer);
         return;
     }
 
@@ -57,6 +60,7 @@ static void interpret_with_vm(const char* source, bitty_vm* vm) {
         printf("Compilation error\n");
         codegen_destroy(codegen);
         ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
         return;
     }
 
@@ -94,6 +98,7 @@ static void interpret_with_vm(const char* source, bitty_vm* vm) {
     }
     codegen_destroy(codegen);
     ast_free((ast_node*)program);
+    lexer_cleanup(&lexer);
 }
 
 static char* read_file(const char* path) {

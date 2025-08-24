@@ -13,7 +13,9 @@ ast_node* parse_expression_helper(const char* source) {
     parser_init(&parser, &lexer);
     // parser_init already advances to first token, don't advance again
     
-    return parse_expression(&parser);
+    ast_node* result = parse_expression(&parser);
+    lexer_cleanup(&lexer);
+    return result;
 }
 
 // Test parsing numbers
@@ -141,6 +143,7 @@ void test_parser_undefined_assignment_restrictions(void) {
     TEST_ASSERT_FALSE(parser.had_error);
     TEST_ASSERT_EQUAL_INT(AST_VAR_DECLARATION, node->type);
     ast_free(node);
+    lexer_cleanup(&lexer);
     
     // Test assignment with undefined should parse successfully
     lexer_init(&lexer, "x = undefined");
@@ -150,6 +153,7 @@ void test_parser_undefined_assignment_restrictions(void) {
     TEST_ASSERT_FALSE(parser.had_error);
     TEST_ASSERT_EQUAL_INT(AST_ASSIGNMENT, node->type);
     ast_free(node);
+    lexer_cleanup(&lexer);
     
     // Test return with undefined should parse successfully
     lexer_init(&lexer, "return undefined");
@@ -159,6 +163,7 @@ void test_parser_undefined_assignment_restrictions(void) {
     TEST_ASSERT_FALSE(parser.had_error);
     TEST_ASSERT_EQUAL_INT(AST_RETURN, node->type);
     ast_free(node);
+    lexer_cleanup(&lexer);
 }
 
 // Test suite runner

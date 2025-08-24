@@ -278,37 +278,161 @@ ast_node* parse_statement(parser_t* parser) {
         return parse_return_statement(parser);
     }
     
-    if (parser_match(parser, TOKEN_LEFT_BRACE)) {
-        return parse_block_statement(parser);
-    }
-    
     return parse_expression_statement(parser);
 }
 
-// Parse if expression
-ast_node* parse_if_expression(parser_t* parser) {
-    parser_consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after 'if'.");
-    ast_node* condition = parse_expression(parser);
-    parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after if condition.");
+// Parse indented block of statements
+ast_node* parse_indented_block(parser_t* parser) {
+    // Skip optional newline before indent
+    parser_match(parser, TOKEN_NEWLINE);
     
-    ast_node* then_expr = parse_expression(parser);
+    if (!parser_match(parser, TOKEN_INDENT)) {
+        parser_error_at_current(parser, "Expected indented block.");
+        return NULL;
+    }
+    
+    // Parse statements until we hit a DEDENT
+    ast_node** statements = NULL;
+    size_t statement_count = 0;
+    size_t statement_capacity = 0;
+    
+    while (!parser_check(parser, TOKEN_DEDENT) && !parser_check(parser, TOKEN_EOF)) {
+        // Skip newlines between statements
+        while (parser_match(parser, TOKEN_NEWLINE));
+        
+        if (parser_check(parser, TOKEN_DEDENT)) break;
+        
+        ast_node* stmt = parse_declaration(parser);
+        
+        if (statement_count >= statement_capacity) {
+            size_t new_capacity = statement_capacity == 0 ? 8 : statement_capacity * 2;
+            statements = realloc(statements, sizeof(ast_node*) * new_capacity);
+            statement_capacity = new_capacity;
+        }
+        
+        statements[statement_count++] = stmt;
+        
+        // Skip optional trailing newlines
+        while (parser_match(parser, TOKEN_NEWLINE));
+    }
+    
+    parser_consume(parser, TOKEN_DEDENT, "Expected dedent after block.");
+    
+    // Validate that the block ends with an expression
+    if (statement_count == 0) {
+        // Empty block - treat as null
+        return (ast_node*)ast_create_null(parser->previous.line, parser->previous.column);
+    } else {
+        ast_node* last_stmt = statements[statement_count - 1];
+        if (last_stmt->type != AST_EXPRESSION_STMT) {
+            parser_error(parser, "Block expressions must end with an expression, not a statement");
+            return NULL;
+        }
+        
+        // If the last expression is a block, validate it recursively
+        ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
+        if (!validate_block_expression(expr_stmt->expression)) {
+            parser_error(parser, "Nested block expressions must ultimately end with a non-block expression");
+            return NULL;
+        }
+    }
+    
+    return (ast_node*)ast_create_block(statements, statement_count,
+                                      parser->previous.line, parser->previous.column);
+}
+
+// Parse if expression with new syntax
+ast_node* parse_if_expression(parser_t* parser) {
+    // Parse condition (no parentheses required)
+    ast_node* condition = parse_expression(parser);
+    
+    ast_node* then_expr = NULL;
     ast_node* else_expr = NULL;
     
+    // Check for 'then' keyword
+    if (parser_match(parser, TOKEN_THEN)) {
+        // Could be: 'if condition then expression' or 'if condition then\n<indent>'
+        if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+            // Multi-line form with 'then'
+            then_expr = parse_indented_block(parser);
+        } else {
+            // Single-line form with 'then'
+            then_expr = parse_expression(parser);
+        }
+    } else if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+        // Multi-line form without 'then'
+        then_expr = parse_indented_block(parser);
+    } else {
+        parser_error_at_current(parser, "Expected 'then' or indented block after if condition.");
+        return NULL;
+    }
+    
+    // Check for 'else' clause
     if (parser_match(parser, TOKEN_ELSE)) {
-        else_expr = parse_expression(parser);
+        if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+            // Multi-line else
+            else_expr = parse_indented_block(parser);
+        } else {
+            // Single-line else
+            else_expr = parse_expression(parser);
+        }
+    }
+    
+    // Check for optional 'end if'
+    if (parser_match(parser, TOKEN_END)) {
+        parser_consume(parser, TOKEN_IF, "Expected 'if' after 'end'.");
     }
     
     return (ast_node*)ast_create_if(condition, then_expr, else_expr,
                                    parser->previous.line, parser->previous.column);
 }
 
-// Parse while statement
-ast_node* parse_while_statement(parser_t* parser) {
-    parser_consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after 'while'.");
-    ast_node* condition = parse_expression(parser);
-    parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after while condition.");
+// Validate that a block expression ultimately ends with a non-block expression
+int validate_block_expression(ast_node* expr) {
+    if (expr->type != AST_BLOCK) {
+        // Non-block expression is valid
+        return 1;
+    }
     
-    ast_node* body = parse_statement(parser);
+    // It's a block, check its contents
+    ast_block* block = (ast_block*)expr;
+    
+    if (block->statement_count == 0) {
+        // Empty block is valid
+        return 1;
+    }
+    
+    // Last statement must be an expression statement
+    ast_node* last_stmt = block->statements[block->statement_count - 1];
+    if (last_stmt->type != AST_EXPRESSION_STMT) {
+        return 0; // Block ends with statement, invalid
+    }
+    
+    // Recursively validate the last expression
+    ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
+    return validate_block_expression(expr_stmt->expression);
+}
+
+
+// Parse while statement with new syntax
+ast_node* parse_while_statement(parser_t* parser) {
+    // Parse condition (no parentheses required)
+    ast_node* condition = parse_expression(parser);
+    
+    ast_node* body = NULL;
+    
+    // Check for indented block
+    if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+        body = parse_indented_block(parser);
+    } else {
+        parser_error_at_current(parser, "Expected indented block after while condition.");
+        return NULL;
+    }
+    
+    // Check for optional 'end while'
+    if (parser_match(parser, TOKEN_END)) {
+        parser_consume(parser, TOKEN_WHILE, "Expected 'while' after 'end'.");
+    }
     
     return (ast_node*)ast_create_while(condition, body,
                                       parser->previous.line, parser->previous.column);
@@ -329,36 +453,6 @@ ast_node* parse_return_statement(parser_t* parser) {
     return (ast_node*)ast_create_return(value, parser->previous.line, parser->previous.column);
 }
 
-// Parse block statement
-ast_node* parse_block_statement(parser_t* parser) {
-    ast_node** statements = NULL;
-    size_t statement_count = 0;
-    size_t statement_capacity = 0;
-    
-    while (!parser_check(parser, TOKEN_RIGHT_BRACE) && !parser_check(parser, TOKEN_EOF)) {
-        // Skip newlines in blocks
-        if (parser_match(parser, TOKEN_NEWLINE)) continue;
-        
-        ast_node* stmt = parse_declaration(parser);
-        
-        if (stmt) {
-            if (statement_count >= statement_capacity) {
-                size_t new_capacity = statement_capacity == 0 ? 8 : statement_capacity * 2;
-                statements = realloc(statements, sizeof(ast_node*) * new_capacity);
-                statement_capacity = new_capacity;
-            }
-            
-            statements[statement_count++] = stmt;
-        }
-        
-        if (parser->panic_mode) parser_synchronize(parser);
-    }
-    
-    parser_consume(parser, TOKEN_RIGHT_BRACE, "Expected '}' after block.");
-    
-    return (ast_node*)ast_create_block(statements, statement_count,
-                                      parser->previous.line, parser->previous.column);
-}
 
 // Parse expression statement
 ast_node* parse_expression_statement(parser_t* parser) {
@@ -594,6 +688,7 @@ ast_node* parse_primary(parser_t* parser) {
     }
     
     if (parser_match(parser, TOKEN_LEFT_BRACE)) {
+        // Braces are now only for object literals
         return parse_object(parser);
     }
     

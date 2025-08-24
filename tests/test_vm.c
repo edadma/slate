@@ -18,6 +18,7 @@ value_t run_code(const char* source)
     ast_program* program = parse_program(&parser);
     if (parser.had_error || !program)
     {
+        lexer_cleanup(&lexer);
         return make_null();
     }
 
@@ -38,6 +39,7 @@ value_t run_code(const char* source)
     vm_destroy(vm);
     codegen_destroy(codegen);
     ast_free((ast_node*)program);
+    lexer_cleanup(&lexer);
 
     return return_value;
 }
@@ -717,6 +719,148 @@ void test_vm_nested_conditionals(void)
     TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
 }
 
+// Test block expressions
+void test_vm_block_expressions(void)
+{
+    value_t result;
+    
+    // Simple block expression
+    result = run_code("{ 42 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    
+    // Multi-statement block - last expression is the value
+    result = run_code("{ var x = 10; x + 5 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(15.0, result.as.number);
+    
+    // Block with string result
+    result = run_code("{ var name = \"world\"; \"Hello \" + name }");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello world", result.as.string);
+    vm_release(result);
+    
+    // Empty block should return null
+    result = run_code("{ }");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+}
+
+// Test if expressions with block expressions  
+void test_vm_if_with_blocks(void)
+{
+    value_t result;
+    
+    // If with block expressions
+    result = run_code("if (true) { var x = 20; x * 2 } else { 99 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(40.0, result.as.number);
+    
+    result = run_code("if (false) { 10 } else { var y = 5; y + 10 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(15.0, result.as.number);
+    
+    // Nested if expressions within blocks
+    result = run_code("if (true) { var x = if (false) 10 else 20; x + 5 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(25.0, result.as.number);
+    
+    // Complex nested blocks with string operations
+    result = run_code("if (2 > 1) { var prefix = \"Result: \"; prefix + if (true) \"success\" else \"failure\" }");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Result: success", result.as.string);
+    vm_release(result);
+}
+
+// Test complex nested conditionals with blocks
+void test_vm_complex_conditional_blocks(void)
+{
+    value_t result;
+    
+    // Deep nesting with multiple conditions
+    result = run_code("if (true) { if (false) { 1 } else { if (true) { 42 } else { 99 } } } else { 0 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    
+    // Mixed arithmetic and conditionals in blocks
+    result = run_code("{ var base = 10; if (base > 5) { base * 2 + if (true) 3 else 1 } else { base } }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(23.0, result.as.number);
+    
+    // Block with multiple variables and complex logic
+    result = run_code("{ var a = 5; var b = if (a > 0) 10 else 0; var result = if (b == 10) \"positive\" else \"non-positive\"; result }");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("positive", result.as.string);
+    vm_release(result);
+    
+    // Blocks as expressions in arithmetic
+    result = run_code("{ 10 } + { 20 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(30.0, result.as.number);
+}
+
+// Test edge cases with blocks and conditionals
+void test_vm_block_conditional_edge_cases(void)
+{
+    value_t result;
+    
+    // If without else, with blocks
+    result = run_code("if (false) { 42 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    result = run_code("if (true) { 42 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    
+    // Block with conditional as last expression
+    result = run_code("{ var flag = true; if (flag) 1 else 0 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    
+    // Deeply nested blocks
+    result = run_code("{ { { 42 } } }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+}
+
+// Test block expression validation
+void test_vm_block_expression_validation(void)
+{
+    value_t result;
+    
+    // Valid block expressions (end with non-block expressions)
+    result = run_code("{ var x = 10; x + 5 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(15.0, result.as.number);
+    
+    result = run_code("{ 42 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    
+    // Valid nested block expressions (innermost ends with non-block)
+    result = run_code("{ var x = 10; { x * 2 } }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number);
+    
+    result = run_code("{ { { 42 } } }");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    
+    // Empty blocks are valid (return null)
+    result = run_code("{ }");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // Invalid: blocks ending with statements should fail to parse
+    result = run_code("{ var x = 10 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Parse error -> null result
+    
+    result = run_code("{ var x = 10; var y = 20 }");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Parse error -> null result
+    
+    // Invalid: nested blocks where inner block ends with statement
+    result = run_code("{ var x = 10; { var y = 20 } }");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Parse error -> null result
+}
+
 // Test suite runner
 void test_vm_suite(void)
 {
@@ -743,4 +887,9 @@ void test_vm_suite(void)
     RUN_TEST(test_vm_conditional_truthy_values);
     RUN_TEST(test_vm_conditional_expressions);
     RUN_TEST(test_vm_nested_conditionals);
+    RUN_TEST(test_vm_block_expressions);
+    RUN_TEST(test_vm_if_with_blocks);
+    RUN_TEST(test_vm_complex_conditional_blocks);
+    RUN_TEST(test_vm_block_conditional_edge_cases);
+    RUN_TEST(test_vm_block_expression_validation);
 }

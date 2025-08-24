@@ -21,6 +21,8 @@ typedef enum {
     TOKEN_ELSE,          // else
     TOKEN_WHILE,         // while
     TOKEN_RETURN,        // return
+    TOKEN_THEN,          // then
+    TOKEN_END,           // end
     
     // Operators
     TOKEN_PLUS,          // +
@@ -53,6 +55,8 @@ typedef enum {
     
     // Special
     TOKEN_NEWLINE,       // \n (for statement termination)
+    TOKEN_INDENT,        // Increased indentation
+    TOKEN_DEDENT,        // Decreased indentation
     TOKEN_EOF,           // End of file
     TOKEN_ERROR          // Error token
 } token_type_t;
@@ -73,10 +77,20 @@ typedef struct {
     const char* current;  // Current character being examined
     int line;             // Current line number
     int column;           // Current column number
+    
+    // Indentation tracking
+    int* indent_stack;    // Stack of indentation levels
+    int indent_count;     // Number of indent levels
+    int indent_capacity;  // Capacity of indent stack
+    int pending_indent;   // Pending indentation level for next line
+    int at_line_start;    // Whether we're at the start of a line
+    int pending_dedents;  // Number of DEDENT tokens to emit
+    int brace_depth;      // Track nesting depth of (), [], {} to ignore indentation inside
 } lexer_t;
 
 // Lexer functions
 void lexer_init(lexer_t* lexer, const char* source);
+void lexer_cleanup(lexer_t* lexer);
 token_t lexer_next_token(lexer_t* lexer);
 const char* token_type_name(token_type_t type);
 

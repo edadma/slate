@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include <string.h>
 #include <ctype.h>
+#include <stdlib.h>
 
 // Helper functions
 int is_digit(char c) {
@@ -28,6 +29,8 @@ static keyword_entry_t keywords[] = {
     {"else", TOKEN_ELSE},
     {"while", TOKEN_WHILE},
     {"return", TOKEN_RETURN},
+    {"then", TOKEN_THEN},
+    {"end", TOKEN_END},
     {"true", TOKEN_TRUE},
     {"false", TOKEN_FALSE},
     {"null", TOKEN_NULL},
@@ -52,6 +55,23 @@ void lexer_init(lexer_t* lexer, const char* source) {
     lexer->current = source;
     lexer->line = 1;
     lexer->column = 1;
+    
+    // Initialize indentation tracking
+    lexer->indent_capacity = 8;
+    lexer->indent_stack = malloc(sizeof(int) * lexer->indent_capacity);
+    lexer->indent_stack[0] = 0;  // Base indentation level is 0
+    lexer->indent_count = 1;
+    lexer->pending_indent = 0;
+    lexer->at_line_start = 1;  // We start at the beginning of a line
+    lexer->pending_dedents = 0;
+    lexer->brace_depth = 0;  // Not inside any braces initially
+}
+
+void lexer_cleanup(lexer_t* lexer) {
+    if (lexer->indent_stack) {
+        free(lexer->indent_stack);
+        lexer->indent_stack = NULL;
+    }
 }
 
 static int is_at_end(lexer_t* lexer) {
@@ -123,8 +143,25 @@ static void skip_whitespace(lexer_t* lexer) {
                 break;
             case '/':
                 if (peek_next(lexer) == '/') {
-                    // Line comment
+                    // Line comment - skip until end of line
                     while (peek(lexer) != '\n' && !is_at_end(lexer)) {
+                        advance(lexer);
+                    }
+                } else if (peek_next(lexer) == '*') {
+                    // Block comment - skip until */
+                    advance(lexer); // Skip '/'
+                    advance(lexer); // Skip '*'
+                    
+                    while (!is_at_end(lexer)) {
+                        if (peek(lexer) == '*' && peek_next(lexer) == '/') {
+                            advance(lexer); // Skip '*'
+                            advance(lexer); // Skip '/'
+                            break;
+                        }
+                        if (peek(lexer) == '\n') {
+                            lexer->line++;
+                            lexer->column = 0;
+                        }
                         advance(lexer);
                     }
                 } else {
@@ -184,11 +221,80 @@ static token_t identifier_token(lexer_t* lexer) {
 }
 
 token_t lexer_next_token(lexer_t* lexer) {
+    // First, check if we need to emit pending DEDENT tokens
+    if (lexer->pending_dedents > 0) {
+        lexer->pending_dedents--;
+        return make_token(lexer, TOKEN_DEDENT);
+    }
+    
+    // If we're at the start of a line AND not inside braces, handle indentation
+    if (lexer->at_line_start && lexer->brace_depth == 0) {
+        lexer->at_line_start = 0;
+        
+        // Count spaces at the beginning of the line
+        int spaces = 0;
+        while (peek(lexer) == ' ') {
+            spaces++;
+            advance(lexer);
+        }
+        
+        // Skip blank lines and lines with only comments
+        if (peek(lexer) == '\n' || 
+            (peek(lexer) == '/' && (peek_next(lexer) == '/' || peek_next(lexer) == '*'))) {
+            skip_whitespace(lexer);
+            if (peek(lexer) == '\n') {
+                advance(lexer);
+                lexer->at_line_start = 1;
+                return lexer_next_token(lexer); // Recursively skip blank lines
+            }
+        }
+        
+        // Not a blank line, check indentation level
+        int current_indent = lexer->indent_stack[lexer->indent_count - 1];
+        
+        if (spaces > current_indent) {
+            // Increase indentation - push new level
+            if (lexer->indent_count >= lexer->indent_capacity) {
+                lexer->indent_capacity *= 2;
+                lexer->indent_stack = realloc(lexer->indent_stack, 
+                                            sizeof(int) * lexer->indent_capacity);
+            }
+            lexer->indent_stack[lexer->indent_count++] = spaces;
+            lexer->start = lexer->current;
+            return make_token(lexer, TOKEN_INDENT);
+        } else if (spaces < current_indent) {
+            // Decrease indentation - pop levels and emit DEDENTs
+            while (lexer->indent_count > 1 && 
+                   lexer->indent_stack[lexer->indent_count - 1] > spaces) {
+                lexer->indent_count--;
+                lexer->pending_dedents++;
+            }
+            
+            // Check that we dedented to a valid level
+            if (lexer->indent_stack[lexer->indent_count - 1] != spaces) {
+                return error_token(lexer, "Inconsistent indentation");
+            }
+            
+            // Emit the first DEDENT, others are pending
+            if (lexer->pending_dedents > 0) {
+                lexer->pending_dedents--;
+                lexer->start = lexer->current;
+                return make_token(lexer, TOKEN_DEDENT);
+            }
+        }
+        // Same indentation level - continue normally
+    }
+    
     skip_whitespace(lexer);
     
     lexer->start = lexer->current;
     
     if (is_at_end(lexer)) {
+        // Emit any remaining DEDENTs at EOF
+        if (lexer->indent_count > 1) {
+            lexer->indent_count--;
+            return make_token(lexer, TOKEN_DEDENT);
+        }
         return make_token(lexer, TOKEN_EOF);
     }
     
@@ -198,12 +304,24 @@ token_t lexer_next_token(lexer_t* lexer) {
     if (is_alpha(c)) return identifier_token(lexer);
     
     switch (c) {
-        case '(': return make_token(lexer, TOKEN_LEFT_PAREN);
-        case ')': return make_token(lexer, TOKEN_RIGHT_PAREN);
-        case '{': return make_token(lexer, TOKEN_LEFT_BRACE);
-        case '}': return make_token(lexer, TOKEN_RIGHT_BRACE);
-        case '[': return make_token(lexer, TOKEN_LEFT_BRACKET);
-        case ']': return make_token(lexer, TOKEN_RIGHT_BRACKET);
+        case '(': 
+            lexer->brace_depth++;
+            return make_token(lexer, TOKEN_LEFT_PAREN);
+        case ')': 
+            lexer->brace_depth--;
+            return make_token(lexer, TOKEN_RIGHT_PAREN);
+        case '{': 
+            lexer->brace_depth++;
+            return make_token(lexer, TOKEN_LEFT_BRACE);
+        case '}': 
+            lexer->brace_depth--;
+            return make_token(lexer, TOKEN_RIGHT_BRACE);
+        case '[': 
+            lexer->brace_depth++;
+            return make_token(lexer, TOKEN_LEFT_BRACKET);
+        case ']': 
+            lexer->brace_depth--;
+            return make_token(lexer, TOKEN_RIGHT_BRACKET);
         case ';': return make_token(lexer, TOKEN_SEMICOLON);
         case ',': return make_token(lexer, TOKEN_COMMA);
         case ':': return make_token(lexer, TOKEN_COLON);
@@ -211,7 +329,12 @@ token_t lexer_next_token(lexer_t* lexer) {
         case '+': return make_token(lexer, TOKEN_PLUS);
         case '*': return make_token(lexer, TOKEN_MULTIPLY);
         case '/': return make_token(lexer, TOKEN_DIVIDE);
-        case '\n': return make_token(lexer, TOKEN_NEWLINE);
+        case '\n': 
+            // Only track line starts when not inside braces
+            if (lexer->brace_depth == 0) {
+                lexer->at_line_start = 1;
+            }
+            return make_token(lexer, TOKEN_NEWLINE);
         
         case '-':
             if (match(lexer, '>')) {
@@ -266,6 +389,8 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_ELSE: return "ELSE";
         case TOKEN_WHILE: return "WHILE";
         case TOKEN_RETURN: return "RETURN";
+        case TOKEN_THEN: return "THEN";
+        case TOKEN_END: return "END";
         case TOKEN_PLUS: return "PLUS";
         case TOKEN_MINUS: return "MINUS";
         case TOKEN_MULTIPLY: return "MULTIPLY";
@@ -292,6 +417,8 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_RIGHT_BRACKET: return "RIGHT_BRACKET";
         case TOKEN_ARROW: return "ARROW";
         case TOKEN_NEWLINE: return "NEWLINE";
+        case TOKEN_INDENT: return "INDENT";
+        case TOKEN_DEDENT: return "DEDENT";
         case TOKEN_EOF: return "EOF";
         case TOKEN_ERROR: return "ERROR";
         default: return "UNKNOWN";
