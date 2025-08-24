@@ -25,6 +25,7 @@ typedef enum
     OP_PUSH_FALSE, // Push false value
     OP_POP, // Pop top of stack
     OP_DUP, // Duplicate top of stack
+    OP_SET_RESULT, // Pop value from stack and store in result register
 
     // Arithmetic operations
     OP_ADD, // Pop b, pop a, push a + b
@@ -146,6 +147,7 @@ typedef struct bitty_vm
     // Bytecode execution
     uint8_t* bytecode; // Current bytecode being executed
     uint8_t* ip; // Instruction pointer
+    uint8_t* current_instruction; // Start of currently executing instruction (for error reporting)
 
     // Value stack
     value_t* stack; // Value stack
@@ -164,6 +166,9 @@ typedef struct bitty_vm
 
     // Global variables
     do_object globals; // Global variable table
+    
+    // Result register - holds the value of the last executed statement
+    value_t result;
 
     // Memory management
     size_t bytes_allocated; // For GC later

@@ -34,6 +34,9 @@ bitty_vm* vm_create(void) {
         vm_destroy(vm);
         return NULL;
     }
+    
+    // Initialize result register to undefined
+    vm->result = make_undefined();
 
     vm_reset(vm);
     return vm;
@@ -408,6 +411,8 @@ const char* opcode_name(opcode op) {
         return "POP";
     case OP_DUP:
         return "DUP";
+    case OP_SET_RESULT:
+        return "SET_RESULT";
     case OP_ADD:
         return "ADD";
     case OP_SUBTRACT:
@@ -503,6 +508,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
     // Basic execution loop (simplified)
     for (;;) {
+        vm->current_instruction = vm->ip;  // Store instruction start for error reporting
         opcode instruction = (opcode)*vm->ip++;
 
         switch (instruction) {
@@ -530,18 +536,23 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             break;
 
         case OP_POP: {
-            value_t popped = vm_pop(vm);
-            // Store in a global for the main function to see
-            if (vm->stack_top == vm->stack) {
-                // If stack becomes empty, push the value back so main can see it
-                vm_push(vm, popped);
-            }
+            vm_pop(vm);
+            // Clean pop - no special behavior
             break;
         }
 
         case OP_DUP: {
             value_t value = vm_peek(vm, 0);
             vm_push(vm, value); // vm_push will handle the retain
+            break;
+        }
+        
+        case OP_SET_RESULT: {
+            // Pop value from stack and store in result register
+            // Release old result value first
+            vm_release(vm->result);
+            vm->result = vm_pop(vm);
+            // No need to retain - vm_pop transfers ownership
             break;
         }
 
@@ -675,6 +686,15 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             value_t* elements = malloc(sizeof(value_t) * count);
             for (int i = count - 1; i >= 0; i--) {
                 elements[i] = vm_pop(vm);
+                // Check if trying to store undefined (not a first-class value)
+                if (elements[i].type == VAL_UNDEFINED) {
+                    vm_runtime_error_with_debug(vm, "Cannot store 'undefined' in array - it is not a value");
+                    free(elements);
+                    da_release(&array);
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
             }
 
             // Add elements to array in correct order
@@ -730,6 +750,14 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             value_t index = vm_pop(vm);
             value_t object = vm_pop(vm);
 
+            // Check if trying to store undefined (not a first-class value)
+            if (value.type == VAL_UNDEFINED) {
+                vm_runtime_error_with_debug(vm, "Cannot store 'undefined' - it is not a value");
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+
             if (object.type == VAL_ARRAY && index.type == VAL_NUMBER) {
                 size_t idx = (size_t)index.as.number;
                 // Set element in dynamic array
@@ -754,6 +782,15 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 args = malloc(sizeof(value_t) * arg_count);
                 for (int i = arg_count - 1; i >= 0; i--) {
                     args[i] = vm_pop(vm);
+                    // Check if trying to pass undefined (not a first-class value)
+                    if (args[i].type == VAL_UNDEFINED) {
+                        vm_runtime_error_with_debug(vm, "Cannot pass 'undefined' as argument - it is not a value");
+                        if (args)
+                            free(args);
+                        vm->frame_count--;
+                        closure_destroy(closure);
+                        return VM_RUNTIME_ERROR;
+                    }
                 }
             }
 
@@ -882,6 +919,10 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_DEFINE_GLOBAL: {
             // Pop the value to store and the variable name constant
             value_t value = vm_pop(vm);
+            
+            // Note: We allow undefined for variable declarations (var x;)
+            // The restriction on undefined only applies to explicit assignments
+            
             uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
             
@@ -936,6 +977,15 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_SET_GLOBAL: {
             // Pop the value to store and get the variable name constant
             value_t value = vm_pop(vm);
+            
+            // Check if trying to assign undefined (not a first-class value)
+            if (value.type == VAL_UNDEFINED) {
+                vm_runtime_error_with_debug(vm, "Cannot assign 'undefined' - it is not a value");
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            
             uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
             
@@ -1083,7 +1133,7 @@ void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset) {
     return best_entry ? debug : NULL;
 }
 
-// Print enhanced runtime error with source location
+// Print enhanced runtime error with instruction location
 void vm_runtime_error_with_debug(bitty_vm* vm, const char* message) {
     if (vm->frame_count == 0) {
         printf("Runtime error: %s\n", message);
@@ -1094,44 +1144,45 @@ void vm_runtime_error_with_debug(bitty_vm* vm, const char* message) {
     call_frame* frame = &vm->frames[vm->frame_count - 1];
     function_t* function = frame->closure->function;
 
-    // Use VM's instruction pointer for the offset calculation
-    size_t instruction_offset = vm->ip - vm->bytecode - 1; // -1 because ip was advanced after executing
+    // Use the stored current instruction pointer
+    size_t instruction_offset = vm->current_instruction - vm->bytecode;
+    
+    // Show the instruction that failed
+    opcode failed_op = (opcode)*vm->current_instruction;
+    printf("Runtime error: %s\n", message);
+    printf("    at instruction %04zu: %s\n", instruction_offset, opcode_name(failed_op));
 
+    // If we have debug info with source code, try to show it
     if (function->debug) {
         debug_info* debug = (debug_info*)function->debug;
-
-        // Find the debug info for this instruction
-        debug_info_entry* entry = NULL;
-        for (size_t i = 0; i < debug->count; i++) {
-            if (debug->entries[i].bytecode_offset <= instruction_offset) {
-                entry = &debug->entries[i];
-            } else {
-                break;
-            }
-        }
-
-        if (entry && debug->source_code) {
-            // Print enhanced error with source line
-            printf("Runtime error: %s\n", message);
-
-            size_t line_length;
-            const char* line_start = get_source_line(debug->source_code, entry->line, &line_length);
-
-            if (line_start) {
-                printf("    %.*s\n", (int)line_length, line_start);
-
-                // Print caret pointing to the column (adjust by -1 since columns seem to be 1-based)
-                printf("    ");
-                int caret_pos = entry->column > 0 ? entry->column - 1 : 0;
-                for (int i = 0; i < caret_pos; i++) {
-                    printf(" ");
+        
+        if (debug->count > 0 && debug->source_code) {
+            // Find the debug info for this instruction
+            debug_info_entry* entry = NULL;
+            for (size_t i = 0; i < debug->count; i++) {
+                if (debug->entries[i].bytecode_offset <= instruction_offset) {
+                    entry = &debug->entries[i];
+                } else {
+                    break;
                 }
-                printf("^\n");
             }
-        } else {
-            printf("Runtime error: %s\n", message);
+
+            if (entry) {
+                size_t line_length;
+                const char* line_start = get_source_line(debug->source_code, entry->line, &line_length);
+
+                if (line_start) {
+                    printf("    %.*s\n", (int)line_length, line_start);
+
+                    // Print caret pointing to the column (adjust by -1 since columns seem to be 1-based)
+                    printf("    ");
+                    int caret_pos = entry->column > 0 ? entry->column - 1 : 0;
+                    for (int i = 0; i < caret_pos; i++) {
+                        printf(" ");
+                    }
+                    printf("^\n");
+                }
+            }
         }
-    } else {
-        printf("Runtime error: %s\n", message);
     }
 }

@@ -399,12 +399,6 @@ ast_node* parse_assignment(parser_t* parser) {
     if (parser_match(parser, TOKEN_ASSIGN)) {
         ast_node* value = parse_assignment(parser);
         
-        // Check if trying to assign undefined
-        if (value && value->type == AST_UNDEFINED) {
-            parser_error_at_current(parser, "Cannot assign 'undefined' to property.");
-            return NULL;
-        }
-        
         return (ast_node*)ast_create_assignment(expr, value,
                                                parser->previous.line, parser->previous.column);
     }
