@@ -130,6 +130,60 @@ if (greeting == "Hello") {
 }
 ```
 
+### Undefined Value
+
+Bitty includes a special `undefined` value with unique behavior:
+
+```javascript
+// undefined returned by missing operations
+var result = someObject.nonExistentProperty;  // Returns undefined
+
+// Comparison with undefined
+if (result == undefined) {
+    print("Property does not exist");
+}
+
+// undefined in conditionals (falsy)
+if (undefined) {
+    print("This won't execute");  // undefined is falsy
+}
+```
+
+**Special Properties of `undefined`:**
+
+1. **Available as literal** - Users can write `undefined` in code to test/compare values
+2. **Returned by missing operations** - Non-existent object properties return `undefined`
+3. **Cannot be assigned** - `var x = undefined` is **illegal** (compile error)
+4. **Cannot be stored** - Object properties cannot be set to `undefined` (runtime error)
+5. **Falsy value** - `undefined` evaluates to `false` in conditionals
+
+**Legal uses:**
+```javascript
+// ✅ Comparison/testing
+if (obj.prop == undefined) { ... }
+var x = (obj.prop == undefined) ? "default" : obj.prop;
+
+// ✅ Temporary expression results
+someFunction() == undefined;  // Returns boolean
+```
+
+**Illegal uses:**
+```javascript
+// ❌ Variable assignment
+var x = undefined;        // Compile error
+
+// ❌ Property assignment  
+obj.prop = undefined;     // Runtime error
+
+// ❌ Function parameters
+func(undefined);          // Runtime error
+
+// ❌ Array elements
+arr[0] = undefined;       // Runtime error
+```
+
+This makes `undefined` a special "sentinel" value indicating absence/invalidity that can be observed but not explicitly stored.
+
 ### Variables and Assignment
 
 ```javascript

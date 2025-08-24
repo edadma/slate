@@ -445,11 +445,6 @@ ast_node* parse_call(parser_t* parser) {
             expr = (ast_node*)ast_create_member(expr, name, 
                                                parser->previous.line, parser->previous.column);
             free(name);
-        } else if (parser_match(parser, TOKEN_LEFT_BRACKET)) {
-            ast_node* index = parse_expression(parser);
-            parser_consume(parser, TOKEN_RIGHT_BRACKET, "Expected ']' after array index.");
-            expr = (ast_node*)ast_create_index(expr, index,
-                                              parser->previous.line, parser->previous.column);
         } else {
             break;
         }

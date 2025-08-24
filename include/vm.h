@@ -7,6 +7,10 @@
 // Include dynamic_string.h for proper string handling
 #include "/home/ed/CLionProjects/dynamic_string.h/dynamic_string.h"
 
+// Include dynamic library headers directly
+#include "/home/ed/CLionProjects/dynamic_array.h/dynamic_array.h"
+#include "/home/ed/CLionProjects/dynamic_object.h/dynamic_object.h"
+
 // Forward declarations
 typedef struct bit_value bit_value;
 
@@ -15,6 +19,7 @@ typedef enum {
     // Stack operations
     OP_PUSH_CONSTANT,   // Push constant from constant pool
     OP_PUSH_NULL,       // Push null value
+    OP_PUSH_UNDEFINED,  // Push undefined value
     OP_PUSH_TRUE,       // Push true value
     OP_PUSH_FALSE,      // Push false value
     OP_POP,             // Pop top of stack
@@ -77,6 +82,7 @@ typedef enum {
 // VM value types
 typedef enum {
     VAL_NULL,
+    VAL_UNDEFINED,
     VAL_BOOLEAN,
     VAL_NUMBER,
     VAL_STRING,
@@ -93,32 +99,12 @@ typedef struct bit_value {
         int boolean;
         double number;
         ds_string string;       // Using dynamic_string.h!
-        struct bit_array* array;
-        struct bit_object* object;
+        da_array array;         // Using dynamic_array.h!
+        do_object object;       // Using dynamic_object.h!
         struct bit_function* function;
         struct bit_closure* closure;
     } as;
 } bit_value;
-
-// Array structure
-typedef struct bit_array {
-    bit_value* elements;
-    size_t count;
-    size_t capacity;
-} bit_array;
-
-// Object property
-typedef struct bit_property {
-    char* key;
-    bit_value value;
-} bit_property;
-
-// Object structure (using dynamic_object.h later)
-typedef struct bit_object {
-    bit_property* properties;
-    size_t count;
-    size_t capacity;
-} bit_object;
 
 // Function structure
 typedef struct bit_function {
@@ -168,7 +154,7 @@ typedef struct bit_vm {
     size_t constant_capacity;
     
     // Global variables
-    bit_object* globals;    // Global variable table
+    do_object globals;    // Global variable table
     
     // Memory management
     size_t bytes_allocated; // For GC later
@@ -204,11 +190,12 @@ bit_value vm_peek(bit_vm* vm, int distance);
 
 // Value creation functions
 bit_value make_null(void);
+bit_value make_undefined(void);
 bit_value make_boolean(int value);
 bit_value make_number(double value);
 bit_value make_string(const char* value);
-bit_value make_array(bit_array* array);
-bit_value make_object(bit_object* object);
+bit_value make_array(da_array array);
+bit_value make_object(do_object object);
 bit_value make_function(bit_function* function);
 bit_value make_closure(bit_closure* closure);
 
@@ -222,18 +209,8 @@ void free_value(bit_value value);
 size_t vm_add_constant(bit_vm* vm, bit_value value);
 bit_value vm_get_constant(bit_vm* vm, size_t index);
 
-// Object operations
-bit_object* object_create(void);
-void object_destroy(bit_object* object);
-bit_value object_get(bit_object* object, const char* key);
-void object_set(bit_object* object, const char* key, bit_value value);
-
-// Array operations
-bit_array* array_create(void);
-void array_destroy(bit_array* array);
-void array_push(bit_array* array, bit_value value);
-bit_value array_get(bit_array* array, size_t index);
-void array_set(bit_array* array, size_t index, bit_value value);
+// Note: Object and array operations now use dynamic_object.h and dynamic_array.h
+// No separate functions needed - we'll use the library APIs directly
 
 // Function operations
 bit_function* function_create(const char* name);

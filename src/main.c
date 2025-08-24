@@ -170,6 +170,31 @@ static void run_tests(void) {
     printf("--- Test 4: Arithmetic expressions ---\n");
     interpret("2 + 3 * 4;");
     printf("\n");
+    
+    // Test 5: Arrays
+    printf("--- Test 5: Array literals ---\n");
+    interpret("[1, 2, 3];");
+    printf("\n");
+    
+    // Test 6: Array indexing (arrays as functions)
+    printf("--- Test 6: Array indexing (arrays as functions) ---\n");
+    interpret("[10, 20, 30](1);");
+    printf("\n");
+    
+    // Test 7: Array length
+    printf("--- Test 7: Array length ---\n");
+    interpret("[1, 2, 3, 4].length;");
+    printf("\n");
+    
+    // Test 8: String indexing (strings as functions)
+    printf("--- Test 8: String indexing (strings as functions) ---\n");
+    interpret("\"Hello\"(0);");
+    printf("\n");
+    
+    // Test 9: String length
+    printf("--- Test 9: String length ---\n");
+    interpret("\"World\".length;");
+    printf("\n");
 }
 
 int main(int argc, char* argv[]) {

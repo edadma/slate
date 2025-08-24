@@ -14,6 +14,7 @@ add_executable(bitty
     src/ast.c 
     src/codegen.c 
     src/vm.c
+    src/library_impl.c
 )
 
 # Tests executable (using Unity framework)
@@ -46,6 +47,7 @@ if(BUILD_TESTS)
         src/ast.c
         src/codegen.c
         src/vm.c
+        src/library_impl.c
     )
     
     # Define Unity config for all test files

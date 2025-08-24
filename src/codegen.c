@@ -152,6 +152,42 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_object(codegen, (ast_object_literal*)expr);
             break;
             
+        case AST_INDEX: {
+            ast_index* index_node = (ast_index*)expr;
+            // Generate object expression
+            codegen_emit_expression(codegen, index_node->object);
+            // Generate index expression
+            codegen_emit_expression(codegen, index_node->index);
+            // Emit index operation
+            codegen_emit_op(codegen, OP_GET_INDEX);
+            break;
+        }
+        
+        case AST_MEMBER: {
+            ast_member* member_node = (ast_member*)expr;
+            // Generate object expression
+            codegen_emit_expression(codegen, member_node->object);
+            // Generate property name as string constant
+            size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member_node->property));
+            codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);
+            // Emit property access operation
+            codegen_emit_op(codegen, OP_GET_PROPERTY);
+            break;
+        }
+        
+        case AST_CALL: {
+            ast_call* call_node = (ast_call*)expr;
+            // Generate function/callable expression first
+            codegen_emit_expression(codegen, call_node->function);
+            // Generate arguments (pushed left to right)
+            for (size_t i = 0; i < call_node->arg_count; i++) {
+                codegen_emit_expression(codegen, call_node->arguments[i]);
+            }
+            // Emit call operation with argument count
+            codegen_emit_op_operand(codegen, OP_CALL, (uint16_t)call_node->arg_count);
+            break;
+        }
+            
         default:
             codegen_error(codegen, "Unknown expression type");
             break;
@@ -435,6 +471,7 @@ size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset) {
         
         case OP_BUILD_ARRAY:
         case OP_BUILD_OBJECT:
+        case OP_CALL:
         case OP_GET_GLOBAL:
         case OP_SET_GLOBAL:
         case OP_DEFINE_GLOBAL:

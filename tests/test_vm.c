@@ -230,6 +230,208 @@ void test_vm_is_falsy(void) {
     free_value(str);
 }
 
+// Test division by zero handling
+void test_vm_division_by_zero(void) {
+    bit_value result;
+    
+    // Division by zero should return null (error case)
+    result = run_code("10 / 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    result = run_code("0 / 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // Negative division by zero
+    result = run_code("-5 / 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+}
+
+// Test advanced string concatenation edge cases
+void test_vm_string_concatenation_edge_cases(void) {
+    bit_value result;
+    
+    // Null concatenation
+    result = run_code("null + \" value\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("null value", result.as.string);
+    ds_release(&result.as.string);
+    
+    // Boolean + string concatenation (boolean will be converted to string)
+    result = run_code("true + \" and false\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("true and false", result.as.string);
+    ds_release(&result.as.string);
+    
+    // Empty string concatenation
+    result = run_code("\"\" + \"\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("", result.as.string);
+    ds_release(&result.as.string);
+    
+    // Number to string conversion
+    result = run_code("3.14159 + \" is pi\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    // Should use %.6g formatting
+    ds_release(&result.as.string);
+    
+    // Boolean + string with number concatenation 
+    result = run_code("false + \"42\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("false42", result.as.string);
+    ds_release(&result.as.string);
+}
+
+// Test array edge cases
+void test_vm_arrays_edge_cases(void) {
+    bit_value result;
+    
+    // Empty array
+    result = run_code("[]");
+    TEST_ASSERT_EQUAL_INT(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL_INT(0, da_length(result.as.array));
+    free_value(result);
+    
+    // Empty array length
+    result = run_code("[].length");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    
+    // Out of bounds access should be error (returns null on error)
+    result = run_code("[1, 2, 3](10)");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Error case
+    
+    // Negative index should be error (returns null on error)
+    result = run_code("[1, 2, 3](-1)");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Error case
+    
+    // Mixed type array
+    result = run_code("[1, \"hello\", true, null]");
+    TEST_ASSERT_EQUAL_INT(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL_INT(4, da_length(result.as.array));
+    free_value(result);
+    
+    // Nested array access
+    result = run_code("[[1, 2], [3, 4]](0)(1)");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+}
+
+// Test string indexing edge cases
+void test_vm_string_indexing_edge_cases(void) {
+    bit_value result;
+    
+    // Empty string indexing should be error (returns null on error)
+    result = run_code("\"\"(0)");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Error case
+    
+    // Out of bounds string access should be error (returns null on error)
+    result = run_code("\"hello\"(10)");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Error case
+    
+    // Negative string index should be error (returns null on error)
+    result = run_code("\"hello\"(-1)");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Error case
+    
+    // Single character strings
+    result = run_code("\"a\"(0)");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("a", result.as.string);
+    ds_release(&result.as.string);
+    
+    // Last character access
+    result = run_code("\"hello\"(4)");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("o", result.as.string);
+    ds_release(&result.as.string);
+}
+
+// Test type error handling
+void test_vm_type_errors(void) {
+    bit_value result;
+    
+    // These should return null (error handled gracefully)
+    // Cannot subtract strings
+    result = run_code("\"hello\" - \"world\"");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // Cannot multiply strings  
+    result = run_code("\"hello\" * 5");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // Cannot divide booleans
+    result = run_code("true / false");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // Cannot add booleans (no implicit string conversion without string operand)
+    result = run_code("true + false");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // Cannot add boolean + number (no implicit string conversion without string operand)
+    result = run_code("false + 42");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // Cannot negate strings
+    result = run_code("-\"hello\"");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // Cannot index numbers
+    result = run_code("42(0)");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // Cannot index with non-numbers
+    result = run_code("[1,2,3](\"hello\")");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+}
+
+// Test complex expressions
+void test_vm_complex_expressions(void) {
+    bit_value result;
+    
+    // Array operations in expressions
+    result = run_code("[1, 2, 3].length + 5");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(8.0, result.as.number);
+    
+    // String operations in expressions  
+    result = run_code("\"hello\".length * 2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(10.0, result.as.number);
+    
+    // Array indexing in expressions
+    result = run_code("[10, 20, 30](1) + 5");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(25.0, result.as.number);
+    
+    // Complex nested operations
+    result = run_code("([1, 2, 3].length * 2) + [4, 5](1)");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(11.0, result.as.number); // (3 * 2) + 5 = 11
+}
+
+// Test property access edge cases
+void test_vm_property_access_edge_cases(void) {
+    bit_value result;
+    
+    // Invalid properties should return null
+    result = run_code("[1, 2, 3].foo"); 
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    result = run_code("\"hello\".foo");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    result = run_code("42.length");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // Empty string length
+    result = run_code("\"\".length");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    
+    // Null property access
+    result = run_code("null.length");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+}
+
 // Test suite runner
 void test_vm_suite(void) {
     RUN_TEST(test_vm_arithmetic);
@@ -240,4 +442,11 @@ void test_vm_suite(void) {
     RUN_TEST(test_vm_value_creation);
     RUN_TEST(test_vm_value_equality);
     RUN_TEST(test_vm_is_falsy);
+    RUN_TEST(test_vm_division_by_zero);
+    RUN_TEST(test_vm_string_concatenation_edge_cases);
+    RUN_TEST(test_vm_arrays_edge_cases);
+    RUN_TEST(test_vm_string_indexing_edge_cases);
+    RUN_TEST(test_vm_type_errors);
+    RUN_TEST(test_vm_complex_expressions);
+    RUN_TEST(test_vm_property_access_edge_cases);
 }
