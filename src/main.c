@@ -135,9 +135,11 @@ static char* read_file(const char* path) {
 
 static void repl(void) {
     char line[1024];
+    char accumulated_input[4096] = "";
+    int in_continuation = 0;
 
     printf("Bitty v0.1.0 - A tiny programming language\n");
-    printf("Type 'exit' to quit.\n\n");
+    printf("Type 'exit' to quit. Empty line cancels multi-line input.\n\n");
 
     // Create persistent VM for the REPL session
     bitty_vm* vm = vm_create();
@@ -147,18 +149,102 @@ static void repl(void) {
     }
 
     for (;;) {
-        printf("> ");
+        // Show appropriate prompt
+        if (in_continuation) {
+            printf("+ ");
+        } else {
+            printf("> ");
+        }
         fflush(stdout);
 
         get_line_with_editing(line, sizeof(line));
 
         if (strcmp(line, "exit") == 0)
             break;
-        if (strlen(line) == 0)
-            continue;
 
-        interpret_with_vm(line, vm);
-        printf("\n");
+        // Handle empty line
+        if (strlen(line) == 0) {
+            if (in_continuation) {
+                // Execute accumulated input on empty line (Python style)
+                printf("Interpreting: %s\n", accumulated_input);
+                interpret_with_vm(accumulated_input, vm);
+                accumulated_input[0] = '\0';
+                in_continuation = 0;
+                printf("\n");
+            }
+            continue;
+        }
+
+        // Accumulate input
+        if (in_continuation) {
+            strcat(accumulated_input, "\n");
+            strcat(accumulated_input, line);
+        } else {
+            strcpy(accumulated_input, line);
+        }
+
+        // Try to parse the accumulated input
+        lexer_t lexer;
+        lexer_init(&lexer, accumulated_input);
+
+        parser_t parser;
+        parser_init(&parser, &lexer);
+
+        // Redirect stderr to capture parser errors
+        FILE* old_stderr = stderr;
+        FILE* error_capture = tmpfile();
+        stderr = error_capture;
+
+        ast_program* program = parse_program(&parser);
+        
+        // Restore stderr
+        stderr = old_stderr;
+
+        if (parser.had_error) {
+            // Check if this was an "unexpected end of input" error
+            rewind(error_capture);
+            char error_msg[512];
+            if (fgets(error_msg, sizeof(error_msg), error_capture) && 
+                strstr(error_msg, "Error at end")) {
+                
+                // This looks like incomplete input - enter continuation mode
+                if (!in_continuation) {
+                    in_continuation = 1;
+                }
+                fclose(error_capture);
+                lexer_cleanup(&lexer);
+                continue;
+            } else {
+                // This is a real parse error - show it and exit continuation mode
+                rewind(error_capture);
+                while (fgets(error_msg, sizeof(error_msg), error_capture)) {
+                    printf("%s", error_msg);
+                }
+                fclose(error_capture);
+                accumulated_input[0] = '\0';
+                in_continuation = 0;  // Exit continuation mode on syntax error
+                lexer_cleanup(&lexer);
+                continue;
+            }
+        }
+
+        // Parse succeeded - but stay in continuation mode until empty line
+        fclose(error_capture);
+        
+        if (program) {
+            ast_free((ast_node*)program);
+        }
+
+        // If not in continuation mode, this was a complete single-line input
+        if (!in_continuation) {
+            printf("Interpreting: %s\n", accumulated_input);
+            interpret_with_vm(accumulated_input, vm);
+            accumulated_input[0] = '\0';
+            printf("\n");
+        }
+        // If in continuation mode, just continue accumulating until empty line
+        
+        lexer_cleanup(&lexer);
     }
 
     // Cleanup the persistent VM
