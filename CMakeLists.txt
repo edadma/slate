@@ -42,6 +42,7 @@ if(BUILD_TESTS)
         tests/test_lexer.c
         tests/test_parser.c
         tests/test_vm.c
+        tests/test_conditionals.c
         src/lexer.c
         src/parser.c
         src/ast.c

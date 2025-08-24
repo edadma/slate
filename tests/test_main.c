@@ -4,6 +4,7 @@
 void test_lexer_suite(void);
 void test_parser_suite(void);
 void test_vm_suite(void);
+void test_conditionals_suite(void);
 
 void setUp(void) {
     // Setup code that runs before each test
@@ -20,6 +21,7 @@ int main(void) {
     test_lexer_suite();
     test_parser_suite();
     test_vm_suite();
+    test_conditionals_suite();
     
     return UNITY_END();
 }

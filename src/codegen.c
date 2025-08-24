@@ -298,6 +298,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
         case AST_IF:
             codegen_emit_if(codegen, (ast_if*)expr);
             break;
+
+        case AST_BLOCK:
+            codegen_emit_block_expression(codegen, (ast_block*)expr);
+            break;
             
         default:
             codegen_error(codegen, "Unknown expression type");
@@ -527,6 +531,25 @@ void codegen_emit_if(codegen_t* codegen, ast_if* node) {
     
     // Patch end jump
     codegen_patch_jump(codegen, end_jump);
+}
+
+void codegen_emit_block_expression(codegen_t* codegen, ast_block* node) {
+    if (node->statement_count == 0) {
+        // Empty block returns null
+        codegen_emit_op(codegen, OP_PUSH_NULL);
+        return;
+    }
+    
+    // Execute all statements except the last one normally
+    for (size_t i = 0; i < node->statement_count - 1; i++) {
+        codegen_emit_statement(codegen, node->statements[i]);
+    }
+    
+    // The last statement must be an expression statement (validated by parser)
+    // Emit its expression directly to leave the value on the stack
+    ast_node* last_stmt = node->statements[node->statement_count - 1];
+    ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
+    codegen_emit_expression(codegen, expr_stmt->expression);
 }
 
 void codegen_emit_while(codegen_t* codegen, ast_while* node) {
