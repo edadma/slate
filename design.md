@@ -422,6 +422,10 @@ typedef enum {
     OP_SET_PROPERTY,    // obj[key] = value (pops obj, key, value)
     OP_GET_PROPERTY,    // obj[key] (pops obj, key, pushes value)
     
+    // Debug operations  
+    OP_SET_DEBUG_LOCATION,   // Set current debug location (operand = constant index to debug info)
+    OP_CLEAR_DEBUG_LOCATION, // Clear current debug location
+    
     // Built-ins
     OP_PRINT,           // Print stack top
     OP_HALT             // Stop execution
@@ -453,6 +457,12 @@ typedef struct {
     
     // Globals
     do_object globals;
+    
+    // Result register - holds the value of the last executed statement
+    vm_value_t result;
+    
+    // Debug info for current operation (NULL when debugging disabled)
+    debug_location* current_debug;
     
     // Memory management
     do_object* objects;         // All allocated objects for GC
@@ -494,6 +504,7 @@ typedef struct {
             do_object captured_env;
         } closure;
     } as;
+    debug_location* debug; // Debug info for error reporting (NULL when disabled)
 } vm_value_t;
 ```
 
@@ -673,6 +684,93 @@ void codegen_function(ast_node_t* func_node, bytecode_builder_t* builder) {
     emit_string_array(builder, func_node->as.function.free_vars, func_node->as.function.free_var_count);
 }
 ```
+
+## Error Reporting System
+
+### Value-Centric Debug Information
+
+Bitty implements an advanced **value-centric error reporting system** that provides exceptional Developer Experience (DX) by pointing directly to problematic values rather than just operator locations.
+
+#### Architecture
+
+Each value in the system carries its own debug information:
+
+```c
+typedef struct debug_location {
+    int line;
+    int column;
+    const char* source_text;  // Pointer to original source line (not owned)
+} debug_location;
+
+typedef struct value {
+    value_type type;
+    union { /* value data */ } as;
+    debug_location* debug; // Debug info for error reporting (NULL when disabled)
+} value_t;
+```
+
+#### Smart Error Detection
+
+The system intelligently determines which operand caused a type error:
+
+**ADD Operation Logic:**
+1. **String concatenation** if either operand is a string
+2. **Array concatenation** if both operands are arrays  
+3. **Numeric addition** if both operands are numbers
+4. **Error**: Point to the first non-numeric operand
+
+**Example Error Output:**
+```
+> true+2
+Runtime error: Cannot add boolean and number
+    at line 1, column 1:
+    true+2
+    ^
+
+> 2+true  
+Runtime error: Cannot add number and boolean
+    at line 1, column 3:
+    2+true
+      ^
+```
+
+#### Implementation Details
+
+**Code Generation:**
+- Debug location instructions (`OP_SET_DEBUG_LOCATION`) are emitted before each literal value
+- Operators do NOT carry debug info - only values do
+- Source text and location stored as bytecode constants
+
+**VM Execution:**
+- Literal instructions (`PUSH_TRUE`, `PUSH_CONSTANT`) create values with current debug location
+- Operations use intelligent operand analysis for error reporting
+- `vm_runtime_error_with_values()` uses the problematic operand's debug info
+
+**Memory Management:**
+- Debug locations are reference-counted and properly cleaned up
+- Values created during operations inherit debug info from source operands (left operand rule)
+
+#### Benefits
+
+1. **Precise Error Location**: Points exactly to the problematic value, not the operator
+2. **Better Developer Experience**: Developers see exactly what caused the error
+3. **Contextual Messages**: "Cannot add boolean and number" with source location
+4. **Reduced Debugging Time**: No need to guess which operand is wrong
+
+### Array Concatenation
+
+Arrays support concatenation via the `+` operator with proper memory management:
+
+```javascript
+[1, 2] + [3, 4]     // → [1, 2, 3, 4]
+[] + [1, 2]         // → [1, 2]  
+[1, "hi"] + [true]  // → [1, "hi", true]
+```
+
+**Implementation:**
+- Creates new array with combined elements from both operands
+- Proper reference counting for all elements
+- Memory-safe with automatic cleanup
 
 ## Examples
 
