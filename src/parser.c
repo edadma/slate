@@ -39,6 +39,57 @@ void parser_init(parser_t* parser, lexer_t* lexer) {
     parser_advance(parser);
 }
 
+// Helper function to get a specific line from source code
+static const char* get_source_line(const char* source, int line_number, size_t* line_length) {
+    const char* current = source;
+    int current_line = 1;
+    const char* line_start = source;
+    
+    // Find the start of the target line
+    while (*current && current_line < line_number) {
+        if (*current == '\n') {
+            current_line++;
+            line_start = current + 1;
+        }
+        current++;
+    }
+    
+    if (current_line != line_number) {
+        *line_length = 0;
+        return NULL;
+    }
+    
+    // Find the end of the line
+    const char* line_end = line_start;
+    while (*line_end && *line_end != '\n') {
+        line_end++;
+    }
+    
+    *line_length = line_end - line_start;
+    return line_start;
+}
+
+// Helper function to print caret pointing to error position
+static void print_error_caret(const char* source, token_t* token) {
+    size_t line_length;
+    const char* line_start = get_source_line(source, token->line, &line_length);
+    
+    if (!line_start) return;
+    
+    // Print the source line
+    fprintf(stderr, "    %.*s\n", (int)line_length, line_start);
+    
+    // Calculate the column position of the token within the line
+    int caret_position = (int)(token->start - line_start);
+    
+    // Print spaces followed by caret
+    fprintf(stderr, "    ");
+    for (int i = 0; i < caret_position; i++) {
+        fprintf(stderr, " ");
+    }
+    fprintf(stderr, "^\n");
+}
+
 // Error handling
 void parser_error_at(parser_t* parser, token_t* token, const char* message) {
     if (parser->panic_mode) return;
@@ -49,12 +100,19 @@ void parser_error_at(parser_t* parser, token_t* token, const char* message) {
     if (token->type == TOKEN_EOF) {
         fprintf(stderr, " at end");
     } else if (token->type == TOKEN_ERROR) {
-        // Nothing
+        // For error tokens, show the problematic character
+        fprintf(stderr, " at '%.*s'", (int)token->length, token->start);
     } else {
         fprintf(stderr, " at '%.*s'", (int)token->length, token->start);
     }
     
     fprintf(stderr, ": %s\n", message);
+    
+    // Print source line with caret if we have access to source
+    if (parser->lexer && parser->lexer->source) {
+        print_error_caret(parser->lexer->source, token);
+    }
+    
     parser->had_error = 1;
 }
 
@@ -74,7 +132,7 @@ void parser_advance(parser_t* parser) {
         parser->current = lexer_next_token(parser->lexer);
         if (parser->current.type != TOKEN_ERROR) break;
         
-        parser_error_at_current(parser, parser->current.start);
+        parser_error_at_current(parser, "Unexpected character");
     }
 }
 

@@ -104,10 +104,11 @@ static token_t make_token(lexer_t* lexer, token_type_t type) {
 static token_t error_token(lexer_t* lexer, const char* message) {
     token_t token;
     token.type = TOKEN_ERROR;
-    token.start = message;
-    token.length = strlen(message);
+    // For error tokens, we want to point to the previous character (the bad one)
+    token.start = lexer->current - 1;
+    token.length = 1; // Point to the bad character
     token.line = lexer->line;
-    token.column = lexer->column;
+    token.column = lexer->column - 1;
     return token;
 }
 
@@ -245,6 +246,8 @@ token_t lexer_next_token(lexer_t* lexer) {
         case '"': return string_token(lexer);
     }
     
+    char bad_char = advance(lexer);
+    (void)bad_char; // Suppress unused variable warning
     return error_token(lexer, "Unexpected character");
 }
 
