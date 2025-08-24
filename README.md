@@ -1,4 +1,4 @@
-# Bit Programming Language
+# Bitty Programming Language
 
 A toy programming language implementation with a complete compilation pipeline from source code to bytecode execution on a stack-based virtual machine.
 
@@ -21,13 +21,13 @@ cmake --build build
 
 ```bash
 # Interactive REPL
-./build/bit
+./build/bitty
 
 # Execute a file
-./build/bit script.bit
+./build/bitty script.bitty
 
 # Run built-in tests
-./build/bit --test
+./build/bitty --test
 ```
 
 ## Running Tests
@@ -35,13 +35,13 @@ cmake --build build
 ```bash
 cmake -B build -DBUILD_TESTS=ON
 cmake --build build
-./build/bit_tests
+./build/bitty_tests
 ```
 
 ## Project Structure
 
 ```
-bit/
+bitty/
 ├── include/        # Header files
 ├── src/            # Source files
 ├── tests/          # Unit tests (Unity framework)

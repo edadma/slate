@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-// Token types for the Bit language
+// Token types for the Bitty language
 typedef enum {
     // Literals
     TOKEN_NUMBER,        // 123, 3.14

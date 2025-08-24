@@ -125,7 +125,7 @@ static char* read_file(const char* path) {
 static void repl(void) {
     char line[1024];
     
-    printf("Bit v0.1.0 - A tiny programming language\n");
+    printf("Bitty v0.1.0 - A tiny programming language\n");
     printf("Type 'exit' to quit.\n\n");
     
     for (;;) {

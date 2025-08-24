@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(bit C)
+project(bitty C)
 
 set(CMAKE_C_STANDARD 11)
 
@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD 11)
 include_directories(include)
 
 # Main executable
-add_executable(bit 
+add_executable(bitty 
     src/main.c 
     src/lexer.c 
     src/parser.c 
@@ -35,7 +35,7 @@ if(BUILD_TESTS)
     
     include_directories(tests/unity)
     
-    add_executable(bit_tests
+    add_executable(bitty_tests
         tests/unity/unity.c
         tests/test_main.c
         tests/test_lexer.c
@@ -49,8 +49,8 @@ if(BUILD_TESTS)
     )
     
     # Define Unity config for all test files
-    target_compile_definitions(bit_tests PRIVATE UNITY_INCLUDE_CONFIG_H)
+    target_compile_definitions(bitty_tests PRIVATE UNITY_INCLUDE_CONFIG_H)
     
     enable_testing()
-    add_test(NAME bit_tests COMMAND bit_tests)
+    add_test(NAME bitty_tests COMMAND bitty_tests)
 endif()
