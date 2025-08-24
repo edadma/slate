@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Include dynamic_string.h for proper string handling
+#include "/home/ed/CLionProjects/dynamic_string.h/dynamic_string.h"
+
 // Forward declarations
 typedef struct bit_value bit_value;
 
@@ -89,7 +92,7 @@ typedef struct bit_value {
     union {
         int boolean;
         double number;
-        char* string;           // For now, will use dynamic_string later
+        ds_string string;       // Using dynamic_string.h!
         struct bit_array* array;
         struct bit_object* object;
         struct bit_function* function;

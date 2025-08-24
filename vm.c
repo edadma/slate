@@ -1,3 +1,4 @@
+#define DS_IMPLEMENTATION  // Define implementation here
 #include "vm.h"
 #include <stdlib.h>
 #include <string.h>
@@ -103,7 +104,7 @@ bit_value make_number(double val) {
 bit_value make_string(const char* val) {
     bit_value value;
     value.type = VAL_STRING;
-    value.as.string = val ? strdup(val) : NULL;
+    value.as.string = ds_new(val);  // Using dynamic_string.h!
     return value;
 }
 
@@ -156,7 +157,7 @@ int values_equal(bit_value a, bit_value b) {
         case VAL_STRING: 
             if (a.as.string == NULL && b.as.string == NULL) return 1;
             if (a.as.string == NULL || b.as.string == NULL) return 0;
-            return strcmp(a.as.string, b.as.string) == 0;
+            return strcmp(a.as.string, b.as.string) == 0;  // DS strings work with strcmp!
         case VAL_ARRAY: return a.as.array == b.as.array;
         case VAL_OBJECT: return a.as.object == b.as.object;
         case VAL_FUNCTION: return a.as.function == b.as.function;
@@ -177,7 +178,7 @@ void print_value(bit_value value) {
             printf("%.6g", value.as.number);
             break;
         case VAL_STRING:
-            printf("\"%s\"", value.as.string ? value.as.string : "");
+            printf("\"%s\"", value.as.string ? value.as.string : "");  // DS strings work directly!
             break;
         case VAL_ARRAY:
             printf("[Array]");
@@ -196,9 +197,11 @@ void print_value(bit_value value) {
 
 void free_value(bit_value value) {
     switch (value.type) {
-        case VAL_STRING:
-            free(value.as.string);
+        case VAL_STRING: {
+            ds_string temp = value.as.string;
+            ds_release(&temp);  // DS cleanup with reference counting!
             break;
+        }
         case VAL_ARRAY:
             array_destroy(value.as.array);
             break;
