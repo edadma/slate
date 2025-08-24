@@ -48,6 +48,9 @@ if(BUILD_TESTS)
         src/vm.c
     )
     
+    # Define Unity config for all test files
+    target_compile_definitions(bit_tests PRIVATE UNITY_INCLUDE_CONFIG_H)
+    
     enable_testing()
     add_test(NAME bit_tests COMMAND bit_tests)
 endif()
