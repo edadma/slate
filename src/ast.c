@@ -565,6 +565,22 @@ void ast_print(ast_node* node, int indent) {
             break;
         }
         
+        case AST_PROGRAM: {
+            ast_program* prog_node = (ast_program*)node;
+            printf(": %zu statements\n", prog_node->statement_count);
+            for (size_t i = 0; i < prog_node->statement_count; i++) {
+                ast_print(prog_node->statements[i], indent + 1);
+            }
+            break;
+        }
+        
+        case AST_EXPRESSION_STMT: {
+            ast_expression_stmt* expr_stmt = (ast_expression_stmt*)node;
+            printf("\n");
+            ast_print(expr_stmt->expression, indent + 1);
+            break;
+        }
+        
         // Add other cases as needed for debugging
         default:
             printf("\n");

@@ -603,6 +603,19 @@ vm_result vm_execute(bit_vm* vm, bit_function* function) {
                 }
                 break;
             }
+            
+            case OP_NEGATE: {
+                bit_value a = vm_pop(vm);
+                if (a.type == VAL_NUMBER) {
+                    vm_push(vm, make_number(-a.as.number));
+                } else {
+                    printf("Runtime error: Cannot negate non-numeric value\n");
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
+                break;
+            }
                 
             case OP_HALT:
                 vm->frame_count--;
