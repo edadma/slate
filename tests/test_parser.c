@@ -127,38 +127,38 @@ void test_parser_parentheses(void) {
     ast_free(node);
 }
 
-// Test assignment restrictions for undefined
+// Test undefined parsing (should parse successfully, runtime will handle restrictions)
 void test_parser_undefined_assignment_restrictions(void) {
     lexer_t lexer;
     parser_t parser;
     ast_node* node;
     
-    // Test variable declaration with undefined should fail
+    // Test variable declaration with undefined should parse successfully
     lexer_init(&lexer, "var x = undefined");
     parser_init(&parser, &lexer);
     node = parse_declaration(&parser);
-    TEST_ASSERT_NULL(node);
-    TEST_ASSERT_TRUE(parser.had_error);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_FALSE(parser.had_error);
+    TEST_ASSERT_EQUAL_INT(AST_VAR_DECLARATION, node->type);
+    ast_free(node);
     
-    // Reset parser error state
-    parser.had_error = 0;
-    
-    // Test assignment with undefined should fail  
+    // Test assignment with undefined should parse successfully
     lexer_init(&lexer, "x = undefined");
     parser_init(&parser, &lexer);
     node = parse_expression(&parser);
-    TEST_ASSERT_NULL(node);
-    TEST_ASSERT_TRUE(parser.had_error);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_FALSE(parser.had_error);
+    TEST_ASSERT_EQUAL_INT(AST_ASSIGNMENT, node->type);
+    ast_free(node);
     
-    // Reset parser error state
-    parser.had_error = 0;
-    
-    // Test return with undefined should fail
+    // Test return with undefined should parse successfully
     lexer_init(&lexer, "return undefined");
     parser_init(&parser, &lexer);
     node = parse_statement(&parser);
-    TEST_ASSERT_NULL(node);
-    TEST_ASSERT_TRUE(parser.had_error);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_FALSE(parser.had_error);
+    TEST_ASSERT_EQUAL_INT(AST_RETURN, node->type);
+    ast_free(node);
 }
 
 // Test suite runner

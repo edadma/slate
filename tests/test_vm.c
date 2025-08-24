@@ -28,14 +28,11 @@ value_t run_code(const char* source)
     vm_result result = vm_execute(vm, function);
 
     value_t return_value = make_null();
-    if (result == VM_OK && vm->stack_top > vm->stack)
+    if (result == VM_OK)
     {
-        return_value = vm->stack[0];
-        // Retain strings to survive cleanup
-        if (return_value.type == VAL_STRING)
-        {
-            return_value.as.string = ds_retain(return_value.as.string);
-        }
+        return_value = vm->result;
+        // Retain strings and other reference-counted types to survive cleanup
+        return_value = vm_retain(return_value);
     }
 
     vm_destroy(vm);

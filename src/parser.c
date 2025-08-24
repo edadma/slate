@@ -257,12 +257,6 @@ ast_node* parse_var_declaration(parser_t* parser) {
     
     if (parser_match(parser, TOKEN_ASSIGN)) {
         initializer = parse_expression(parser);
-        
-        // Check if trying to assign undefined
-        if (initializer && initializer->type == AST_UNDEFINED) {
-            parser_error_at_current(parser, "Cannot assign 'undefined' to variable.");
-            return NULL;
-        }
     }
     
     // Allow semicolon or newline to terminate statement
@@ -330,12 +324,6 @@ ast_node* parse_return_statement(parser_t* parser) {
     
     if (!parser_check(parser, TOKEN_SEMICOLON) && !parser_check(parser, TOKEN_NEWLINE)) {
         value = parse_expression(parser);
-        
-        // Check if trying to return undefined
-        if (value && value->type == AST_UNDEFINED) {
-            parser_error_at_current(parser, "Cannot return 'undefined' from function.");
-            return NULL;
-        }
     }
     
     if (!parser_match(parser, TOKEN_SEMICOLON)) {

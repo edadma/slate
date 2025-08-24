@@ -1,5 +1,5 @@
-#ifndef BIT_VM_H
-#define BIT_VM_H
+#ifndef BITTY_VM_H
+#define BITTY_VM_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -13,6 +13,13 @@
 
 // Forward declarations
 typedef struct value value_t;
+
+// Debug location for values (NULL when debugging disabled)
+typedef struct debug_location {
+    int line;
+    int column;
+    const char* source_text;  // Pointer to original source line (not owned)
+} debug_location;
 
 // VM instruction opcodes
 typedef enum
@@ -77,6 +84,10 @@ typedef enum
     OP_JUMP_IF_TRUE, // Jump if top of stack is true (operand = offset)
     OP_LOOP, // Loop back (operand = offset)
 
+    // Debug operations
+    OP_SET_DEBUG_LOCATION, // Set current debug location (operand = constant index to debug info)
+    OP_CLEAR_DEBUG_LOCATION, // Clear current debug location
+
     // Program flow
     OP_HALT // Stop execution
 } opcode;
@@ -109,6 +120,7 @@ typedef struct value
         struct function* function;
         struct closure* closure;
     } as;
+    debug_location* debug; // Debug info for error reporting (NULL when disabled)
 } value_t;
 
 // Function structure
@@ -169,6 +181,9 @@ typedef struct bitty_vm
     
     // Result register - holds the value of the last executed statement
     value_t result;
+    
+    // Debug info for current operation (NULL when debugging disabled)
+    debug_location* current_debug;
 
     // Memory management
     size_t bytes_allocated; // For GC later
@@ -219,6 +234,22 @@ value_t make_object(do_object object);
 value_t make_function(function_t* function);
 value_t make_closure(closure_t* closure);
 
+// Value creation functions with debug info
+value_t make_null_with_debug(debug_location* debug);
+value_t make_undefined_with_debug(debug_location* debug);
+value_t make_boolean_with_debug(int value, debug_location* debug);
+value_t make_number_with_debug(double value, debug_location* debug);
+value_t make_string_with_debug(const char* value, debug_location* debug);
+value_t make_array_with_debug(da_array array, debug_location* debug);
+value_t make_object_with_debug(do_object object, debug_location* debug);
+value_t make_function_with_debug(function_t* function, debug_location* debug);
+value_t make_closure_with_debug(closure_t* closure, debug_location* debug);
+
+// Debug location management
+debug_location* debug_location_create(int line, int column, const char* source_text);
+debug_location* debug_location_copy(const debug_location* debug);
+void debug_location_free(debug_location* debug);
+
 // Value utility functions
 int is_falsy(value_t value);
 int values_equal(value_t a, value_t b);
@@ -244,5 +275,6 @@ const char* opcode_name(opcode op);
 // Debug utilities
 void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset);
 void vm_runtime_error_with_debug(bitty_vm* vm, const char* message);
+void vm_runtime_error_with_values(bitty_vm* vm, const char* format, const value_t* a, const value_t* b, debug_location* location);
 
-#endif // BIT_VM_H
+#endif // BITTY_VM_H

@@ -37,6 +37,9 @@ bitty_vm* vm_create(void) {
     
     // Initialize result register to undefined
     vm->result = make_undefined();
+    
+    // Initialize debug location
+    vm->current_debug = NULL;
 
     vm_reset(vm);
     return vm;
@@ -55,6 +58,13 @@ void vm_destroy(bitty_vm* vm) {
     free(vm->frames);
     free(vm->constants);
     do_release(&vm->globals);
+    
+    // Release result register
+    free_value(vm->result);
+    
+    // Clean up debug location
+    debug_location_free(vm->current_debug);
+    
     free(vm);
 }
 
@@ -111,12 +121,14 @@ value_t vm_peek(bitty_vm* vm, int distance) { return vm->stack_top[-1 - distance
 value_t make_null(void) {
     value_t value;
     value.type = VAL_NULL;
+    value.debug = NULL;
     return value;
 }
 
 value_t make_undefined(void) {
     value_t value;
     value.type = VAL_UNDEFINED;
+    value.debug = NULL;
     return value;
 }
 
@@ -124,6 +136,7 @@ value_t make_boolean(int val) {
     value_t value;
     value.type = VAL_BOOLEAN;
     value.as.boolean = val;
+    value.debug = NULL;
     return value;
 }
 
@@ -131,6 +144,7 @@ value_t make_number(double val) {
     value_t value;
     value.type = VAL_NUMBER;
     value.as.number = val;
+    value.debug = NULL;
     return value;
 }
 
@@ -138,6 +152,7 @@ value_t make_string(const char* val) {
     value_t value;
     value.type = VAL_STRING;
     value.as.string = ds_new(val); // Using dynamic_string.h!
+    value.debug = NULL;
     return value;
 }
 
@@ -145,6 +160,7 @@ value_t make_string_ds(ds_string str) {
     value_t value;
     value.type = VAL_STRING;
     value.as.string = str; // Take ownership of the ds_string
+    value.debug = NULL;
     return value;
 }
 
@@ -152,6 +168,7 @@ value_t make_array(da_array array) {
     value_t value;
     value.type = VAL_ARRAY;
     value.as.array = array;
+    value.debug = NULL;
     return value;
 }
 
@@ -159,6 +176,7 @@ value_t make_object(do_object object) {
     value_t value;
     value.type = VAL_OBJECT;
     value.as.object = object;
+    value.debug = NULL;
     return value;
 }
 
@@ -166,6 +184,7 @@ value_t make_function(function_t* function) {
     value_t value;
     value.type = VAL_FUNCTION;
     value.as.function = function;
+    value.debug = NULL;
     return value;
 }
 
@@ -173,6 +192,62 @@ value_t make_closure(closure_t* closure) {
     value_t value;
     value.type = VAL_CLOSURE;
     value.as.closure = closure;
+    value.debug = NULL;
+    return value;
+}
+
+// Value creation functions with debug info
+value_t make_null_with_debug(debug_location* debug) {
+    value_t value = make_null();
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_undefined_with_debug(debug_location* debug) {
+    value_t value = make_undefined();
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_boolean_with_debug(int val, debug_location* debug) {
+    value_t value = make_boolean(val);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_number_with_debug(double val, debug_location* debug) {
+    value_t value = make_number(val);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_string_with_debug(const char* val, debug_location* debug) {
+    value_t value = make_string(val);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_array_with_debug(da_array array, debug_location* debug) {
+    value_t value = make_array(array);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_object_with_debug(do_object object, debug_location* debug) {
+    value_t value = make_object(object);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_function_with_debug(function_t* function, debug_location* debug) {
+    value_t value = make_function(function);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_closure_with_debug(closure_t* closure, debug_location* debug) {
+    value_t value = make_closure(closure);
+    value.debug = debug_location_copy(debug);
     return value;
 }
 
@@ -280,6 +355,9 @@ void print_value(value_t value) {
 }
 
 void free_value(value_t value) {
+    // Clean up debug info first
+    debug_location_free(value.debug);
+    
     switch (value.type) {
     case VAL_NULL:
     case VAL_UNDEFINED:
@@ -477,6 +555,10 @@ const char* opcode_name(opcode op) {
         return "JUMP_IF_TRUE";
     case OP_LOOP:
         return "LOOP";
+    case OP_SET_DEBUG_LOCATION:
+        return "SET_DEBUG_LOCATION";
+    case OP_CLEAR_DEBUG_LOCATION:
+        return "CLEAR_DEBUG_LOCATION";
     case OP_HALT:
         return "HALT";
     default:
@@ -1056,6 +1138,26 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             }
             break;
         }
+        
+        case OP_SET_DEBUG_LOCATION: {
+            uint16_t constant_index = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            
+            value_t debug_info_value = function->constants[constant_index];
+            if (debug_info_value.type == VAL_OBJECT) {
+                // Extract debug location from the constant (we'll implement this)
+                // For now, just clear the current debug
+                debug_location_free(vm->current_debug);
+                vm->current_debug = NULL;
+            }
+            break;
+        }
+        
+        case OP_CLEAR_DEBUG_LOCATION: {
+            debug_location_free(vm->current_debug);
+            vm->current_debug = NULL;
+            break;
+        }
 
         case OP_HALT:
             vm->frame_count--;
@@ -1078,6 +1180,29 @@ vm_result vm_interpret(bitty_vm* vm, const char* source) {
     (void)source;
     printf("vm_interpret not yet implemented\n");
     return VM_COMPILE_ERROR;
+}
+
+// Debug location management
+debug_location* debug_location_create(int line, int column, const char* source_text) {
+    debug_location* debug = malloc(sizeof(debug_location));
+    if (!debug) return NULL;
+    
+    debug->line = line;
+    debug->column = column;
+    debug->source_text = source_text;  // Not owned, just a reference
+    return debug;
+}
+
+debug_location* debug_location_copy(const debug_location* debug) {
+    if (!debug) return NULL;
+    
+    return debug_location_create(debug->line, debug->column, debug->source_text);
+}
+
+void debug_location_free(debug_location* debug) {
+    if (debug) {
+        free(debug);
+    }
 }
 
 // Debug utilities
