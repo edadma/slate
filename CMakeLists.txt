@@ -15,6 +15,7 @@ add_executable(bitty
     src/codegen.c 
     src/vm.c
     src/library_impl.c
+    src/line_editor.c
 )
 
 # Tests executable (using Unity framework)

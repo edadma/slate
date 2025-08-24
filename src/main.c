@@ -5,6 +5,7 @@
 #include "lexer.h"
 #include "parser.h"
 #include "vm.h"
+#include "line_editor.h"
 
 static void print_tokens(const char* source) {
     lexer_t lexer;
@@ -147,14 +148,9 @@ static void repl(void) {
 
     for (;;) {
         printf("> ");
+        fflush(stdout);
 
-        if (!fgets(line, sizeof(line), stdin)) {
-            printf("\n");
-            break;
-        }
-
-        // Remove trailing newline
-        line[strcspn(line, "\n")] = '\0';
+        get_line_with_editing(line, sizeof(line));
 
         if (strcmp(line, "exit") == 0)
             break;
