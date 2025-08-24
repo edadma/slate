@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "codegen.h" // For debug_info functions
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -299,6 +300,7 @@ bit_function* function_create(const char* name) {
     function->parameter_count = 0;
     function->local_count = 0;
     function->name = name ? strdup(name) : NULL;
+    function->debug = NULL; // Initialize debug info
     
     return function;
 }
@@ -317,6 +319,8 @@ void function_destroy(bit_function* function) {
         free(function->parameter_names[i]);
     }
     free(function->parameter_names);
+    
+    debug_info_destroy(function->debug);
     
     free(function->name);
     free(function);
@@ -493,7 +497,7 @@ vm_result vm_execute(bit_vm* vm, bit_function* function) {
                     ds_release(&str_a);
                     ds_release(&str_b);
                 } else {
-                    printf("Runtime error: Cannot add these value types\n");
+                    vm_runtime_error_with_debug(vm, "Can't add a number and a boolean");
                     vm->frame_count--;
                     closure_destroy(closure);
                     return VM_RUNTIME_ERROR;
@@ -831,4 +835,110 @@ vm_result vm_interpret(bit_vm* vm, const char* source) {
     (void)source;
     printf("vm_interpret not yet implemented\n");
     return VM_COMPILE_ERROR;
+}
+
+// Debug utilities
+
+// Helper function to get a specific line from source code (from parser.c)
+static const char* get_source_line(const char* source, int line_number, size_t* line_length) {
+    const char* current = source;
+    int current_line = 1;
+    const char* line_start = source;
+    
+    // Find the start of the target line
+    while (*current && current_line < line_number) {
+        if (*current == '\n') {
+            current_line++;
+            line_start = current + 1;
+        }
+        current++;
+    }
+    
+    if (current_line != line_number) {
+        *line_length = 0;
+        return NULL;
+    }
+    
+    // Find the end of the line
+    const char* line_end = line_start;
+    while (*line_end && *line_end != '\n') {
+        line_end++;
+    }
+    
+    *line_length = line_end - line_start;
+    return line_start;
+}
+
+// Find debug info entry for a given bytecode offset
+void* vm_get_debug_info_at(bit_function* function, size_t bytecode_offset) {
+    if (!function || !function->debug) {
+        return NULL;
+    }
+    
+    debug_info* debug = (debug_info*)function->debug;
+    
+    // Find the closest debug info entry <= bytecode_offset
+    debug_info_entry* best_entry = NULL;
+    for (size_t i = 0; i < debug->count; i++) {
+        if (debug->entries[i].bytecode_offset <= bytecode_offset) {
+            best_entry = &debug->entries[i];
+        } else {
+            break; // Entries should be in order
+        }
+    }
+    
+    return best_entry ? debug : NULL;
+}
+
+// Print enhanced runtime error with source location
+void vm_runtime_error_with_debug(bit_vm* vm, const char* message) {
+    if (vm->frame_count == 0) {
+        printf("Runtime error: %s\n", message);
+        return;
+    }
+    
+    // Get the current function from the top call frame
+    call_frame* frame = &vm->frames[vm->frame_count - 1];
+    bit_function* function = frame->closure->function;
+    
+    // Use VM's instruction pointer for the offset calculation 
+    size_t instruction_offset = vm->ip - vm->bytecode - 1; // -1 because ip was advanced after executing
+    
+    if (function->debug) {
+        debug_info* debug = (debug_info*)function->debug;
+        
+        // Find the debug info for this instruction
+        debug_info_entry* entry = NULL;
+        for (size_t i = 0; i < debug->count; i++) {
+            if (debug->entries[i].bytecode_offset <= instruction_offset) {
+                entry = &debug->entries[i];
+            } else {
+                break;
+            }
+        }
+        
+        if (entry && debug->source_code) {
+            // Print enhanced error with source line
+            printf("Runtime error: %s\n", message);
+            
+            size_t line_length;
+            const char* line_start = get_source_line(debug->source_code, entry->line, &line_length);
+            
+            if (line_start) {
+                printf("    %.*s\n", (int)line_length, line_start);
+                
+                // Print caret pointing to the column (adjust by -1 since columns seem to be 1-based)
+                printf("    ");
+                int caret_pos = entry->column > 0 ? entry->column - 1 : 0;
+                for (int i = 0; i < caret_pos; i++) {
+                    printf(" ");
+                }
+                printf("^\n");
+            }
+        } else {
+            printf("Runtime error: %s\n", message);
+        }
+    } else {
+        printf("Runtime error: %s\n", message);
+    }
 }

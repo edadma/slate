@@ -106,6 +106,7 @@ typedef struct bit_value {
     } as;
 } bit_value;
 
+
 // Function structure
 typedef struct bit_function {
     uint8_t* bytecode;      // Function bytecode
@@ -116,6 +117,7 @@ typedef struct bit_function {
     size_t parameter_count;
     size_t local_count;     // Total local variables (params + locals)
     char* name;             // Function name (for debugging)
+    void* debug;            // Optional debug information (debug_info*)
 } bit_function;
 
 // Closure structure (function + captured variables)
@@ -220,5 +222,9 @@ void closure_destroy(bit_closure* closure);
 
 // Bytecode utilities
 const char* opcode_name(opcode op);
+
+// Debug utilities
+void* vm_get_debug_info_at(bit_function* function, size_t bytecode_offset);
+void vm_runtime_error_with_debug(bit_vm* vm, const char* message);
 
 #endif // BIT_VM_H

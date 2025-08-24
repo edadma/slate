@@ -4,6 +4,21 @@
 #include "ast.h"
 #include "vm.h"
 
+// Debug info entry mapping bytecode offset to source position
+typedef struct {
+    size_t bytecode_offset;
+    int line;
+    int column;
+} debug_info_entry;
+
+// Debug information for bytecode
+typedef struct {
+    debug_info_entry* entries;
+    size_t count;
+    size_t capacity;
+    const char* source_code; // Reference to original source (not owned)
+} debug_info;
+
 // Bytecode chunk for storing instructions
 typedef struct {
     uint8_t* code;
@@ -12,24 +27,34 @@ typedef struct {
     bit_value* constants;
     size_t constant_count;
     size_t constant_capacity;
+    debug_info* debug; // Optional debug information (NULL if disabled)
 } bytecode_chunk;
 
 // Code generator state
 typedef struct {
     bytecode_chunk* chunk;
     int had_error;
+    int debug_mode; // Whether to generate debug information
 } codegen_t;
+
+// Debug info functions
+debug_info* debug_info_create(const char* source_code);
+void debug_info_destroy(debug_info* debug);
+void debug_info_add_entry(debug_info* debug, size_t bytecode_offset, int line, int column);
 
 // Bytecode chunk functions
 bytecode_chunk* chunk_create(void);
+bytecode_chunk* chunk_create_with_debug(const char* source_code);
 void chunk_destroy(bytecode_chunk* chunk);
 void chunk_write_byte(bytecode_chunk* chunk, uint8_t byte);
 void chunk_write_opcode(bytecode_chunk* chunk, opcode op);
 void chunk_write_operand(bytecode_chunk* chunk, uint16_t operand);
 size_t chunk_add_constant(bytecode_chunk* chunk, bit_value value);
+void chunk_add_debug_info(bytecode_chunk* chunk, int line, int column);
 
 // Code generation functions
 codegen_t* codegen_create(void);
+codegen_t* codegen_create_with_debug(const char* source_code);
 void codegen_destroy(codegen_t* codegen);
 
 bit_function* codegen_compile(codegen_t* codegen, ast_program* program);
@@ -59,6 +84,8 @@ void codegen_emit_return(codegen_t* codegen, ast_return* node);
 // Utility functions
 void codegen_emit_op(codegen_t* codegen, opcode op);
 void codegen_emit_op_operand(codegen_t* codegen, opcode op, uint16_t operand);
+void codegen_emit_op_with_debug(codegen_t* codegen, opcode op, ast_node* node);
+void codegen_emit_op_operand_with_debug(codegen_t* codegen, opcode op, uint16_t operand, ast_node* node);
 size_t codegen_emit_jump(codegen_t* codegen, opcode op);
 void codegen_patch_jump(codegen_t* codegen, size_t offset);
 void codegen_emit_loop(codegen_t* codegen, size_t loop_start);

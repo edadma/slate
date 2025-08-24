@@ -45,8 +45,8 @@ static void interpret(const char* source) {
     
     print_ast((ast_node*)program);
     
-    // Generate code
-    codegen_t* codegen = codegen_create();
+    // Generate code with debug info for better error reporting
+    codegen_t* codegen = codegen_create_with_debug(source);
     bit_function* function = codegen_compile(codegen, program);
     
     if (codegen->had_error || !function) {

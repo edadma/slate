@@ -418,9 +418,10 @@ ast_node* parse_or(parser_t* parser) {
     
     while (parser_match(parser, TOKEN_LOGICAL_OR)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
         ast_node* right = parse_and(parser);
-        expr = (ast_node*)ast_create_binary_op(op, expr, right,
-                                              parser->previous.line, parser->previous.column);
+        expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
     }
     
     return expr;
@@ -432,9 +433,10 @@ ast_node* parse_and(parser_t* parser) {
     
     while (parser_match(parser, TOKEN_LOGICAL_AND)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
         ast_node* right = parse_equality(parser);
-        expr = (ast_node*)ast_create_binary_op(op, expr, right,
-                                              parser->previous.line, parser->previous.column);
+        expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
     }
     
     return expr;
@@ -446,9 +448,10 @@ ast_node* parse_equality(parser_t* parser) {
     
     while (parser_match(parser, TOKEN_EQUAL) || parser_match(parser, TOKEN_NOT_EQUAL)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
         ast_node* right = parse_comparison(parser);
-        expr = (ast_node*)ast_create_binary_op(op, expr, right,
-                                              parser->previous.line, parser->previous.column);
+        expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
     }
     
     return expr;
@@ -461,9 +464,10 @@ ast_node* parse_comparison(parser_t* parser) {
     while (parser_match(parser, TOKEN_GREATER) || parser_match(parser, TOKEN_GREATER_EQUAL) ||
            parser_match(parser, TOKEN_LESS) || parser_match(parser, TOKEN_LESS_EQUAL)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
         ast_node* right = parse_term(parser);
-        expr = (ast_node*)ast_create_binary_op(op, expr, right,
-                                              parser->previous.line, parser->previous.column);
+        expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
     }
     
     return expr;
@@ -475,9 +479,10 @@ ast_node* parse_term(parser_t* parser) {
     
     while (parser_match(parser, TOKEN_PLUS) || parser_match(parser, TOKEN_MINUS)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
         ast_node* right = parse_factor(parser);
-        expr = (ast_node*)ast_create_binary_op(op, expr, right,
-                                              parser->previous.line, parser->previous.column);
+        expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
     }
     
     return expr;
@@ -489,9 +494,10 @@ ast_node* parse_factor(parser_t* parser) {
     
     while (parser_match(parser, TOKEN_MULTIPLY) || parser_match(parser, TOKEN_DIVIDE)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
         ast_node* right = parse_unary(parser);
-        expr = (ast_node*)ast_create_binary_op(op, expr, right,
-                                              parser->previous.line, parser->previous.column);
+        expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
     }
     
     return expr;

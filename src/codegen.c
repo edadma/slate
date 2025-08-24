@@ -3,6 +3,45 @@
 #include <stdio.h>
 #include <string.h>
 
+// Debug info functions
+debug_info* debug_info_create(const char* source_code) {
+    debug_info* debug = malloc(sizeof(debug_info));
+    if (!debug) return NULL;
+    
+    debug->entries = NULL;
+    debug->count = 0;
+    debug->capacity = 0;
+    debug->source_code = source_code; // Store reference (not owned)
+    
+    return debug;
+}
+
+void debug_info_destroy(debug_info* debug) {
+    if (!debug) return;
+    
+    free(debug->entries);
+    free(debug);
+}
+
+void debug_info_add_entry(debug_info* debug, size_t bytecode_offset, int line, int column) {
+    if (!debug) return;
+    
+    // Grow array if needed
+    if (debug->count >= debug->capacity) {
+        size_t new_capacity = debug->capacity == 0 ? 8 : debug->capacity * 2;
+        debug_info_entry* new_entries = realloc(debug->entries, sizeof(debug_info_entry) * new_capacity);
+        if (!new_entries) return; // Out of memory
+        
+        debug->entries = new_entries;
+        debug->capacity = new_capacity;
+    }
+    
+    debug->entries[debug->count].bytecode_offset = bytecode_offset;
+    debug->entries[debug->count].line = line;
+    debug->entries[debug->count].column = column;
+    debug->count++;
+}
+
 // Bytecode chunk functions
 bytecode_chunk* chunk_create(void) {
     bytecode_chunk* chunk = malloc(sizeof(bytecode_chunk));
@@ -14,6 +53,20 @@ bytecode_chunk* chunk_create(void) {
     chunk->constants = NULL;
     chunk->constant_count = 0;
     chunk->constant_capacity = 0;
+    chunk->debug = NULL; // No debug info by default
+    
+    return chunk;
+}
+
+bytecode_chunk* chunk_create_with_debug(const char* source_code) {
+    bytecode_chunk* chunk = chunk_create();
+    if (!chunk) return NULL;
+    
+    chunk->debug = debug_info_create(source_code);
+    if (!chunk->debug) {
+        chunk_destroy(chunk);
+        return NULL;
+    }
     
     return chunk;
 }
@@ -27,6 +80,8 @@ void chunk_destroy(bytecode_chunk* chunk) {
         free_value(chunk->constants[i]);
     }
     free(chunk->constants);
+    
+    debug_info_destroy(chunk->debug);
     
     free(chunk);
 }
@@ -61,6 +116,12 @@ size_t chunk_add_constant(bytecode_chunk* chunk, bit_value value) {
     return chunk->constant_count++;
 }
 
+void chunk_add_debug_info(bytecode_chunk* chunk, int line, int column) {
+    if (chunk->debug) {
+        debug_info_add_entry(chunk->debug, chunk->count, line, column);
+    }
+}
+
 // Code generator functions
 codegen_t* codegen_create(void) {
     codegen_t* codegen = malloc(sizeof(codegen_t));
@@ -68,6 +129,23 @@ codegen_t* codegen_create(void) {
     
     codegen->chunk = chunk_create();
     codegen->had_error = 0;
+    codegen->debug_mode = 0; // No debug info by default
+    
+    return codegen;
+}
+
+codegen_t* codegen_create_with_debug(const char* source_code) {
+    codegen_t* codegen = malloc(sizeof(codegen_t));
+    if (!codegen) return NULL;
+    
+    codegen->chunk = chunk_create_with_debug(source_code);
+    if (!codegen->chunk) {
+        free(codegen);
+        return NULL;
+    }
+    
+    codegen->had_error = 0;
+    codegen->debug_mode = 1; // Enable debug info
     
     return codegen;
 }
@@ -101,10 +179,12 @@ bit_function* codegen_compile(codegen_t* codegen, ast_program* program) {
     function->bytecode_length = codegen->chunk->count;
     function->constants = codegen->chunk->constants;
     function->constant_count = codegen->chunk->constant_count;
+    function->debug = codegen->chunk->debug; // Transfer debug info
     
     // Clear chunk so it won't be freed
     codegen->chunk->code = NULL;
     codegen->chunk->constants = NULL;
+    codegen->chunk->debug = NULL; // Transfer ownership of debug info
     codegen->chunk->count = 0;
     codegen->chunk->constant_count = 0;
     
@@ -275,20 +355,20 @@ void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node) {
     // Generate right operand  
     codegen_emit_expression(codegen, node->right);
     
-    // Generate operator
+    // Generate operator with debug info
     switch (node->op) {
-        case BIN_ADD:           codegen_emit_op(codegen, OP_ADD); break;
-        case BIN_SUBTRACT:      codegen_emit_op(codegen, OP_SUBTRACT); break;
-        case BIN_MULTIPLY:      codegen_emit_op(codegen, OP_MULTIPLY); break;
-        case BIN_DIVIDE:        codegen_emit_op(codegen, OP_DIVIDE); break;
-        case BIN_EQUAL:         codegen_emit_op(codegen, OP_EQUAL); break;
-        case BIN_NOT_EQUAL:     codegen_emit_op(codegen, OP_NOT_EQUAL); break;
-        case BIN_LESS:          codegen_emit_op(codegen, OP_LESS); break;
-        case BIN_LESS_EQUAL:    codegen_emit_op(codegen, OP_LESS_EQUAL); break;
-        case BIN_GREATER:       codegen_emit_op(codegen, OP_GREATER); break;
-        case BIN_GREATER_EQUAL: codegen_emit_op(codegen, OP_GREATER_EQUAL); break;
-        case BIN_LOGICAL_AND:   codegen_emit_op(codegen, OP_AND); break;
-        case BIN_LOGICAL_OR:    codegen_emit_op(codegen, OP_OR); break;
+        case BIN_ADD:           codegen_emit_op_with_debug(codegen, OP_ADD, (ast_node*)node); break;
+        case BIN_SUBTRACT:      codegen_emit_op_with_debug(codegen, OP_SUBTRACT, (ast_node*)node); break;
+        case BIN_MULTIPLY:      codegen_emit_op_with_debug(codegen, OP_MULTIPLY, (ast_node*)node); break;
+        case BIN_DIVIDE:        codegen_emit_op_with_debug(codegen, OP_DIVIDE, (ast_node*)node); break;
+        case BIN_EQUAL:         codegen_emit_op_with_debug(codegen, OP_EQUAL, (ast_node*)node); break;
+        case BIN_NOT_EQUAL:     codegen_emit_op_with_debug(codegen, OP_NOT_EQUAL, (ast_node*)node); break;
+        case BIN_LESS:          codegen_emit_op_with_debug(codegen, OP_LESS, (ast_node*)node); break;
+        case BIN_LESS_EQUAL:    codegen_emit_op_with_debug(codegen, OP_LESS_EQUAL, (ast_node*)node); break;
+        case BIN_GREATER:       codegen_emit_op_with_debug(codegen, OP_GREATER, (ast_node*)node); break;
+        case BIN_GREATER_EQUAL: codegen_emit_op_with_debug(codegen, OP_GREATER_EQUAL, (ast_node*)node); break;
+        case BIN_LOGICAL_AND:   codegen_emit_op_with_debug(codegen, OP_AND, (ast_node*)node); break;
+        case BIN_LOGICAL_OR:    codegen_emit_op_with_debug(codegen, OP_OR, (ast_node*)node); break;
     }
 }
 
@@ -415,6 +495,22 @@ void codegen_emit_op(codegen_t* codegen, opcode op) {
 }
 
 void codegen_emit_op_operand(codegen_t* codegen, opcode op, uint16_t operand) {
+    chunk_write_opcode(codegen->chunk, op);
+    chunk_write_operand(codegen->chunk, operand);
+}
+
+// Enhanced versions that add debug info from AST nodes
+void codegen_emit_op_with_debug(codegen_t* codegen, opcode op, ast_node* node) {
+    if (codegen->debug_mode && node) {
+        chunk_add_debug_info(codegen->chunk, node->line, node->column);
+    }
+    chunk_write_opcode(codegen->chunk, op);
+}
+
+void codegen_emit_op_operand_with_debug(codegen_t* codegen, opcode op, uint16_t operand, ast_node* node) {
+    if (codegen->debug_mode && node) {
+        chunk_add_debug_info(codegen->chunk, node->line, node->column);
+    }
     chunk_write_opcode(codegen->chunk, op);
     chunk_write_operand(codegen->chunk, operand);
 }
