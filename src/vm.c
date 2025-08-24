@@ -854,6 +854,98 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             break;
         }
 
+        case OP_EQUAL: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            int result = values_equal(a, b);
+            vm_push(vm, make_boolean(result));
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_NOT_EQUAL: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            int result = !values_equal(a, b);
+            vm_push(vm, make_boolean(result));
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_LESS: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
+                vm_push(vm, make_boolean(a.as.number < b.as.number));
+            } else {
+                vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_LESS_EQUAL: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
+                vm_push(vm, make_boolean(a.as.number <= b.as.number));
+            } else {
+                vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_GREATER: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
+                vm_push(vm, make_boolean(a.as.number > b.as.number));
+            } else {
+                vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_GREATER_EQUAL: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
+                vm_push(vm, make_boolean(a.as.number >= b.as.number));
+            } else {
+                vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
         case OP_BUILD_ARRAY: {
             uint16_t count = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
@@ -1232,6 +1324,34 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             } else {
                 // Property access on invalid types returns undefined
                 vm_push(vm, make_undefined());
+            }
+            break;
+        }
+        
+        case OP_JUMP: {
+            uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2 + offset;
+            break;
+        }
+        
+        case OP_JUMP_IF_FALSE: {
+            uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            
+            value_t condition = vm_peek(vm, 0);
+            if (is_falsy(condition)) {
+                vm->ip += offset;
+            }
+            break;
+        }
+        
+        case OP_JUMP_IF_TRUE: {
+            uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            
+            value_t condition = vm_peek(vm, 0);
+            if (!is_falsy(condition)) {
+                vm->ip += offset;
             }
             break;
         }

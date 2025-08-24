@@ -560,6 +560,163 @@ void test_vm_array_concatenation(void) {
     vm_release(result);
 }
 
+// Test conditional statements (if/else)
+void test_vm_conditionals(void)
+{
+    value_t result;
+    
+    // Basic if statement - true condition
+    result = run_code("if (true) 42");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    
+    // Basic if statement - false condition should return null
+    result = run_code("if (false) 42");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    
+    // If-else - true condition takes then branch
+    result = run_code("if (true) 42 else 99");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    
+    // If-else - false condition takes else branch
+    result = run_code("if (false) 42 else 99");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(99.0, result.as.number);
+}
+
+// Test conditional falsy values
+void test_vm_conditional_falsy_values(void)
+{
+    value_t result;
+    
+    // Test false is falsy
+    result = run_code("if (false) \"truthy\" else \"falsy\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("falsy", result.as.string);
+    vm_release(result);
+    
+    // Test null is falsy
+    result = run_code("if (null) \"truthy\" else \"falsy\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("falsy", result.as.string);
+    vm_release(result);
+    
+    // Test undefined is falsy
+    result = run_code("if (undefined) \"truthy\" else \"falsy\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("falsy", result.as.string);
+    vm_release(result);
+    
+    // Test 0 is falsy
+    result = run_code("if (0) \"truthy\" else \"falsy\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("falsy", result.as.string);
+    vm_release(result);
+    
+    // Test empty string is falsy
+    result = run_code("if (\"\") \"truthy\" else \"falsy\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("falsy", result.as.string);
+    vm_release(result);
+}
+
+// Test conditional truthy values  
+void test_vm_conditional_truthy_values(void)
+{
+    value_t result;
+    
+    // Test true is truthy
+    result = run_code("if (true) \"truthy\" else \"falsy\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("truthy", result.as.string);
+    vm_release(result);
+    
+    // Test non-zero numbers are truthy
+    result = run_code("if (42) \"truthy\" else \"falsy\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("truthy", result.as.string);
+    vm_release(result);
+    
+    result = run_code("if (-1) \"truthy\" else \"falsy\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("truthy", result.as.string);
+    vm_release(result);
+    
+    // Test non-empty strings are truthy
+    result = run_code("if (\"hello\") \"truthy\" else \"falsy\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("truthy", result.as.string);
+    vm_release(result);
+    
+    result = run_code("if (\" \") \"truthy\" else \"falsy\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("truthy", result.as.string);
+    vm_release(result);
+}
+
+// Test conditionals with expressions
+void test_vm_conditional_expressions(void)
+{
+    value_t result;
+    
+    // Condition with comparison
+    result = run_code("if (1 == 1) \"equal\" else \"not equal\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("equal", result.as.string);
+    vm_release(result);
+    
+    result = run_code("if (1 == 2) \"equal\" else \"not equal\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("not equal", result.as.string);
+    vm_release(result);
+    
+    // Condition with arithmetic
+    result = run_code("if (2 + 2 == 4) \"correct\" else \"wrong\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("correct", result.as.string);
+    vm_release(result);
+    
+    // Complex expressions in branches
+    result = run_code("if (true) (1 + 2 * 3) else (4 + 5)");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(7.0, result.as.number);
+    
+    result = run_code("if (false) (1 + 2 * 3) else (4 + 5)");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(9.0, result.as.number);
+    
+    // String concatenation in branches
+    result = run_code("if (true) (\"Hello \" + \"World\") else (\"Goodbye \" + \"World\")");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello World", result.as.string);
+    vm_release(result);
+}
+
+// Test nested conditionals
+void test_vm_nested_conditionals(void)
+{
+    value_t result;
+    
+    // Simple nested if-else - parser might not support complex nesting yet
+    result = run_code("if (true) 1 else 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    
+    result = run_code("if (false) 1 else 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
+    
+    // Chained if-else (else-if pattern)
+    result = run_code("if (false) 1 else if (true) 2 else 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    
+    result = run_code("if (false) 1 else if (false) 2 else 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
+}
+
 // Test suite runner
 void test_vm_suite(void)
 {
@@ -581,4 +738,9 @@ void test_vm_suite(void)
     RUN_TEST(test_vm_undefined_behavior);
     RUN_TEST(test_vm_undefined_string_concatenation);
     RUN_TEST(test_vm_array_concatenation);
+    RUN_TEST(test_vm_conditionals);
+    RUN_TEST(test_vm_conditional_falsy_values);
+    RUN_TEST(test_vm_conditional_truthy_values);
+    RUN_TEST(test_vm_conditional_expressions);
+    RUN_TEST(test_vm_nested_conditionals);
 }

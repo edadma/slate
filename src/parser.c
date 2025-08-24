@@ -270,10 +270,6 @@ ast_node* parse_var_declaration(parser_t* parser) {
 
 // Parse statement
 ast_node* parse_statement(parser_t* parser) {
-    if (parser_match(parser, TOKEN_IF)) {
-        return parse_if_statement(parser);
-    }
-    
     if (parser_match(parser, TOKEN_WHILE)) {
         return parse_while_statement(parser);
     }
@@ -289,20 +285,20 @@ ast_node* parse_statement(parser_t* parser) {
     return parse_expression_statement(parser);
 }
 
-// Parse if statement
-ast_node* parse_if_statement(parser_t* parser) {
+// Parse if expression
+ast_node* parse_if_expression(parser_t* parser) {
     parser_consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after 'if'.");
     ast_node* condition = parse_expression(parser);
     parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after if condition.");
     
-    ast_node* then_stmt = parse_statement(parser);
-    ast_node* else_stmt = NULL;
+    ast_node* then_expr = parse_expression(parser);
+    ast_node* else_expr = NULL;
     
     if (parser_match(parser, TOKEN_ELSE)) {
-        else_stmt = parse_statement(parser);
+        else_expr = parse_expression(parser);
     }
     
-    return (ast_node*)ast_create_if(condition, then_stmt, else_stmt,
+    return (ast_node*)ast_create_if(condition, then_expr, else_expr,
                                    parser->previous.line, parser->previous.column);
 }
 
@@ -599,6 +595,10 @@ ast_node* parse_primary(parser_t* parser) {
     
     if (parser_match(parser, TOKEN_LEFT_BRACE)) {
         return parse_object(parser);
+    }
+    
+    if (parser_match(parser, TOKEN_IF)) {
+        return parse_if_expression(parser);
     }
     
     parser_error_at_current(parser, "Expected expression.");

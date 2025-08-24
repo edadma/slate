@@ -294,6 +294,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             }
             break;
         }
+
+        case AST_IF:
+            codegen_emit_if(codegen, (ast_if*)expr);
+            break;
             
         default:
             codegen_error(codegen, "Unknown expression type");
@@ -500,22 +504,25 @@ void codegen_emit_if(codegen_t* codegen, ast_if* node) {
     // Generate condition
     codegen_emit_expression(codegen, node->condition);
     
-    // Jump if false
+    // Jump if false (condition remains on stack)
     size_t else_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
-    codegen_emit_op(codegen, OP_POP); // Pop condition
+    codegen_emit_op(codegen, OP_POP); // Pop condition in then branch
     
     // Generate then branch
-    codegen_emit_statement(codegen, node->then_stmt);
+    codegen_emit_expression(codegen, node->then_stmt);
     
     size_t end_jump = codegen_emit_jump(codegen, OP_JUMP);
     
     // Patch else jump
     codegen_patch_jump(codegen, else_jump);
-    codegen_emit_op(codegen, OP_POP); // Pop condition
+    codegen_emit_op(codegen, OP_POP); // Pop condition in else branch
     
     // Generate else branch if present
     if (node->else_stmt) {
-        codegen_emit_statement(codegen, node->else_stmt);
+        codegen_emit_expression(codegen, node->else_stmt);
+    } else {
+        // If no else branch, push null as the result
+        codegen_emit_op(codegen, OP_PUSH_NULL);
     }
     
     // Patch end jump
@@ -699,9 +706,14 @@ size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset) {
     switch (instruction) {
         case OP_PUSH_CONSTANT: {
             uint16_t constant = chunk->code[offset + 1] | (chunk->code[offset + 2] << 8);
-            printf("%-16s %4d '", opcode_name(instruction), constant);
-            print_value(chunk->constants[constant]);
-            printf("'\n");
+            printf("%-16s %4d ", opcode_name(instruction), constant);
+            if (constant >= chunk->constant_count) {
+                printf("'[INVALID INDEX - max: %zu]'\n", chunk->constant_count - 1);
+            } else {
+                printf("'");
+                print_value(chunk->constants[constant]);
+                printf("'\n");
+            }
             return offset + 3;
         }
         
@@ -719,6 +731,18 @@ size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset) {
             printf("%-16s %4d\n", opcode_name(instruction), operand);
             return offset + 3;
         }
+        
+        case OP_SET_DEBUG_LOCATION: {
+            uint16_t constant = chunk->code[offset + 1] | (chunk->code[offset + 2] << 8);
+            uint8_t line = chunk->code[offset + 3];
+            uint8_t column = chunk->code[offset + 4];
+            printf("%-16s %4d (line %d, col %d)\n", opcode_name(instruction), constant, line, column);
+            return offset + 5;
+        }
+        
+        case OP_CLEAR_DEBUG_LOCATION:
+            printf("%-16s\n", opcode_name(instruction));
+            return offset + 1;
         
         default:
             printf("%s\n", opcode_name(instruction));

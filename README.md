@@ -7,6 +7,7 @@ A toy programming language implementation with a complete compilation pipeline f
 - Complete compilation pipeline: Lexer → Parser → AST → Code Generator → Virtual Machine
 - Stack-based VM with proper operator precedence
 - String concatenation with mixed types (`"Aug " + 23` → `"Aug 23"`)
+- Conditional expressions (`if/else`) that work as first-class expressions
 - Interactive REPL
 - Built-in test suite
 
