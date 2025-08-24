@@ -240,6 +240,7 @@ value_t make_undefined_with_debug(debug_location* debug);
 value_t make_boolean_with_debug(int value, debug_location* debug);
 value_t make_number_with_debug(double value, debug_location* debug);
 value_t make_string_with_debug(const char* value, debug_location* debug);
+value_t make_string_ds_with_debug(ds_string str, debug_location* debug);
 value_t make_array_with_debug(da_array array, debug_location* debug);
 value_t make_object_with_debug(do_object object, debug_location* debug);
 value_t make_function_with_debug(function_t* function, debug_location* debug);
@@ -276,5 +277,6 @@ const char* opcode_name(opcode op);
 void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset);
 void vm_runtime_error_with_debug(bitty_vm* vm, const char* message);
 void vm_runtime_error_with_values(bitty_vm* vm, const char* format, const value_t* a, const value_t* b, debug_location* location);
+const char* value_type_name(value_type type);
 
 #endif // BITTY_VM_H

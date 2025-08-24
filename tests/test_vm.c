@@ -499,6 +499,67 @@ void test_vm_undefined_string_concatenation(void)
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Error case
 }
 
+// Test array concatenation
+void test_vm_array_concatenation(void) {
+    value_t result;
+
+    // Basic array concatenation
+    result = run_code("[1] + [2]");
+    TEST_ASSERT_EQUAL_INT(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL_INT(2, da_length(result.as.array));
+    
+    value_t* elem0 = (value_t*)da_get(result.as.array, 0);
+    value_t* elem1 = (value_t*)da_get(result.as.array, 1);
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, elem0->type);
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, elem1->type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, elem0->as.number);
+    TEST_ASSERT_EQUAL_DOUBLE(2.0, elem1->as.number);
+    
+    vm_release(result);
+
+    // Multiple element concatenation
+    result = run_code("[1, 2] + [3, 4, 5]");
+    TEST_ASSERT_EQUAL_INT(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL_INT(5, da_length(result.as.array));
+    
+    for (int i = 0; i < 5; i++) {
+        value_t* elem = (value_t*)da_get(result.as.array, i);
+        TEST_ASSERT_EQUAL_INT(VAL_NUMBER, elem->type);
+        TEST_ASSERT_EQUAL_DOUBLE((double)(i + 1), elem->as.number);
+    }
+    
+    vm_release(result);
+
+    // Empty array concatenation
+    result = run_code("[] + [1, 2]");
+    TEST_ASSERT_EQUAL_INT(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL_INT(2, da_length(result.as.array));
+    
+    value_t* elem_a = (value_t*)da_get(result.as.array, 0);
+    value_t* elem_b = (value_t*)da_get(result.as.array, 1);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, elem_a->as.number);
+    TEST_ASSERT_EQUAL_DOUBLE(2.0, elem_b->as.number);
+    
+    vm_release(result);
+
+    // Mixed type array concatenation
+    result = run_code("[1, \"hello\"] + [true, null]");
+    TEST_ASSERT_EQUAL_INT(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL_INT(4, da_length(result.as.array));
+    
+    value_t* e0 = (value_t*)da_get(result.as.array, 0);
+    value_t* e1 = (value_t*)da_get(result.as.array, 1);
+    value_t* e2 = (value_t*)da_get(result.as.array, 2);
+    value_t* e3 = (value_t*)da_get(result.as.array, 3);
+    
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, e0->type);
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, e1->type);
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, e2->type);
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, e3->type);
+    
+    vm_release(result);
+}
+
 // Test suite runner
 void test_vm_suite(void)
 {
@@ -519,4 +580,5 @@ void test_vm_suite(void)
     RUN_TEST(test_vm_property_access_edge_cases);
     RUN_TEST(test_vm_undefined_behavior);
     RUN_TEST(test_vm_undefined_string_concatenation);
+    RUN_TEST(test_vm_array_concatenation);
 }

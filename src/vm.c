@@ -227,6 +227,12 @@ value_t make_string_with_debug(const char* val, debug_location* debug) {
     return value;
 }
 
+value_t make_string_ds_with_debug(ds_string str, debug_location* debug) {
+    value_t value = make_string_ds(str);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
 value_t make_array_with_debug(da_array array, debug_location* debug) {
     value_t value = make_array(array);
     value.debug = debug_location_copy(debug);
@@ -597,24 +603,30 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_PUSH_CONSTANT: {
             uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2; // Skip the operand bytes
-            vm_push(vm, function->constants[constant]);
+            
+            // Create value with current debug info
+            value_t val = function->constants[constant];
+            if (vm->current_debug) {
+                val.debug = debug_location_copy(vm->current_debug);
+            }
+            vm_push(vm, val);
             break;
         }
 
         case OP_PUSH_NULL:
-            vm_push(vm, make_null());
+            vm_push(vm, make_null_with_debug(vm->current_debug));
             break;
 
         case OP_PUSH_UNDEFINED:
-            vm_push(vm, make_undefined());
+            vm_push(vm, make_undefined_with_debug(vm->current_debug));
             break;
 
         case OP_PUSH_TRUE:
-            vm_push(vm, make_boolean(1));
+            vm_push(vm, make_boolean_with_debug(1, vm->current_debug));
             break;
 
         case OP_PUSH_FALSE:
-            vm_push(vm, make_boolean(0));
+            vm_push(vm, make_boolean_with_debug(0, vm->current_debug));
             break;
 
         case OP_POP: {
@@ -642,12 +654,8 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
 
-            // Numeric addition
-            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_number(a.as.number + b.as.number));
-            }
             // String concatenation (if either operand is a string)
-            else if (a.type == VAL_STRING || b.type == VAL_STRING) {
+            if (a.type == VAL_STRING || b.type == VAL_STRING) {
                 // Convert both to strings
                 ds_string str_a, str_b;
 
@@ -681,17 +689,60 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
                 // Concatenate using DS library
                 ds_string result = ds_append(str_a, str_b);
-                vm_push(vm, make_string_ds(result));
+                vm_push(vm, make_string_ds_with_debug(result, a.debug));
 
                 // Clean up temporary strings
                 ds_release(&str_a);
                 ds_release(&str_b);
-            } else {
-                vm_runtime_error_with_debug(vm, "Can't add non-numeric values");
+            }
+            // Array concatenation (if both operands are arrays)
+            else if (a.type == VAL_ARRAY && b.type == VAL_ARRAY) {
+                // Create new array for concatenation result
+                da_array result_array = da_new(sizeof(value_t));
+                
+                // Add all elements from left array
+                size_t a_len = da_length(a.as.array);
+                for (size_t i = 0; i < a_len; i++) {
+                    value_t* elem = (value_t*)da_get(a.as.array, i);
+                    value_t retained_elem = vm_retain(*elem);
+                    da_push(result_array, &retained_elem);
+                }
+                
+                // Add all elements from right array  
+                size_t b_len = da_length(b.as.array);
+                for (size_t i = 0; i < b_len; i++) {
+                    value_t* elem = (value_t*)da_get(b.as.array, i);
+                    value_t retained_elem = vm_retain(*elem);
+                    da_push(result_array, &retained_elem);
+                }
+                
+                vm_push(vm, make_array_with_debug(result_array, a.debug));
+            }
+            // Numeric addition (if both operands are numbers)  
+            else if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
+                vm_push(vm, make_number_with_debug(a.as.number + b.as.number, a.debug));
+            }
+            else {
+                // Find the first non-numeric operand for error location
+                debug_location* error_debug = NULL;
+                
+                if (a.type != VAL_NUMBER) {
+                    // Left operand is the first non-numeric
+                    error_debug = a.debug;
+                } else {
+                    // Right operand must be non-numeric  
+                    error_debug = b.debug;
+                }
+                
+                vm_runtime_error_with_values(vm, "Cannot add %s and %s", &a, &b, error_debug);
+                vm_release(a);
+                vm_release(b);
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
+            vm_release(a);
+            vm_release(b);
             break;
         }
 
@@ -700,13 +751,27 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
             if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_number(a.as.number - b.as.number));
+                vm_push(vm, make_number_with_debug(a.as.number - b.as.number, a.debug));
             } else {
-                printf("Runtime error: Cannot subtract non-numeric values\n");
+                // For subtraction, determine which operand is problematic
+                debug_location* error_debug = NULL;
+                if (a.type != VAL_NUMBER && b.type == VAL_NUMBER) {
+                    error_debug = a.debug;  // Left operand is problematic
+                } else if (a.type == VAL_NUMBER && b.type != VAL_NUMBER) {
+                    error_debug = b.debug;  // Right operand is problematic
+                } else {
+                    error_debug = a.debug;  // Both problematic, use left
+                }
+                
+                vm_runtime_error_with_values(vm, "Cannot subtract %s and %s", &a, &b, error_debug);
+                vm_release(a);
+                vm_release(b);
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
+            vm_release(a);
+            vm_release(b);
             break;
         }
 
@@ -714,13 +779,27 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
             if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_number(a.as.number * b.as.number));
+                vm_push(vm, make_number_with_debug(a.as.number * b.as.number, a.debug));
             } else {
-                printf("Runtime error: Cannot multiply non-numeric values\n");
+                // For multiplication, determine which operand is problematic
+                debug_location* error_debug = NULL;
+                if (a.type != VAL_NUMBER && b.type == VAL_NUMBER) {
+                    error_debug = a.debug;  // Left operand is problematic
+                } else if (a.type == VAL_NUMBER && b.type != VAL_NUMBER) {
+                    error_debug = b.debug;  // Right operand is problematic
+                } else {
+                    error_debug = a.debug;  // Both problematic, use left
+                }
+                
+                vm_runtime_error_with_values(vm, "Cannot multiply %s and %s", &a, &b, error_debug);
+                vm_release(a);
+                vm_release(b);
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
+            vm_release(a);
+            vm_release(b);
             break;
         }
 
@@ -729,31 +808,49 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             value_t a = vm_pop(vm);
             if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
                 if (b.as.number == 0) {
-                    printf("Runtime error: Division by zero\n");
+                    vm_runtime_error_with_values(vm, "Division by zero", &a, &b, NULL);
+                    vm_release(a);
+                    vm_release(b);
                     vm->frame_count--;
                     closure_destroy(closure);
                     return VM_RUNTIME_ERROR;
                 }
-                vm_push(vm, make_number(a.as.number / b.as.number));
+                vm_push(vm, make_number_with_debug(a.as.number / b.as.number, a.debug));
             } else {
-                printf("Runtime error: Cannot divide non-numeric values\n");
+                // For division, determine which operand is problematic
+                debug_location* error_debug = NULL;
+                if (a.type != VAL_NUMBER && b.type == VAL_NUMBER) {
+                    error_debug = a.debug;  // Left operand is problematic
+                } else if (a.type == VAL_NUMBER && b.type != VAL_NUMBER) {
+                    error_debug = b.debug;  // Right operand is problematic
+                } else {
+                    error_debug = a.debug;  // Both problematic, use left
+                }
+                
+                vm_runtime_error_with_values(vm, "Cannot divide %s and %s", &a, &b, error_debug);
+                vm_release(a);
+                vm_release(b);
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
+            vm_release(a);
+            vm_release(b);
             break;
         }
 
         case OP_NEGATE: {
             value_t a = vm_pop(vm);
             if (a.type == VAL_NUMBER) {
-                vm_push(vm, make_number(-a.as.number));
+                vm_push(vm, make_number_with_debug(-a.as.number, a.debug));
             } else {
-                printf("Runtime error: Cannot negate non-numeric value\n");
+                vm_runtime_error_with_values(vm, "Cannot negate %s", &a, NULL, NULL);
+                vm_release(a);
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
+            vm_release(a);
             break;
         }
 
@@ -1143,12 +1240,22 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             uint16_t constant_index = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
             
-            value_t debug_info_value = function->constants[constant_index];
-            if (debug_info_value.type == VAL_OBJECT) {
-                // Extract debug location from the constant (we'll implement this)
-                // For now, just clear the current debug
+            // Read line and column bytes
+            int line = *vm->ip++;
+            int column = *vm->ip++;
+            
+            // Get the source text from the constant
+            value_t source_value = function->constants[constant_index];
+            if (source_value.type == VAL_STRING) {
+                // Clean up previous debug location
                 debug_location_free(vm->current_debug);
-                vm->current_debug = NULL;
+                
+                // Create new debug location
+                vm->current_debug = debug_location_create(
+                    line,
+                    column,
+                    source_value.as.string
+                );
             }
             break;
         }
@@ -1309,5 +1416,49 @@ void vm_runtime_error_with_debug(bitty_vm* vm, const char* message) {
                 }
             }
         }
+    }
+}
+
+// Enhanced error reporting using value debug information
+void vm_runtime_error_with_values(bitty_vm* vm, const char* format, const value_t* a, const value_t* b, debug_location* location) {
+    // Print basic error message with value types
+    printf("Runtime error: ");
+    printf(format, value_type_name(a->type), b ? value_type_name(b->type) : "");
+    printf("\n");
+    
+    // Use the best debug location available (preference order: location param, a->debug, b->debug, current_debug)
+    debug_location* debug_to_use = location;
+    if (!debug_to_use && a) debug_to_use = a->debug;
+    if (!debug_to_use && b) debug_to_use = b->debug;
+    if (!debug_to_use) debug_to_use = vm->current_debug;
+    
+    // If we have debug info, show source location
+    if (debug_to_use && debug_to_use->source_text) {
+        printf("    at line %d, column %d:\n", debug_to_use->line, debug_to_use->column);
+        printf("    %s\n", debug_to_use->source_text);
+        
+        // Print caret pointing to the column
+        printf("    ");
+        int caret_pos = debug_to_use->column > 0 ? debug_to_use->column - 1 : 0;
+        for (int i = 0; i < caret_pos; i++) {
+            printf(" ");
+        }
+        printf("^\n");
+    }
+}
+
+// Helper function to get value type name for error messages
+const char* value_type_name(value_type type) {
+    switch (type) {
+        case VAL_NULL: return "null";
+        case VAL_UNDEFINED: return "undefined";
+        case VAL_BOOLEAN: return "boolean";
+        case VAL_NUMBER: return "number";
+        case VAL_STRING: return "string";
+        case VAL_ARRAY: return "array";
+        case VAL_OBJECT: return "object";
+        case VAL_FUNCTION: return "function";
+        case VAL_CLOSURE: return "closure";
+        default: return "unknown";
     }
 }

@@ -85,6 +85,7 @@ void codegen_emit_return(codegen_t* codegen, ast_return* node);
 // Utility functions
 void codegen_emit_op(codegen_t* codegen, opcode op);
 void codegen_emit_op_operand(codegen_t* codegen, opcode op, uint16_t operand);
+void codegen_emit_debug_location(codegen_t* codegen, ast_node* node);
 void codegen_emit_op_with_debug(codegen_t* codegen, opcode op, ast_node* node);
 void codegen_emit_op_operand_with_debug(codegen_t* codegen, opcode op, uint16_t operand, ast_node* node);
 size_t codegen_emit_jump(codegen_t* codegen, opcode op);
