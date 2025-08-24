@@ -1,0 +1,258 @@
+#ifndef BIT_AST_H
+#define BIT_AST_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+// Forward declarations
+typedef struct bit_value bit_value;
+typedef struct bit_object bit_object;
+
+// AST Node types
+typedef enum {
+    // Literals
+    AST_NUMBER,
+    AST_STRING,
+    AST_BOOLEAN,
+    AST_NULL,
+    AST_IDENTIFIER,
+    AST_ARRAY,
+    
+    // Binary operations
+    AST_BINARY_OP,
+    
+    // Unary operations
+    AST_UNARY_OP,
+    
+    // Function expressions
+    AST_FUNCTION,
+    AST_CALL,
+    
+    // Object/property access
+    AST_MEMBER,
+    AST_INDEX,
+    AST_OBJECT_LITERAL,
+    
+    // Statements
+    AST_VAR_DECLARATION,
+    AST_ASSIGNMENT,
+    AST_IF,
+    AST_WHILE,
+    AST_RETURN,
+    AST_EXPRESSION_STMT,
+    AST_BLOCK,
+    
+    // Program
+    AST_PROGRAM
+} ast_node_type;
+
+// Binary operators
+typedef enum {
+    BIN_ADD,         // +
+    BIN_SUBTRACT,    // -
+    BIN_MULTIPLY,    // *
+    BIN_DIVIDE,      // /
+    BIN_EQUAL,       // ==
+    BIN_NOT_EQUAL,   // !=
+    BIN_LESS,        // <
+    BIN_LESS_EQUAL,  // <=
+    BIN_GREATER,     // >
+    BIN_GREATER_EQUAL,// >=
+    BIN_LOGICAL_AND, // &&
+    BIN_LOGICAL_OR   // ||
+} binary_operator;
+
+// Unary operators
+typedef enum {
+    UN_NEGATE,      // -
+    UN_NOT          // !
+} unary_operator;
+
+// Base AST node structure
+typedef struct ast_node {
+    ast_node_type type;
+    int line;       // Source line number for error reporting
+    int column;     // Source column number for error reporting
+} ast_node;
+
+// Literal nodes
+typedef struct {
+    ast_node base;
+    double value;
+} ast_number;
+
+typedef struct {
+    ast_node base;
+    char* value;    // Null-terminated string (we'll use dynamic_string.h later)
+} ast_string;
+
+typedef struct {
+    ast_node base;
+    int value;      // 0 for false, 1 for true
+} ast_boolean;
+
+typedef struct {
+    ast_node base;
+    // No additional data needed for null
+} ast_null;
+
+typedef struct {
+    ast_node base;
+    char* name;     // Variable/function name
+} ast_identifier;
+
+typedef struct {
+    ast_node base;
+    ast_node** elements;  // Array of AST nodes
+    size_t count;
+} ast_array;
+
+// Binary operation node
+typedef struct {
+    ast_node base;
+    binary_operator op;
+    ast_node* left;
+    ast_node* right;
+} ast_binary_op;
+
+// Unary operation node
+typedef struct {
+    ast_node base;
+    unary_operator op;
+    ast_node* operand;
+} ast_unary_op;
+
+// Function definition node
+typedef struct {
+    ast_node base;
+    char** parameters;    // Parameter names
+    size_t param_count;
+    ast_node* body;       // Block statement or expression
+    int is_expression;    // 1 if body is expression, 0 if block
+} ast_function;
+
+// Function call node
+typedef struct {
+    ast_node base;
+    ast_node* function;   // Function expression
+    ast_node** arguments; // Argument expressions
+    size_t arg_count;
+} ast_call;
+
+// Member access node (obj.prop)
+typedef struct {
+    ast_node base;
+    ast_node* object;
+    char* property;
+} ast_member;
+
+// Index access node (obj[index])
+typedef struct {
+    ast_node base;
+    ast_node* object;
+    ast_node* index;
+} ast_index;
+
+// Object literal property
+typedef struct {
+    char* key;
+    ast_node* value;
+} object_property;
+
+// Object literal node
+typedef struct {
+    ast_node base;
+    object_property* properties;
+    size_t property_count;
+} ast_object_literal;
+
+// Variable declaration node
+typedef struct {
+    ast_node base;
+    char* name;
+    ast_node* initializer;  // May be NULL
+} ast_var_declaration;
+
+// Assignment node
+typedef struct {
+    ast_node base;
+    ast_node* target;       // Identifier, member access, or index access
+    ast_node* value;
+} ast_assignment;
+
+// If statement node
+typedef struct {
+    ast_node base;
+    ast_node* condition;
+    ast_node* then_stmt;
+    ast_node* else_stmt;    // May be NULL
+} ast_if;
+
+// While loop node
+typedef struct {
+    ast_node base;
+    ast_node* condition;
+    ast_node* body;
+} ast_while;
+
+// Return statement node
+typedef struct {
+    ast_node base;
+    ast_node* value;        // May be NULL
+} ast_return;
+
+// Expression statement node
+typedef struct {
+    ast_node base;
+    ast_node* expression;
+} ast_expression_stmt;
+
+// Block statement node
+typedef struct {
+    ast_node base;
+    ast_node** statements;
+    size_t statement_count;
+} ast_block;
+
+// Program node (root)
+typedef struct {
+    ast_node base;
+    ast_node** statements;
+    size_t statement_count;
+} ast_program;
+
+// AST creation functions
+ast_number* ast_create_number(double value, int line, int column);
+ast_string* ast_create_string(const char* value, int line, int column);
+ast_boolean* ast_create_boolean(int value, int line, int column);
+ast_null* ast_create_null(int line, int column);
+ast_identifier* ast_create_identifier(const char* name, int line, int column);
+ast_array* ast_create_array(ast_node** elements, size_t count, int line, int column);
+
+ast_binary_op* ast_create_binary_op(binary_operator op, ast_node* left, ast_node* right, int line, int column);
+ast_unary_op* ast_create_unary_op(unary_operator op, ast_node* operand, int line, int column);
+
+ast_function* ast_create_function(char** parameters, size_t param_count, ast_node* body, int is_expression, int line, int column);
+ast_call* ast_create_call(ast_node* function, ast_node** arguments, size_t arg_count, int line, int column);
+
+ast_member* ast_create_member(ast_node* object, const char* property, int line, int column);
+ast_index* ast_create_index(ast_node* object, ast_node* index, int line, int column);
+ast_object_literal* ast_create_object_literal(object_property* properties, size_t property_count, int line, int column);
+
+ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int line, int column);
+ast_assignment* ast_create_assignment(ast_node* target, ast_node* value, int line, int column);
+
+ast_if* ast_create_if(ast_node* condition, ast_node* then_stmt, ast_node* else_stmt, int line, int column);
+ast_while* ast_create_while(ast_node* condition, ast_node* body, int line, int column);
+ast_return* ast_create_return(ast_node* value, int line, int column);
+
+ast_expression_stmt* ast_create_expression_stmt(ast_node* expression, int line, int column);
+ast_block* ast_create_block(ast_node** statements, size_t statement_count, int line, int column);
+ast_program* ast_create_program(ast_node** statements, size_t statement_count, int line, int column);
+
+// AST utility functions
+void ast_free(ast_node* node);
+void ast_print(ast_node* node, int indent);
+const char* ast_node_type_name(ast_node_type type);
+
+#endif // BIT_AST_H
