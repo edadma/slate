@@ -108,6 +108,13 @@ bit_value make_string(const char* val) {
     return value;
 }
 
+bit_value make_string_ds(ds_string str) {
+    bit_value value;
+    value.type = VAL_STRING;
+    value.as.string = str;  // Take ownership of the ds_string
+    return value;
+}
+
 bit_value make_array(bit_array* array) {
     bit_value value;
     value.type = VAL_ARRAY;
@@ -499,11 +506,49 @@ vm_result vm_execute(bit_vm* vm, bit_function* function) {
             case OP_ADD: {
                 bit_value b = vm_pop(vm);
                 bit_value a = vm_pop(vm);
-                // Simple numeric addition for now
+                
+                // Numeric addition
                 if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
                     vm_push(vm, make_number(a.as.number + b.as.number));
+                }
+                // String concatenation (if either operand is a string)
+                else if (a.type == VAL_STRING || b.type == VAL_STRING) {
+                    // Convert both to strings
+                    ds_string str_a, str_b;
+                    
+                    if (a.type == VAL_STRING) {
+                        str_a = ds_retain(a.as.string);
+                    } else if (a.type == VAL_NUMBER) {
+                        char buffer[32];
+                        snprintf(buffer, sizeof(buffer), "%.6g", a.as.number);
+                        str_a = ds_new(buffer);
+                    } else if (a.type == VAL_BOOLEAN) {
+                        str_a = ds_new(a.as.boolean ? "true" : "false");
+                    } else {
+                        str_a = ds_new("null");
+                    }
+                    
+                    if (b.type == VAL_STRING) {
+                        str_b = ds_retain(b.as.string);
+                    } else if (b.type == VAL_NUMBER) {
+                        char buffer[32];
+                        snprintf(buffer, sizeof(buffer), "%.6g", b.as.number);
+                        str_b = ds_new(buffer);
+                    } else if (b.type == VAL_BOOLEAN) {
+                        str_b = ds_new(b.as.boolean ? "true" : "false");
+                    } else {
+                        str_b = ds_new("null");
+                    }
+                    
+                    // Concatenate using DS library
+                    ds_string result = ds_append(str_a, str_b);
+                    vm_push(vm, make_string_ds(result));
+                    
+                    // Clean up temporary strings
+                    ds_release(&str_a);
+                    ds_release(&str_b);
                 } else {
-                    printf("Runtime error: Cannot add non-numeric values\n");
+                    printf("Runtime error: Cannot add these value types\n");
                     vm->frame_count--;
                     closure_destroy(closure);
                     return VM_RUNTIME_ERROR;
