@@ -24,7 +24,7 @@ value_t run_code(const char* source)
     codegen_t* codegen = codegen_create();
     function_t* function = codegen_compile(codegen, program);
 
-    bit_vm* vm = vm_create();
+    bitty_vm* vm = vm_create();
     vm_result result = vm_execute(vm, function);
 
     value_t return_value = make_null();

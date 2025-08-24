@@ -1,8 +1,8 @@
 // This file defines all the library implementations to avoid multiple definition errors
 
 #define DS_IMPLEMENTATION
-#define DYNAMIC_ARRAY_IMPLEMENTATION  
-#define DYNAMIC_OBJECT_IMPLEMENTATION
+#define DA_IMPLEMENTATION  
+#define DO_IMPLEMENTATION
 
 // Include the libraries once here
 #include "/home/ed/CLionProjects/dynamic_string.h/dynamic_string.h"

@@ -26,7 +26,14 @@ static void print_ast(ast_node* node) {
     printf("\n");
 }
 
+// Forward declaration
+static void interpret_with_vm(const char* source, bitty_vm* vm);
+
 static void interpret(const char* source) {
+    interpret_with_vm(source, NULL);
+}
+
+static void interpret_with_vm(const char* source, bitty_vm* vm) {
     printf("Interpreting: %s\n", source);
     
     // Tokenize
@@ -69,24 +76,26 @@ static void interpret(const char* source) {
     
     // Execute
     printf("=== EXECUTION ===\n");
-    bit_vm* vm = vm_create();
-    vm_result result = vm_execute(vm, function);
+    bitty_vm* vm_to_use = vm ? vm : vm_create();
+    vm_result result = vm_execute(vm_to_use, function);
     
     if (result == VM_OK) {
         printf("Execution completed successfully\n");
         
         // Print final stack state
-        if (vm->stack_top > vm->stack) {
+        if (vm_to_use->stack_top > vm_to_use->stack) {
             printf("Final stack value: ");
-            print_value(vm->stack[0]);
+            print_value(vm_to_use->stack[0]);
             printf("\n");
         }
     } else {
         printf("Execution error: %d\n", result);
     }
     
-    // Cleanup
-    vm_destroy(vm);
+    // Cleanup only if we created the VM locally
+    if (!vm) {
+        vm_destroy(vm_to_use);
+    }
     codegen_destroy(codegen);
     ast_free((ast_node*)program);
 }
@@ -128,6 +137,13 @@ static void repl(void) {
     printf("Bitty v0.1.0 - A tiny programming language\n");
     printf("Type 'exit' to quit.\n\n");
     
+    // Create persistent VM for the REPL session
+    bitty_vm* vm = vm_create();
+    if (!vm) {
+        printf("Failed to create VM\n");
+        return;
+    }
+    
     for (;;) {
         printf("> ");
         
@@ -142,9 +158,12 @@ static void repl(void) {
         if (strcmp(line, "exit") == 0) break;
         if (strlen(line) == 0) continue;
         
-        interpret(line);
+        interpret_with_vm(line, vm);
         printf("\n");
     }
+    
+    // Cleanup the persistent VM
+    vm_destroy(vm);
 }
 
 static void run_tests(void) {

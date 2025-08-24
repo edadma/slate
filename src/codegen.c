@@ -271,6 +271,25 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_op_operand(codegen, OP_CALL, (uint16_t)call_node->arg_count);
             break;
         }
+        
+        case AST_ASSIGNMENT: {
+            ast_assignment* assign = (ast_assignment*)expr;
+            // Generate code for the value to assign
+            codegen_emit_expression(codegen, assign->value);
+            
+            // For expressions, we need to duplicate the value so it remains on stack
+            codegen_emit_op(codegen, OP_DUP);
+            
+            // Handle assignment target
+            if (assign->target->type == AST_IDENTIFIER) {
+                ast_identifier* var = (ast_identifier*)assign->target;
+                size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
+                codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
+            } else {
+                codegen_error(codegen, "Only variable assignments are currently supported");
+            }
+            break;
+        }
             
         default:
             codegen_error(codegen, "Unknown expression type");
@@ -305,6 +324,10 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             
         case AST_RETURN:
             codegen_emit_return(codegen, (ast_return*)stmt);
+            break;
+            
+        case AST_ASSIGNMENT:
+            codegen_emit_assignment(codegen, (ast_assignment*)stmt);
             break;
             
         default:
@@ -419,6 +442,20 @@ void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node)
     // Define global variable
     size_t constant = chunk_add_constant(codegen->chunk, make_string(node->name));
     codegen_emit_op_operand(codegen, OP_DEFINE_GLOBAL, (uint16_t)constant);
+}
+
+void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node) {
+    // Generate code for the value to assign
+    codegen_emit_expression(codegen, node->value);
+    
+    // For now, only handle simple variable assignments
+    if (node->target->type == AST_IDENTIFIER) {
+        ast_identifier* var = (ast_identifier*)node->target;
+        size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
+        codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
+    } else {
+        codegen_error(codegen, "Only variable assignments are currently supported");
+    }
 }
 
 void codegen_emit_expression_stmt(codegen_t* codegen, ast_expression_stmt* node) {

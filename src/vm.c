@@ -10,8 +10,8 @@
 #define CONSTANTS_MAX 256
 
 // VM lifecycle functions
-bit_vm* vm_create(void) {
-    bit_vm* vm = malloc(sizeof(bit_vm));
+bitty_vm* vm_create(void) {
+    bitty_vm* vm = malloc(sizeof(bitty_vm));
     if (!vm)
         return NULL;
 
@@ -39,7 +39,7 @@ bit_vm* vm_create(void) {
     return vm;
 }
 
-void vm_destroy(bit_vm* vm) {
+void vm_destroy(bitty_vm* vm) {
     if (!vm)
         return;
 
@@ -55,7 +55,7 @@ void vm_destroy(bit_vm* vm) {
     free(vm);
 }
 
-void vm_reset(bit_vm* vm) {
+void vm_reset(bitty_vm* vm) {
     if (!vm)
         return;
 
@@ -67,20 +67,42 @@ void vm_reset(bit_vm* vm) {
     vm->ip = NULL;
 }
 
+// Value memory management
+value_t vm_retain(value_t value) {
+    if (value.type == VAL_STRING) {
+        value.as.string = ds_retain(value.as.string);
+    } else if (value.type == VAL_ARRAY) {
+        value.as.array = da_retain(value.as.array);  
+    } else if (value.type == VAL_OBJECT) {
+        value.as.object = do_retain(value.as.object);
+    }
+    return value;
+}
+
+void vm_release(value_t value) {
+    if (value.type == VAL_STRING) {
+        ds_release(&value.as.string);
+    } else if (value.type == VAL_ARRAY) {
+        da_release(&value.as.array);
+    } else if (value.type == VAL_OBJECT) {
+        do_release(&value.as.object);
+    }
+}
+
 // Stack operations
-void vm_push(bit_vm* vm, value_t value) {
+void vm_push(bitty_vm* vm, value_t value) {
     assert(vm->stack_top - vm->stack < vm->stack_capacity);
-    *vm->stack_top = value;
+    *vm->stack_top = vm_retain(value);
     vm->stack_top++;
 }
 
-value_t vm_pop(bit_vm* vm) {
+value_t vm_pop(bitty_vm* vm) {
     assert(vm->stack_top > vm->stack);
     vm->stack_top--;
     return *vm->stack_top;
 }
 
-value_t vm_peek(bit_vm* vm, int distance) { return vm->stack_top[-1 - distance]; }
+value_t vm_peek(bitty_vm* vm, int distance) { return vm->stack_top[-1 - distance]; }
 
 // Value creation functions
 value_t make_null(void) {
@@ -290,13 +312,13 @@ void free_value(value_t value) {
 }
 
 // Constant pool management
-size_t vm_add_constant(bit_vm* vm, value_t value) {
+size_t vm_add_constant(bitty_vm* vm, value_t value) {
     assert(vm->constant_count < vm->constant_capacity);
     vm->constants[vm->constant_count] = value;
     return vm->constant_count++;
 }
 
-value_t vm_get_constant(bit_vm* vm, size_t index) {
+value_t vm_get_constant(bitty_vm* vm, size_t index) {
     assert(index < vm->constant_count);
     return vm->constants[index];
 }
@@ -458,9 +480,12 @@ const char* opcode_name(opcode op) {
 }
 
 // Basic VM execution (stub for now)
-vm_result vm_execute(bit_vm* vm, function_t* function) {
+vm_result vm_execute(bitty_vm* vm, function_t* function) {
     if (!vm || !function)
         return VM_RUNTIME_ERROR;
+
+    // Clear the stack at the start of each execution (important for REPL)
+    vm->stack_top = vm->stack;
 
     // Set up initial call frame
     if (vm->frame_count >= vm->frame_capacity) {
@@ -514,6 +539,11 @@ vm_result vm_execute(bit_vm* vm, function_t* function) {
             break;
         }
 
+        case OP_DUP: {
+            value_t value = vm_peek(vm, 0);
+            vm_push(vm, value); // vm_push will handle the retain
+            break;
+        }
 
         case OP_ADD: {
             value_t b = vm_pop(vm);
@@ -849,6 +879,91 @@ vm_result vm_execute(bit_vm* vm, function_t* function) {
             break;
         }
 
+        case OP_DEFINE_GLOBAL: {
+            // Pop the value to store and the variable name constant
+            value_t value = vm_pop(vm);
+            uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            
+            value_t name_val = function->constants[name_constant];
+            if (name_val.type != VAL_STRING) {
+                printf("Runtime error: Global variable name must be a string\n");
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            // Store in globals object - we need to store a copy of the value
+            value_t* stored_value = malloc(sizeof(value_t));
+            if (!stored_value) {
+                printf("Runtime error: Memory allocation failed\n");
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            *stored_value = value;
+            
+            // ds_string can be used directly as char* - no ds_cstr needed
+            // do_set needs key, data pointer, and size
+            do_set(vm->globals, name_val.as.string, stored_value, sizeof(value_t));
+            break;
+        }
+        
+        case OP_GET_GLOBAL: {
+            uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            
+            value_t name_val = function->constants[name_constant];
+            if (name_val.type != VAL_STRING) {
+                printf("Runtime error: Global variable name must be a string\n");
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            value_t* stored_value = (value_t*)do_get(vm->globals, name_val.as.string);
+            if (stored_value) {
+                vm_push(vm, *stored_value);
+            } else {
+                printf("Runtime error: Undefined variable '%s'\n", name_val.as.string);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            break;
+        }
+        
+        case OP_SET_GLOBAL: {
+            // Pop the value to store and get the variable name constant
+            value_t value = vm_pop(vm);
+            uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            
+            value_t name_val = function->constants[name_constant];
+            if (name_val.type != VAL_STRING) {
+                printf("Runtime error: Global variable name must be a string\n");
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            // Check if variable exists
+            value_t* stored_value = (value_t*)do_get(vm->globals, name_val.as.string);
+            if (stored_value) {
+                // Release the old value first (proper reference counting)
+                vm_release(*stored_value);
+                
+                // Update with new value (already popped from stack, so we own it)
+                *stored_value = value;
+            } else {
+                printf("Runtime error: Undefined variable '%s'\n", name_val.as.string);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            break;
+        }
+
         case OP_GET_PROPERTY: {
             value_t property = vm_pop(vm);
             value_t object = vm_pop(vm);
@@ -906,7 +1021,7 @@ vm_result vm_execute(bit_vm* vm, function_t* function) {
     }
 }
 
-vm_result vm_interpret(bit_vm* vm, const char* source) {
+vm_result vm_interpret(bitty_vm* vm, const char* source) {
     // This would compile source to bytecode and execute
     // For now, just a stub
     (void)vm;
@@ -969,7 +1084,7 @@ void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset) {
 }
 
 // Print enhanced runtime error with source location
-void vm_runtime_error_with_debug(bit_vm* vm, const char* message) {
+void vm_runtime_error_with_debug(bitty_vm* vm, const char* message) {
     if (vm->frame_count == 0) {
         printf("Runtime error: %s\n", message);
         return;

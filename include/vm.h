@@ -141,7 +141,7 @@ typedef struct call_frame
 } call_frame;
 
 // VM execution state
-typedef struct bit_vm
+typedef struct bitty_vm
 {
     // Bytecode execution
     uint8_t* bytecode; // Current bytecode being executed
@@ -167,7 +167,7 @@ typedef struct bit_vm
 
     // Memory management
     size_t bytes_allocated; // For GC later
-} bit_vm;
+} bitty_vm;
 
 // Instruction structure for encoding
 typedef struct instruction
@@ -177,9 +177,9 @@ typedef struct instruction
 } instruction;
 
 // VM lifecycle functions
-bit_vm* vm_create(void);
-void vm_destroy(bit_vm* vm);
-void vm_reset(bit_vm* vm);
+bitty_vm* vm_create(void);
+void vm_destroy(bitty_vm* vm);
+void vm_reset(bitty_vm* vm);
 
 // Bytecode execution
 typedef enum
@@ -191,13 +191,17 @@ typedef enum
     VM_STACK_UNDERFLOW
 } vm_result;
 
-vm_result vm_execute(bit_vm* vm, function_t* function);
-vm_result vm_interpret(bit_vm* vm, const char* source);
+vm_result vm_execute(bitty_vm* vm, function_t* function);
+vm_result vm_interpret(bitty_vm* vm, const char* source);
+
+// Value memory management
+value_t vm_retain(value_t value);
+void vm_release(value_t value);
 
 // Stack operations
-void vm_push(bit_vm* vm, value_t value);
-value_t vm_pop(bit_vm* vm);
-value_t vm_peek(bit_vm* vm, int distance);
+void vm_push(bitty_vm* vm, value_t value);
+value_t vm_pop(bitty_vm* vm);
+value_t vm_peek(bitty_vm* vm, int distance);
 
 // Value creation functions
 value_t make_null(void);
@@ -217,8 +221,8 @@ void print_value(value_t value);
 void free_value(value_t value);
 
 // Constant pool management
-size_t vm_add_constant(bit_vm* vm, value_t value);
-value_t vm_get_constant(bit_vm* vm, size_t index);
+size_t vm_add_constant(bitty_vm* vm, value_t value);
+value_t vm_get_constant(bitty_vm* vm, size_t index);
 
 // Note: Object and array operations now use dynamic_object.h and dynamic_array.h
 // No separate functions needed - we'll use the library APIs directly
@@ -234,6 +238,6 @@ const char* opcode_name(opcode op);
 
 // Debug utilities
 void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset);
-void vm_runtime_error_with_debug(bit_vm* vm, const char* message);
+void vm_runtime_error_with_debug(bitty_vm* vm, const char* message);
 
 #endif // BIT_VM_H
