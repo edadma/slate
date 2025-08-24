@@ -854,6 +854,14 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             break;
         }
 
+        case OP_NOT: {
+            value_t a = vm_pop(vm);
+            int result = is_falsy(a);
+            vm_push(vm, make_boolean_with_debug(result, a.debug));
+            vm_release(a);
+            break;
+        }
+
         case OP_EQUAL: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
@@ -943,6 +951,36 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             }
             vm_release(a);
             vm_release(b);
+            break;
+        }
+
+        case OP_AND: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            // Logical AND: if a is falsy, return a, otherwise return b
+            if (is_falsy(a)) {
+                vm_push(vm, a);
+                vm_release(b);
+            } else {
+                vm_push(vm, b);
+                vm_release(a);
+            }
+            break;
+        }
+
+        case OP_OR: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            // Logical OR: if a is truthy, return a, otherwise return b
+            if (is_falsy(a)) {
+                vm_push(vm, b);
+                vm_release(a);
+            } else {
+                vm_push(vm, a);
+                vm_release(b);
+            }
             break;
         }
 

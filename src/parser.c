@@ -192,7 +192,9 @@ binary_operator token_to_binary_op(token_type_t type) {
         case TOKEN_GREATER: return BIN_GREATER;
         case TOKEN_GREATER_EQUAL: return BIN_GREATER_EQUAL;
         case TOKEN_LOGICAL_AND: return BIN_LOGICAL_AND;
+        case TOKEN_AND: return BIN_LOGICAL_AND;
         case TOKEN_LOGICAL_OR: return BIN_LOGICAL_OR;
+        case TOKEN_OR: return BIN_LOGICAL_OR;
         default: return BIN_ADD; // Fallback
     }
 }
@@ -202,6 +204,7 @@ unary_operator token_to_unary_op(token_type_t type) {
     switch (type) {
         case TOKEN_MINUS: return UN_NEGATE;
         case TOKEN_LOGICAL_NOT: return UN_NOT;
+        case TOKEN_NOT: return UN_NOT;
         default: return UN_NEGATE; // Fallback
     }
 }
@@ -491,7 +494,7 @@ ast_node* parse_assignment(parser_t* parser) {
 ast_node* parse_or(parser_t* parser) {
     ast_node* expr = parse_and(parser);
     
-    while (parser_match(parser, TOKEN_LOGICAL_OR)) {
+    while (parser_match(parser, TOKEN_LOGICAL_OR) || parser_match(parser, TOKEN_OR)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
         int op_line = parser->previous.line;
         int op_column = parser->previous.column;
@@ -506,7 +509,7 @@ ast_node* parse_or(parser_t* parser) {
 ast_node* parse_and(parser_t* parser) {
     ast_node* expr = parse_equality(parser);
     
-    while (parser_match(parser, TOKEN_LOGICAL_AND)) {
+    while (parser_match(parser, TOKEN_LOGICAL_AND) || parser_match(parser, TOKEN_AND)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
         int op_line = parser->previous.line;
         int op_column = parser->previous.column;
@@ -580,7 +583,7 @@ ast_node* parse_factor(parser_t* parser) {
 
 // Parse unary (! -)
 ast_node* parse_unary(parser_t* parser) {
-    if (parser_match(parser, TOKEN_LOGICAL_NOT) || parser_match(parser, TOKEN_MINUS)) {
+    if (parser_match(parser, TOKEN_LOGICAL_NOT) || parser_match(parser, TOKEN_NOT) || parser_match(parser, TOKEN_MINUS)) {
         unary_operator op = token_to_unary_op(parser->previous.type);
         ast_node* right = parse_unary(parser);
         return (ast_node*)ast_create_unary_op(op, right,

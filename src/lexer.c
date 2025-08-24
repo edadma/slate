@@ -31,6 +31,9 @@ static keyword_entry_t keywords[] = {
     {"return", TOKEN_RETURN},
     {"then", TOKEN_THEN},
     {"end", TOKEN_END},
+    {"and", TOKEN_AND},
+    {"or", TOKEN_OR},
+    {"not", TOKEN_NOT},
     {"true", TOKEN_TRUE},
     {"false", TOKEN_FALSE},
     {"null", TOKEN_NULL},
@@ -391,6 +394,9 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_RETURN: return "RETURN";
         case TOKEN_THEN: return "THEN";
         case TOKEN_END: return "END";
+        case TOKEN_AND: return "AND";
+        case TOKEN_OR: return "OR";
+        case TOKEN_NOT: return "NOT";
         case TOKEN_PLUS: return "PLUS";
         case TOKEN_MINUS: return "MINUS";
         case TOKEN_MULTIPLY: return "MULTIPLY";

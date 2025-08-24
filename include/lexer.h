@@ -23,6 +23,9 @@ typedef enum {
     TOKEN_RETURN,        // return
     TOKEN_THEN,          // then
     TOKEN_END,           // end
+    TOKEN_AND,           // and (synonym for &&)
+    TOKEN_OR,            // or (synonym for ||)
+    TOKEN_NOT,           // not (synonym for !)
     
     // Operators
     TOKEN_PLUS,          // +
