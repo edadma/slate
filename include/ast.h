@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 // Forward declarations
-typedef struct bit_value bit_value;
+typedef struct value value_t;
 typedef struct bit_object bit_object;
 
 // AST Node types

@@ -105,10 +105,10 @@ void chunk_write_operand(bytecode_chunk* chunk, uint16_t operand) {
     chunk_write_byte(chunk, (uint8_t)((operand >> 8) & 0xFF));
 }
 
-size_t chunk_add_constant(bytecode_chunk* chunk, bit_value value) {
+size_t chunk_add_constant(bytecode_chunk* chunk, value_t value) {
     if (chunk->constant_count >= chunk->constant_capacity) {
         size_t new_capacity = chunk->constant_capacity == 0 ? 8 : chunk->constant_capacity * 2;
-        chunk->constants = realloc(chunk->constants, sizeof(bit_value) * new_capacity);
+        chunk->constants = realloc(chunk->constants, sizeof(value_t) * new_capacity);
         chunk->constant_capacity = new_capacity;
     }
     
@@ -158,7 +158,7 @@ void codegen_destroy(codegen_t* codegen) {
 }
 
 // Main compilation function
-bit_function* codegen_compile(codegen_t* codegen, ast_program* program) {
+function_t* codegen_compile(codegen_t* codegen, ast_program* program) {
     if (!codegen || !program) return NULL;
     
     // Generate code for all statements
@@ -171,7 +171,7 @@ bit_function* codegen_compile(codegen_t* codegen, ast_program* program) {
     codegen_emit_op(codegen, OP_HALT);
     
     // Create function from chunk
-    bit_function* function = function_create("main");
+    function_t* function = function_create("main");
     if (!function) return NULL;
     
     // Transfer ownership of bytecode and constants

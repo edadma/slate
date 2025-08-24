@@ -24,7 +24,7 @@ typedef struct {
     uint8_t* code;
     size_t count;
     size_t capacity;
-    bit_value* constants;
+    value_t* constants;
     size_t constant_count;
     size_t constant_capacity;
     debug_info* debug; // Optional debug information (NULL if disabled)
@@ -49,7 +49,7 @@ void chunk_destroy(bytecode_chunk* chunk);
 void chunk_write_byte(bytecode_chunk* chunk, uint8_t byte);
 void chunk_write_opcode(bytecode_chunk* chunk, opcode op);
 void chunk_write_operand(bytecode_chunk* chunk, uint16_t operand);
-size_t chunk_add_constant(bytecode_chunk* chunk, bit_value value);
+size_t chunk_add_constant(bytecode_chunk* chunk, value_t value);
 void chunk_add_debug_info(bytecode_chunk* chunk, int line, int column);
 
 // Code generation functions
@@ -57,7 +57,7 @@ codegen_t* codegen_create(void);
 codegen_t* codegen_create_with_debug(const char* source_code);
 void codegen_destroy(codegen_t* codegen);
 
-bit_function* codegen_compile(codegen_t* codegen, ast_program* program);
+function_t* codegen_compile(codegen_t* codegen, ast_program* program);
 void codegen_emit_expression(codegen_t* codegen, ast_node* expr);
 void codegen_emit_statement(codegen_t* codegen, ast_node* stmt);
 
