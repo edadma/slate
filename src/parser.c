@@ -367,6 +367,9 @@ ast_node* parse_if_expression(parser_t* parser) {
         return NULL;
     }
     
+    // Skip optional newlines before checking for 'else'
+    while (parser_match(parser, TOKEN_NEWLINE));
+    
     // Check for 'else' clause
     if (parser_match(parser, TOKEN_ELSE)) {
         if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
