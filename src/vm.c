@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "builtins.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -35,6 +36,9 @@ bitty_vm* vm_create(void) {
         vm_destroy(vm);
         return NULL;
     }
+    
+    // Initialize built-in functions
+    builtins_init(vm);
     
     // Initialize result register to undefined
     vm->result = make_undefined();
@@ -197,6 +201,14 @@ value_t make_closure(closure_t* closure) {
     return value;
 }
 
+value_t make_builtin(void* builtin_func) {
+    value_t value;
+    value.type = VAL_BUILTIN;
+    value.as.builtin = builtin_func;
+    value.debug = NULL;
+    return value;
+}
+
 // Value creation functions with debug info
 value_t make_null_with_debug(debug_location* debug) {
     value_t value = make_null();
@@ -258,6 +270,12 @@ value_t make_closure_with_debug(closure_t* closure, debug_location* debug) {
     return value;
 }
 
+value_t make_builtin_with_debug(void* builtin_func, debug_location* debug) {
+    value_t value = make_builtin(builtin_func);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
 // Value utility functions
 int is_falsy(value_t value) {
     switch (value.type) {
@@ -303,6 +321,8 @@ int values_equal(value_t a, value_t b) {
         return a.as.function == b.as.function;
     case VAL_CLOSURE:
         return a.as.closure == b.as.closure;
+    case VAL_BUILTIN:
+        return a.as.builtin == b.as.builtin;
     default:
         return 0;
     }
@@ -358,6 +378,9 @@ void print_value(value_t value) {
     case VAL_CLOSURE:
         printf("<closure %s>", value.as.closure->function->name ? value.as.closure->function->name : "anonymous");
         break;
+    case VAL_BUILTIN:
+        printf("<builtin function>");
+        break;
     }
 }
 
@@ -392,6 +415,9 @@ void free_value(value_t value) {
         break;
     case VAL_CLOSURE:
         closure_destroy(value.as.closure);
+        break;
+    case VAL_BUILTIN:
+        // No cleanup needed for builtin function pointers
         break;
     default:
         // No cleanup needed for basic types
@@ -1305,6 +1331,14 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 if (args)
                     free(args);
             }
+            // Built-in functions
+            else if (callable.type == VAL_BUILTIN) {
+                builtin_func_t builtin_func = (builtin_func_t)callable.as.builtin;
+                value_t result = builtin_func(vm, arg_count, args);
+                vm_push(vm, result);
+                if (args)
+                    free(args);
+            }
             // Functions: traditional function call (not implemented yet)
             else if (callable.type == VAL_FUNCTION || callable.type == VAL_CLOSURE) {
                 printf("Runtime error: Function calls not yet implemented\n");
@@ -1724,6 +1758,7 @@ const char* value_type_name(value_type type) {
         case VAL_OBJECT: return "object";
         case VAL_FUNCTION: return "function";
         case VAL_CLOSURE: return "closure";
+        case VAL_BUILTIN: return "builtin";
         default: return "unknown";
     }
 }

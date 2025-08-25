@@ -104,7 +104,8 @@ typedef enum
     VAL_ARRAY,
     VAL_OBJECT,
     VAL_FUNCTION,
-    VAL_CLOSURE
+    VAL_CLOSURE,
+    VAL_BUILTIN
 } value_type;
 
 // VM value structure
@@ -120,6 +121,7 @@ typedef struct value
         do_object object; // Using dynamic_object.h!
         struct function* function;
         struct closure* closure;
+        void* builtin; // Built-in function pointer (cast from builtin_func_t)
     } as;
     debug_location* debug; // Debug info for error reporting (NULL when disabled)
 } value_t;
@@ -234,6 +236,7 @@ value_t make_array(da_array array);
 value_t make_object(do_object object);
 value_t make_function(function_t* function);
 value_t make_closure(closure_t* closure);
+value_t make_builtin(void* builtin_func);
 
 // Value creation functions with debug info
 value_t make_null_with_debug(debug_location* debug);
@@ -246,6 +249,7 @@ value_t make_array_with_debug(da_array array, debug_location* debug);
 value_t make_object_with_debug(do_object object, debug_location* debug);
 value_t make_function_with_debug(function_t* function, debug_location* debug);
 value_t make_closure_with_debug(closure_t* closure, debug_location* debug);
+value_t make_builtin_with_debug(void* builtin_func, debug_location* debug);
 
 // Debug location management
 debug_location* debug_location_create(int line, int column, const char* source_text);

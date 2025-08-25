@@ -7,6 +7,9 @@
 #include "vm.h"
 #include "line_editor.h"
 
+// Global debug flag
+static int debug_mode = 0;
+
 static void print_tokens(const char* source) {
     lexer_t lexer;
     lexer_init(&lexer, source);
@@ -34,7 +37,10 @@ static void interpret_with_vm(const char* source, bitty_vm* vm);
 static void interpret(const char* source) { interpret_with_vm(source, NULL); }
 
 static void interpret_with_vm(const char* source, bitty_vm* vm) {
-    printf("Interpreting: %s\n", source);
+    // Only show "Interpreting:" for file mode, not REPL (REPL handles this itself)
+    if (debug_mode && !vm) {
+        printf("Interpreting: %s\n", source);
+    }
 
     // Tokenize
     lexer_t lexer;
@@ -51,7 +57,9 @@ static void interpret_with_vm(const char* source, bitty_vm* vm) {
         return;
     }
 
-    print_ast((ast_node*)program);
+    if (debug_mode) {
+        print_ast((ast_node*)program);
+    }
 
     // Generate code with debug info for better error reporting
     codegen_t* codegen = codegen_create_with_debug(source);
@@ -65,22 +73,27 @@ static void interpret_with_vm(const char* source, bitty_vm* vm) {
         return;
     }
 
-    // Disassemble bytecode
-    printf("=== BYTECODE ===\n");
-    bytecode_chunk chunk = {.code = function->bytecode,
-                            .count = function->bytecode_length,
-                            .constants = function->constants,
-                            .constant_count = function->constant_count};
-    chunk_disassemble(&chunk, "main");
-    printf("\n");
+    if (debug_mode) {
+        // Disassemble bytecode
+        printf("=== BYTECODE ===\n");
+        bytecode_chunk chunk = {.code = function->bytecode,
+                                .count = function->bytecode_length,
+                                .constants = function->constants,
+                                .constant_count = function->constant_count};
+        chunk_disassemble(&chunk, "main");
+        printf("\n");
 
-    // Execute
-    printf("=== EXECUTION ===\n");
+        // Execute
+        printf("=== EXECUTION ===\n");
+    }
+    
     bitty_vm* vm_to_use = vm ? vm : vm_create();
     vm_result result = vm_execute(vm_to_use, function);
 
     if (result == VM_OK) {
-        printf("Execution completed successfully\n");
+        if (debug_mode) {
+            printf("Execution completed successfully\n");
+        }
 
         // Print the result register value (value of the last statement)
         if (vm) {
@@ -166,7 +179,9 @@ static void repl(void) {
         if (strlen(line) == 0) {
             if (in_continuation) {
                 // Execute accumulated input on empty line (Python style)
-                printf("Interpreting: %s\n", accumulated_input);
+                if (debug_mode) {
+                    printf("Interpreting: %s\n", accumulated_input);
+                }
                 interpret_with_vm(accumulated_input, vm);
                 accumulated_input[0] = '\0';
                 in_continuation = 0;
@@ -237,7 +252,9 @@ static void repl(void) {
 
         // If not in continuation mode, this was a complete single-line input
         if (!in_continuation) {
-            printf("Interpreting: %s\n", accumulated_input);
+            if (debug_mode) {
+                printf("Interpreting: %s\n", accumulated_input);
+            }
             interpret_with_vm(accumulated_input, vm);
             accumulated_input[0] = '\0';
             printf("\n");
@@ -302,22 +319,40 @@ static void run_tests(void) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc == 1) {
-        repl();
-    } else if (argc == 2) {
-        if (strcmp(argv[1], "--test") == 0) {
+    // Parse command line arguments
+    int file_arg_index = -1;
+    
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--debug") == 0) {
+            debug_mode = 1;
+        } else if (strcmp(argv[i], "--test") == 0) {
             run_tests();
-        } else {
-            // Run file
-            char* source = read_file(argv[1]);
-            if (source) {
-                interpret(source);
-                free(source);
+            return 0;
+        } else if (argv[i][0] != '-') {
+            // This is a filename
+            if (file_arg_index == -1) {
+                file_arg_index = i;
+            } else {
+                fprintf(stderr, "Error: Multiple input files specified\n");
+                return 1;
             }
+        } else {
+            fprintf(stderr, "Unknown option: %s\n", argv[i]);
+            fprintf(stderr, "Usage: %s [--debug] [script] or %s --test\n", argv[0], argv[0]);
+            return 1;
+        }
+    }
+    
+    if (file_arg_index != -1) {
+        // Run file
+        char* source = read_file(argv[file_arg_index]);
+        if (source) {
+            interpret(source);
+            free(source);
         }
     } else {
-        fprintf(stderr, "Usage: %s [script] or %s --test\n", argv[0], argv[0]);
-        return 1;
+        // No file specified - start REPL
+        repl();
     }
 
     return 0;

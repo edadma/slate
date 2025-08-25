@@ -14,6 +14,7 @@ add_executable(bitty
     src/ast.c 
     src/codegen.c 
     src/vm.c
+    src/builtins.c
     src/library_impl.c
     src/line_editor.c
 )
@@ -48,11 +49,13 @@ if(BUILD_TESTS)
         tests/test_vm.c
         tests/test_conditionals.c
         tests/test_while_loops.c
+        tests/test_builtins.c
         src/lexer.c
         src/parser.c
         src/ast.c
         src/codegen.c
         src/vm.c
+        src/builtins.c
         src/library_impl.c
     )
     
