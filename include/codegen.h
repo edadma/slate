@@ -73,6 +73,7 @@ void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node);
 void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node);
 void codegen_emit_array(codegen_t* codegen, ast_array* node);
 void codegen_emit_object(codegen_t* codegen, ast_object_literal* node);
+// Function codegen will be added later with proper design
 
 // Statement code generation
 void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node);

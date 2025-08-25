@@ -24,6 +24,7 @@ typedef struct {
 
 static keyword_entry_t keywords[] = {
     {"var", TOKEN_VAR},
+    {"def", TOKEN_DEF},
     {"function", TOKEN_FUNCTION},
     {"if", TOKEN_IF},
     {"else", TOKEN_ELSE},

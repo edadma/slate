@@ -10,6 +10,9 @@ static ast_node* parse_bitwise_or(parser_t* parser);
 static ast_node* parse_bitwise_xor(parser_t* parser);
 static ast_node* parse_bitwise_and(parser_t* parser);
 static ast_node* parse_shift(parser_t* parser);
+static ast_node* parse_arrow_function(parser_t* parser, char** parameters, size_t param_count);
+static ast_node* parse_parenthesized_or_arrow(parser_t* parser);
+static ast_node* parse_def_declaration(parser_t* parser);
 
 // Helper function to extract string from token
 static char* token_to_string(token_t* token) {
@@ -268,6 +271,10 @@ ast_node* parse_declaration(parser_t* parser) {
         return parse_var_declaration(parser);
     }
     
+    if (parser_match(parser, TOKEN_DEF)) {
+        return parse_def_declaration(parser);
+    }
+    
     return parse_statement(parser);
 }
 
@@ -289,6 +296,55 @@ ast_node* parse_var_declaration(parser_t* parser) {
     
     return (ast_node*)ast_create_var_declaration(name, initializer, 
                                                 parser->previous.line, parser->previous.column);
+}
+
+// Parse def function declaration: def name(params) = expr
+ast_node* parse_def_declaration(parser_t* parser) {
+    parser_consume(parser, TOKEN_IDENTIFIER, "Expected function name after 'def'");
+    
+    char* func_name = token_to_string(&parser->previous);
+    int name_line = parser->previous.line;
+    int name_column = parser->previous.column;
+    
+    // Parse parameter list
+    parser_consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after function name");
+    
+    char** parameters = NULL;
+    size_t param_count = 0;
+    size_t param_capacity = 0;
+    
+    if (!parser_check(parser, TOKEN_RIGHT_PAREN)) {
+        do {
+            parser_consume(parser, TOKEN_IDENTIFIER, "Expected parameter name");
+            char* param = token_to_string(&parser->previous);
+            
+            // Grow parameters array
+            if (param_count >= param_capacity) {
+                param_capacity = param_capacity == 0 ? 4 : param_capacity * 2;
+                parameters = realloc(parameters, param_capacity * sizeof(char*));
+            }
+            parameters[param_count++] = param;
+            
+        } while (parser_match(parser, TOKEN_COMMA));
+    }
+    
+    parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after parameters");
+    parser_consume(parser, TOKEN_ASSIGN, "Expected '=' after parameter list");
+    
+    // Parse function body (expression or indented block)
+    ast_node* body = parse_expression(parser);
+    
+    // Create function AST node
+    ast_node* func_node = (ast_node*)ast_create_function(parameters, param_count, body, 1,
+                                                        name_line, name_column);
+    
+    // Allow semicolon or newline to terminate statement
+    if (!parser_match(parser, TOKEN_SEMICOLON)) {
+        parser_match(parser, TOKEN_NEWLINE);
+    }
+    
+    // Return this as a variable declaration with the function as initializer
+    return (ast_node*)ast_create_var_declaration(func_name, func_node, name_line, name_column);
 }
 
 // Parse statement
@@ -883,9 +939,8 @@ ast_node* parse_primary(parser_t* parser) {
     }
     
     if (parser_match(parser, TOKEN_LEFT_PAREN)) {
-        ast_node* expr = parse_expression(parser);
-        parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression.");
-        return expr;
+        // Check if this is an arrow function parameter list
+        return parse_parenthesized_or_arrow(parser);
     }
     
     if (parser_match(parser, TOKEN_LEFT_BRACKET)) {
@@ -903,6 +958,87 @@ ast_node* parse_primary(parser_t* parser) {
     
     parser_error_at_current(parser, "Expected expression.");
     return NULL;
+}
+
+// Parse arrow function
+ast_node* parse_arrow_function(parser_t* parser, char** parameters, size_t param_count) {
+    // Consume the '->' token
+    parser_consume(parser, TOKEN_ARROW, "Expected '->' in arrow function");
+    
+    // Parse the function body (expression or indented block)
+    ast_node* body = parse_expression(parser);
+    
+    return (ast_node*)ast_create_function(parameters, param_count, body, 1, 
+                                         parser->previous.line, parser->previous.column);
+}
+
+// Parse either a parenthesized expression or arrow function parameter list
+ast_node* parse_parenthesized_or_arrow(parser_t* parser) {
+    // We've already consumed the opening '('
+    
+    // Handle empty parameter list: () -> expr
+    if (parser_check(parser, TOKEN_RIGHT_PAREN)) {
+        parser_advance(parser); // consume ')'
+        
+        if (parser_check(parser, TOKEN_ARROW)) {
+            // This is an empty parameter arrow function: () -> expr
+            return parse_arrow_function(parser, NULL, 0);
+        } else {
+            parser_error(parser, "Empty parentheses without arrow function");
+            return NULL;
+        }
+    }
+    
+    // Look ahead to determine if this is parameters or a grouped expression
+    // We'll parse identifiers and see if we hit a ',' or ')' followed by '->'
+    
+    char** parameters = NULL;
+    size_t param_count = 0;
+    size_t param_capacity = 0;
+    
+    // First, try to parse as parameter list
+    if (parser_check(parser, TOKEN_IDENTIFIER)) {
+        do {
+            if (!parser_match(parser, TOKEN_IDENTIFIER)) {
+                // Not a parameter list, must be grouped expression
+                // But we need to backtrack - this is complex
+                // For now, let's implement a simpler approach
+                parser_error(parser, "Expected parameter name");
+                return NULL;
+            }
+            
+            char* param = token_to_string(&parser->previous);
+            
+            // Grow parameters array
+            if (param_count >= param_capacity) {
+                param_capacity = param_capacity == 0 ? 4 : param_capacity * 2;
+                parameters = realloc(parameters, param_capacity * sizeof(char*));
+            }
+            parameters[param_count++] = param;
+            
+        } while (parser_match(parser, TOKEN_COMMA));
+        
+        parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after parameters");
+        
+        if (parser_check(parser, TOKEN_ARROW)) {
+            // This is definitely an arrow function
+            return parse_arrow_function(parser, parameters, param_count);
+        } else {
+            // This looked like parameters but no arrow - error
+            // Clean up allocated parameters
+            for (size_t i = 0; i < param_count; i++) {
+                free(parameters[i]);
+            }
+            free(parameters);
+            parser_error(parser, "Expected '->' after parameter list");
+            return NULL;
+        }
+    } else {
+        // Not an identifier, so this must be a grouped expression
+        ast_node* expr = parse_expression(parser);
+        parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression");
+        return expr;
+    }
 }
 
 // Parse array literal

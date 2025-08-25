@@ -277,6 +277,12 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             break;
         }
         
+        case AST_FUNCTION: {
+            // Functions not yet implemented - return error for now
+            codegen_error(codegen, "Function compilation not yet implemented");
+            break;
+        }
+        
         case AST_ASSIGNMENT: {
             ast_assignment* assign = (ast_assignment*)expr;
             
@@ -536,6 +542,8 @@ void codegen_emit_object(codegen_t* codegen, ast_object_literal* node) {
     // Build object from stack
     codegen_emit_op_operand(codegen, OP_BUILD_OBJECT, (uint16_t)node->property_count);
 }
+
+// Function codegen will be implemented later with proper design
 
 // Statement emission functions
 void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node) {
