@@ -534,6 +534,8 @@ const char* opcode_name(opcode op) {
         return "DIVIDE";
     case OP_MOD:
         return "MOD";
+    case OP_POWER:
+        return "POWER";
     case OP_NEGATE:
         return "NEGATE";
     case OP_EQUAL:
@@ -894,6 +896,34 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 }
                 
                 vm_runtime_error_with_values(vm, "Cannot compute modulo of %s and %s", &a, &b, error_debug);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_POWER: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
+                vm_push(vm, make_number_with_debug(pow(a.as.number, b.as.number), a.debug));
+            } else {
+                // For power, determine which operand is problematic
+                debug_location* error_debug = NULL;
+                if (a.type != VAL_NUMBER && b.type == VAL_NUMBER) {
+                    error_debug = a.debug;  // Left operand is problematic
+                } else if (a.type == VAL_NUMBER && b.type != VAL_NUMBER) {
+                    error_debug = b.debug;  // Right operand is problematic
+                } else {
+                    error_debug = a.debug;  // Both problematic, use left
+                }
+                
+                vm_runtime_error_with_values(vm, "Cannot compute power of %s and %s", &a, &b, error_debug);
                 vm_release(a);
                 vm_release(b);
                 vm->frame_count--;
@@ -1348,7 +1378,12 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             } else {
-                printf("Runtime error: Value is not callable\n");
+                // Provide specific error for undefined (likely unknown function)
+                if (callable.type == VAL_UNDEFINED) {
+                    printf("Runtime error: Unknown function (undefined variable)\n");
+                } else {
+                    printf("Runtime error: Value is not callable\n");
+                }
                 if (args)
                     free(args);
                 vm->frame_count--;
@@ -1408,7 +1443,10 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             if (stored_value) {
                 vm_push(vm, *stored_value);
             } else {
-                printf("Runtime error: Undefined variable '%s'\n", name_val.as.string);
+                // Create formatted message with dynamic content
+                char error_msg[256];
+                snprintf(error_msg, sizeof(error_msg), "Undefined variable '%s' (if this is a function call, the function doesn't exist)", name_val.as.string);
+                vm_runtime_error_with_debug(vm, error_msg);
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;

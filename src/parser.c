@@ -186,6 +186,7 @@ binary_operator token_to_binary_op(token_type_t type) {
         case TOKEN_MULTIPLY: return BIN_MULTIPLY;
         case TOKEN_DIVIDE: return BIN_DIVIDE;
         case TOKEN_MOD: return BIN_MOD;
+        case TOKEN_POWER: return BIN_POWER;
         case TOKEN_EQUAL: return BIN_EQUAL;
         case TOKEN_NOT_EQUAL: return BIN_NOT_EQUAL;
         case TOKEN_LESS: return BIN_LESS;
@@ -579,15 +580,31 @@ ast_node* parse_term(parser_t* parser) {
 }
 
 // Parse factor (* /)
+static ast_node* parse_power(parser_t* parser);
+
 ast_node* parse_factor(parser_t* parser) {
-    ast_node* expr = parse_unary(parser);
+    ast_node* expr = parse_power(parser);
     
     while (parser_match(parser, TOKEN_MULTIPLY) || parser_match(parser, TOKEN_DIVIDE) || parser_match(parser, TOKEN_MOD)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
         int op_line = parser->previous.line;
         int op_column = parser->previous.column;
-        ast_node* right = parse_unary(parser);
+        ast_node* right = parse_power(parser);
         expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
+    }
+    
+    return expr;
+}
+
+static ast_node* parse_power(parser_t* parser) {
+    ast_node* expr = parse_unary(parser);
+    
+    // Power is right-associative
+    if (parser_match(parser, TOKEN_POWER)) {
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
+        ast_node* right = parse_power(parser); // Recursive for right-associativity
+        expr = (ast_node*)ast_create_binary_op(BIN_POWER, expr, right, op_line, op_column);
     }
     
     return expr;
@@ -682,6 +699,26 @@ ast_node* parse_primary(parser_t* parser) {
             // Remove surrounding quotes
             memmove(str, str + 1, strlen(str) - 2);
             str[strlen(str) - 2] = '\0';
+            
+            // Process escape sequences
+            char* dst = str;
+            char* src = str;
+            while (*src) {
+                if (*src == '\\' && *(src + 1)) {
+                    src++; // Skip backslash
+                    switch (*src) {
+                        case 'n': *dst++ = '\n'; break;
+                        case 't': *dst++ = '\t'; break;
+                        case '\\': *dst++ = '\\'; break;
+                        case '"': *dst++ = '"'; break;
+                        default: *dst++ = *src; break; // Unknown escape, keep the character
+                    }
+                    src++;
+                } else {
+                    *dst++ = *src++;
+                }
+            }
+            *dst = '\0';
         }
         ast_node* result = (ast_node*)ast_create_string(str, parser->previous.line, parser->previous.column);
         free(str);

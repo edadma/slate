@@ -116,6 +116,38 @@ void test_vm_arithmetic(void)
     result = run_code("15 mod 4 + 1");
     TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
     TEST_ASSERT_EQUAL_DOUBLE(4.0, result.as.number); // (15 mod 4) + 1 = 3 + 1 = 4
+
+    // Test power operator
+    result = run_code("2 ** 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(8.0, result.as.number);
+
+    result = run_code("5 ** 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+
+    result = run_code("4 ** 0.5");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+
+    result = run_code("(-2) ** 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(-8.0, result.as.number);
+
+    // Test power right associativity: 2 ** 3 ** 2 = 2 ** (3 ** 2) = 2 ** 9 = 512
+    result = run_code("2 ** 3 ** 2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(512.0, result.as.number);
+
+    // Test power precedence: 2 * 3 ** 2 = 2 * (3 ** 2) = 2 * 9 = 18
+    result = run_code("2 * 3 ** 2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(18.0, result.as.number);
+
+    // Test complex power precedence: 2 + 3 * 4 ** 2 = 2 + 3 * (4 ** 2) = 2 + 3 * 16 = 2 + 48 = 50
+    result = run_code("2 + 3 * 4 ** 2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(50.0, result.as.number);
 }
 
 // Test unary operations
@@ -159,6 +191,27 @@ void test_vm_strings(void)
     result = run_code("42 + \" is the answer\"");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
     TEST_ASSERT_EQUAL_STRING("42 is the answer", result.as.string);
+    ds_release(&result.as.string);
+
+    // Test string escape sequences
+    result = run_code("\"Hello\\nWorld\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello\nWorld", result.as.string);
+    ds_release(&result.as.string);
+
+    result = run_code("\"Tab\\there\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Tab\there", result.as.string);
+    ds_release(&result.as.string);
+
+    result = run_code("\"Say \\\"Hello\\\"\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Say \"Hello\"", result.as.string);
+    ds_release(&result.as.string);
+
+    result = run_code("\"Path\\\\to\\\\file\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Path\\to\\file", result.as.string);
     ds_release(&result.as.string);
 }
 
@@ -592,6 +645,26 @@ void test_vm_undefined_string_concatenation(void)
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Error case
 }
 
+// Test comments
+void test_vm_comments(void) {
+    value_t result;
+
+    // Backslash comment
+    result = run_code("42 \\\\ This is a comment");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+
+    // Simple expression with comment at end
+    result = run_code("5 * 5 \\\\ End with comment");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(25.0, result.as.number);
+
+    // Simple addition test (comments consume rest of line)  
+    result = run_code("1 + 2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
+}
+
 // Test array concatenation
 void test_vm_array_concatenation(void) {
     value_t result;
@@ -675,6 +748,7 @@ void test_vm_suite(void)
     RUN_TEST(test_vm_property_access_edge_cases);
     RUN_TEST(test_vm_undefined_behavior);
     RUN_TEST(test_vm_undefined_string_concatenation);
+    RUN_TEST(test_vm_comments);
     RUN_TEST(test_vm_array_concatenation);
     // Conditional and block tests moved to test_conditionals.c
 }

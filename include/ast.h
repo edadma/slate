@@ -54,6 +54,7 @@ typedef enum {
     BIN_MULTIPLY,    // *
     BIN_DIVIDE,      // /
     BIN_MOD,         // mod
+    BIN_POWER,       // **
     BIN_EQUAL,       // ==
     BIN_NOT_EQUAL,   // !=
     BIN_LESS,        // <

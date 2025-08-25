@@ -34,6 +34,7 @@ typedef enum {
     TOKEN_MULTIPLY,      // *
     TOKEN_DIVIDE,        // /
     TOKEN_MOD,           // mod
+    TOKEN_POWER,         // **
     TOKEN_ASSIGN,        // =
     TOKEN_EQUAL,         // ==
     TOKEN_NOT_EQUAL,     // !=

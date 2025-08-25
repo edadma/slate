@@ -40,6 +40,7 @@ typedef enum
     OP_MULTIPLY, // Pop b, pop a, push a * b
     OP_DIVIDE, // Pop b, pop a, push a / b
     OP_MOD, // Pop b, pop a, push a % b
+    OP_POWER, // Pop b, pop a, push a ** b
     OP_NEGATE, // Pop a, push -a
 
     // Comparison operations

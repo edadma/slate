@@ -146,9 +146,15 @@ static void skip_whitespace(lexer_t* lexer) {
             case '\t':
                 advance(lexer);
                 break;
+            case '\\':
+                // Forth-style line comment - skip until end of line
+                while (peek(lexer) != '\n' && !is_at_end(lexer)) {
+                    advance(lexer);
+                }
+                break;
             case '/':
                 if (peek_next(lexer) == '/') {
-                    // Line comment - skip until end of line
+                    // C++-style line comment - skip until end of line
                     while (peek(lexer) != '\n' && !is_at_end(lexer)) {
                         advance(lexer);
                     }
@@ -185,7 +191,21 @@ static token_t string_token(lexer_t* lexer) {
             lexer->line++;
             lexer->column = 0; // Will be incremented by advance()
         }
-        advance(lexer);
+        
+        // Handle escape sequences
+        if (peek(lexer) == '\\') {
+            advance(lexer); // Consume the backslash
+            if (!is_at_end(lexer)) {
+                // Consume the escaped character (whatever it is)
+                if (peek(lexer) == '\n') {
+                    lexer->line++;
+                    lexer->column = 0;
+                }
+                advance(lexer);
+            }
+        } else {
+            advance(lexer);
+        }
     }
     
     if (is_at_end(lexer)) {
@@ -245,6 +265,7 @@ token_t lexer_next_token(lexer_t* lexer) {
         
         // Skip blank lines and lines with only comments
         if (peek(lexer) == '\n' || 
+            peek(lexer) == '\\' ||
             (peek(lexer) == '/' && (peek_next(lexer) == '/' || peek_next(lexer) == '*'))) {
             skip_whitespace(lexer);
             if (peek(lexer) == '\n') {
@@ -332,7 +353,12 @@ token_t lexer_next_token(lexer_t* lexer) {
         case ':': return make_token(lexer, TOKEN_COLON);
         case '.': return make_token(lexer, TOKEN_DOT);
         case '+': return make_token(lexer, TOKEN_PLUS);
-        case '*': return make_token(lexer, TOKEN_MULTIPLY);
+        case '*': 
+            if (peek(lexer) == '*') {
+                advance(lexer);
+                return make_token(lexer, TOKEN_POWER);
+            }
+            return make_token(lexer, TOKEN_MULTIPLY);
         case '/': return make_token(lexer, TOKEN_DIVIDE);
         case '\n': 
             // Only track line starts when not inside braces
@@ -405,6 +431,7 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_MULTIPLY: return "MULTIPLY";
         case TOKEN_DIVIDE: return "DIVIDE";
         case TOKEN_MOD: return "MOD";
+        case TOKEN_POWER: return "POWER";
         case TOKEN_ASSIGN: return "ASSIGN";
         case TOKEN_EQUAL: return "EQUAL";
         case TOKEN_NOT_EQUAL: return "NOT_EQUAL";
