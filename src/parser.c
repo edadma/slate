@@ -428,11 +428,22 @@ ast_node* parse_while_statement(parser_t* parser) {
     
     ast_node* body = NULL;
     
-    // Check for indented block
-    if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+    // Check for 'do' keyword
+    if (parser_match(parser, TOKEN_DO)) {
+        // Could be: 'while condition do expression' or 'while condition do\n<indent>'
+        if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+            // Multi-line form with 'do'
+            body = parse_indented_block(parser);
+        } else {
+            // Single-line form with 'do'
+            body = (ast_node*)ast_create_expression_stmt(parse_expression(parser),
+                                                         parser->current.line, parser->current.column);
+        }
+    } else if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+        // Multi-line form without 'do'
         body = parse_indented_block(parser);
     } else {
-        parser_error_at_current(parser, "Expected indented block after while condition.");
+        parser_error_at_current(parser, "Expected 'do' or indented block after while condition.");
         return NULL;
     }
     
