@@ -43,6 +43,41 @@ static value_t execute_expression(const char* source) {
     return ret_value;
 }
 
+// Helper function that allows execution failures (for error testing)
+static value_t execute_expression_allow_errors(const char* source) {
+    lexer_t lexer;
+    lexer_init(&lexer, source);
+
+    parser_t parser;
+    parser_init(&parser, &lexer);
+
+    ast_program* program = parse_program(&parser);
+    if (parser.had_error || !program) {
+        lexer_cleanup(&lexer);
+        return make_null();
+    }
+
+    codegen_t* codegen = codegen_create();
+    function_t* function = codegen_compile(codegen, program);
+
+    bitty_vm* vm = vm_create();
+    vm_result result = vm_execute(vm, function);
+
+    value_t return_value = make_null();
+    if (result == VM_OK) {
+        return_value = vm->result;
+        // Retain strings and other reference-counted types to survive cleanup
+        return_value = vm_retain(return_value);
+    }
+
+    vm_destroy(vm);
+    codegen_destroy(codegen);
+    ast_free((ast_node*)program);
+    lexer_cleanup(&lexer);
+
+    return return_value;
+}
+
 void test_basic_int32_arithmetic() {
     // Basic int32 addition (no overflow)
     value_t result = execute_expression("100 + 200");
@@ -296,12 +331,198 @@ void test_invalid_increment_decrement_errors() {
     codegen_destroy(codegen);
 }
 
-void test_zero_division_errors() {
-    // This is tested in test_vm.c, but included here for completeness
-    // Division by zero should be caught
-    // Modulo by zero should be caught
-    // Floor division by zero should be caught
-    // These are runtime errors, not arithmetic test results
+// Test comprehensive arithmetic operations (moved from test_vm.c)
+void test_comprehensive_arithmetic() {
+    value_t result;
+
+    result = execute_expression("42");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("2 + 3");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("10 - 4");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(6, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("3 * 7");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(21, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("15 / 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    vm_release(result);
+
+    result = execute_expression("2 + 3 * 4");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(14, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("(2 + 3) * 4");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(20, result.as.int32);
+    vm_release(result);
+}
+
+// Test modulo operations (moved from test_vm.c)
+void test_modulo_operations() {
+    value_t result;
+    
+    // Test modulo operations
+    result = execute_expression("10 mod 3");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("7 mod 2");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("100 mod 7");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("5 mod 5");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("4 mod 5");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(4, result.as.int32);
+    vm_release(result);
+
+    // Test floating point modulo
+    result = execute_expression("15.5 mod 4.2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.01, 2.9, result.as.number);
+    vm_release(result);
+
+    // Test modulo precedence (same as multiply/divide)
+    result = execute_expression("10 + 7 mod 3");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(11, result.as.int32); // 10 + (7 mod 3) = 10 + 1 = 11
+    vm_release(result);
+
+    // Test mixed operator precedence with modulo
+    result = execute_expression("2 * 5 mod 3");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32); // (2 * 5) mod 3 = 10 mod 3 = 1
+    vm_release(result);
+
+    result = execute_expression("15 mod 4 + 1");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(4, result.as.int32); // (15 mod 4) + 1 = 3 + 1 = 4
+    vm_release(result);
+}
+
+// Test power operator (moved from test_vm.c)
+void test_power_operations() {
+    value_t result;
+    
+    // Test power operator
+    result = execute_expression("2 ** 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(8.0, result.as.number);
+    vm_release(result);
+
+    result = execute_expression("5 ** 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    vm_release(result);
+
+    result = execute_expression("4 ** 0.5");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    vm_release(result);
+
+    result = execute_expression("(-2) ** 3");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(-8.0, result.as.number);
+    vm_release(result);
+
+    // Test power right associativity: 2 ** 3 ** 2 = 2 ** (3 ** 2) = 2 ** 9 = 512
+    result = execute_expression("2 ** 3 ** 2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(512.0, result.as.number);
+    vm_release(result);
+
+    // Test power precedence: 2 * 3 ** 2 = 2 * (3 ** 2) = 2 * 9 = 18
+    result = execute_expression("2 * 3 ** 2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(18.0, result.as.number);
+    vm_release(result);
+
+    // Test complex power precedence: 2 + 3 * 4 ** 2 = 2 + 3 * (4 ** 2) = 2 + 3 * 16 = 2 + 48 = 50
+    result = execute_expression("2 + 3 * 4 ** 2");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(50.0, result.as.number);
+    vm_release(result);
+}
+
+// Test division by zero error handling (moved from test_vm.c)
+void test_division_by_zero_errors() {
+    value_t result;
+
+    // Division by zero should return null (error case)
+    result = execute_expression_allow_errors("10 / 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    result = execute_expression_allow_errors("0 / 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    // Negative division by zero
+    result = execute_expression_allow_errors("-5 / 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+}
+
+// Test modulo by zero error handling (moved from test_vm.c)
+void test_modulo_by_zero_errors() {
+    value_t result;
+
+    // Modulo by zero should return null (error case)
+    result = execute_expression_allow_errors("10 mod 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    result = execute_expression_allow_errors("0 mod 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    // Negative modulo by zero
+    result = execute_expression_allow_errors("-5 mod 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+
+    // Float modulo by zero
+    result = execute_expression_allow_errors("3.14 mod 0");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+}
+
+// Test comprehensive unary operations (moved from test_vm.c)
+void test_comprehensive_unary() {
+    value_t result;
+
+    result = execute_expression("-42");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-42, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("3 + -4");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-1, result.as.int32);
+    vm_release(result);
+
+    result = execute_expression("-(-5)");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
+    vm_release(result);
 }
 
 // Test suite function for integration with main test runner
@@ -317,4 +538,10 @@ void test_arithmetic_suite(void) {
     RUN_TEST(test_floor_division);
     RUN_TEST(test_increment_decrement);
     RUN_TEST(test_invalid_increment_decrement_errors);
+    RUN_TEST(test_comprehensive_arithmetic);
+    RUN_TEST(test_modulo_operations);
+    RUN_TEST(test_power_operations);
+    RUN_TEST(test_comprehensive_unary);
+    RUN_TEST(test_division_by_zero_errors);
+    RUN_TEST(test_modulo_by_zero_errors);
 }

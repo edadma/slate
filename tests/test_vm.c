@@ -7,8 +7,7 @@
 #include "vm.h"
 
 // Helper function to compile and run code
-value_t run_code(const char* source)
-{
+value_t run_code(const char* source) {
     lexer_t lexer;
     parser_t parser;
 
@@ -16,8 +15,7 @@ value_t run_code(const char* source)
     parser_init(&parser, &lexer);
 
     ast_program* program = parse_program(&parser);
-    if (parser.had_error || !program)
-    {
+    if (parser.had_error || !program) {
         lexer_cleanup(&lexer);
         return make_null();
     }
@@ -29,8 +27,7 @@ value_t run_code(const char* source)
     vm_result result = vm_execute(vm, function);
 
     value_t return_value = make_null();
-    if (result == VM_OK)
-    {
+    if (result == VM_OK) {
         return_value = vm->result;
         // Retain strings and other reference-counted types to survive cleanup
         return_value = vm_retain(return_value);
@@ -44,133 +41,12 @@ value_t run_code(const char* source)
     return return_value;
 }
 
-// Test numeric operations
-void test_vm_arithmetic(void)
-{
-    value_t result;
+// Note: Arithmetic tests moved to test_arithmetic.c for better organization
 
-    result = run_code("42");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
-
-    result = run_code("2 + 3");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
-
-    result = run_code("10 - 4");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(6, result.as.int32);
-
-    result = run_code("3 * 7");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(21, result.as.int32);
-
-    result = run_code("15 / 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
-
-    result = run_code("2 + 3 * 4");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(14, result.as.int32);
-
-    result = run_code("(2 + 3) * 4");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(20, result.as.int32);
-
-    // Test modulo operations
-    result = run_code("10 mod 3");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
-
-    result = run_code("7 mod 2");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
-
-    result = run_code("100 mod 7");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
-
-    result = run_code("5 mod 5");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
-
-    result = run_code("4 mod 5");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(4, result.as.int32);
-
-    // Test floating point modulo
-    result = run_code("15.5 mod 4.2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.01, 2.9, result.as.number);
-
-    // Test modulo precedence (same as multiply/divide)
-    result = run_code("10 + 7 mod 3");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(11, result.as.int32); // 10 + (7 mod 3) = 10 + 1 = 11
-
-    // Test mixed operator precedence with modulo
-    result = run_code("2 * 5 mod 3");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(1, result.as.int32); // (2 * 5) mod 3 = 10 mod 3 = 1
-
-    result = run_code("15 mod 4 + 1");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(4, result.as.int32); // (15 mod 4) + 1 = 3 + 1 = 4
-
-    // Test power operator
-    result = run_code("2 ** 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(8.0, result.as.number);
-
-    result = run_code("5 ** 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
-
-    result = run_code("4 ** 0.5");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
-
-    result = run_code("(-2) ** 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(-8.0, result.as.number);
-
-    // Test power right associativity: 2 ** 3 ** 2 = 2 ** (3 ** 2) = 2 ** 9 = 512
-    result = run_code("2 ** 3 ** 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(512.0, result.as.number);
-
-    // Test power precedence: 2 * 3 ** 2 = 2 * (3 ** 2) = 2 * 9 = 18
-    result = run_code("2 * 3 ** 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(18.0, result.as.number);
-
-    // Test complex power precedence: 2 + 3 * 4 ** 2 = 2 + 3 * (4 ** 2) = 2 + 3 * 16 = 2 + 48 = 50
-    result = run_code("2 + 3 * 4 ** 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(50.0, result.as.number);
-}
-
-// Test unary operations
-void test_vm_unary(void)
-{
-    value_t result;
-
-    result = run_code("-42");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(-42, result.as.int32);
-
-    result = run_code("3 + -4");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(-1, result.as.int32);
-
-    result = run_code("-(-5)");
-    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
-}
+// Note: Unary arithmetic tests moved to test_arithmetic.c for better organization
 
 // Test string operations
-void test_vm_strings(void)
-{
+void test_vm_strings(void) {
     value_t result;
 
     result = run_code("\"hello\"");
@@ -216,8 +92,7 @@ void test_vm_strings(void)
 }
 
 // Test boolean operations
-void test_vm_booleans(void)
-{
+void test_vm_booleans(void) {
     value_t result;
 
     result = run_code("true");
@@ -235,8 +110,7 @@ void test_vm_booleans(void)
 }
 
 // Test null
-void test_vm_null(void)
-{
+void test_vm_null(void) {
     value_t result;
 
     result = run_code("null");
@@ -249,8 +123,7 @@ void test_vm_null(void)
 }
 
 // Test value creation functions
-void test_vm_value_creation(void)
-{
+void test_vm_value_creation(void) {
     value_t val;
 
     val = make_null();
@@ -275,8 +148,7 @@ void test_vm_value_creation(void)
 }
 
 // Test value comparison
-void test_vm_value_equality(void)
-{
+void test_vm_value_equality(void) {
     value_t a, b;
 
     // Numbers
@@ -321,8 +193,7 @@ void test_vm_value_equality(void)
 }
 
 // Test is_falsy
-void test_vm_is_falsy(void)
-{
+void test_vm_is_falsy(void) {
     TEST_ASSERT_TRUE(is_falsy(make_null()));
     TEST_ASSERT_TRUE(is_falsy(make_boolean(0)));
     TEST_ASSERT_FALSE(is_falsy(make_boolean(1)));
@@ -334,46 +205,10 @@ void test_vm_is_falsy(void)
     free_value(str);
 }
 
-// Test division by zero handling
-void test_vm_division_by_zero(void)
-{
-    value_t result;
-
-    // Division by zero should return null (error case)
-    result = run_code("10 / 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
-
-    result = run_code("0 / 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
-
-    // Negative division by zero
-    result = run_code("-5 / 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
-}
-
-void test_vm_modulo_by_zero(void)
-{
-    value_t result;
-
-    // Modulo by zero should return null (error case)
-    result = run_code("10 mod 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
-
-    result = run_code("0 mod 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
-
-    // Negative modulo by zero
-    result = run_code("-5 mod 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
-
-    // Float modulo by zero
-    result = run_code("3.14 mod 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
-}
+// Note: Division and modulo by zero error tests moved to test_arithmetic.c for better organization
 
 // Test object literals
-void test_vm_object_literals(void)
-{
+void test_vm_object_literals(void) {
     value_t result;
 
     // Empty object
@@ -393,8 +228,7 @@ void test_vm_object_literals(void)
 }
 
 // Test advanced string concatenation edge cases
-void test_vm_string_concatenation_edge_cases(void)
-{
+void test_vm_string_concatenation_edge_cases(void) {
     value_t result;
 
     // Null concatenation
@@ -429,8 +263,7 @@ void test_vm_string_concatenation_edge_cases(void)
 }
 
 // Test array edge cases
-void test_vm_arrays_edge_cases(void)
-{
+void test_vm_arrays_edge_cases(void) {
     value_t result;
 
     // Empty array
@@ -465,8 +298,7 @@ void test_vm_arrays_edge_cases(void)
 }
 
 // Test string indexing edge cases
-void test_vm_string_indexing_edge_cases(void)
-{
+void test_vm_string_indexing_edge_cases(void) {
     value_t result;
 
     // Empty string indexing should be error (returns null on error)
@@ -495,8 +327,7 @@ void test_vm_string_indexing_edge_cases(void)
 }
 
 // Test type error handling
-void test_vm_type_errors(void)
-{
+void test_vm_type_errors(void) {
     value_t result;
 
     // These should return null (error handled gracefully)
@@ -544,8 +375,7 @@ void test_vm_type_errors(void)
 }
 
 // Test complex expressions
-void test_vm_complex_expressions(void)
-{
+void test_vm_complex_expressions(void) {
     value_t result;
 
     // Array operations in expressions
@@ -570,8 +400,7 @@ void test_vm_complex_expressions(void)
 }
 
 // Test property access edge cases
-void test_vm_property_access_edge_cases(void)
-{
+void test_vm_property_access_edge_cases(void) {
     value_t result;
 
     // Invalid properties should return undefined
@@ -595,8 +424,7 @@ void test_vm_property_access_edge_cases(void)
 }
 
 // Test undefined value behavior
-void test_vm_undefined_behavior(void)
-{
+void test_vm_undefined_behavior(void) {
     value_t result;
 
     // Undefined literal
@@ -624,8 +452,7 @@ void test_vm_undefined_behavior(void)
 }
 
 // Test undefined string concatenation
-void test_vm_undefined_string_concatenation(void)
-{
+void test_vm_undefined_string_concatenation(void) {
     value_t result;
 
     // Undefined + string
@@ -650,16 +477,16 @@ void test_vm_comments(void) {
     value_t result;
 
     // Backslash comment
-    result = run_code("42 \\\\ This is a comment");
+    result = run_code("42 \\ This is a comment");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     // Simple expression with comment at end
-    result = run_code("5 * 5 \\\\ End with comment");
+    result = run_code("5 * 5 \\ End with comment");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(25, result.as.int32);
 
-    // Simple addition test (comments consume rest of line)  
+    // Simple addition test (comments consume rest of line)
     result = run_code("1 + 2");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
@@ -673,99 +500,99 @@ void test_vm_array_concatenation(void) {
     result = run_code("[1] + [2]");
     TEST_ASSERT_EQUAL_INT(VAL_ARRAY, result.type);
     TEST_ASSERT_EQUAL_INT(2, da_length(result.as.array));
-    
+
     value_t* elem0 = (value_t*)da_get(result.as.array, 0);
     value_t* elem1 = (value_t*)da_get(result.as.array, 1);
     TEST_ASSERT_EQUAL_INT(VAL_INT32, elem0->type);
     TEST_ASSERT_EQUAL_INT(VAL_INT32, elem1->type);
     TEST_ASSERT_EQUAL_INT32(1, elem0->as.int32);
     TEST_ASSERT_EQUAL_INT32(2, elem1->as.int32);
-    
+
     vm_release(result);
 
     // Multiple element concatenation
     result = run_code("[1, 2] + [3, 4, 5]");
     TEST_ASSERT_EQUAL_INT(VAL_ARRAY, result.type);
     TEST_ASSERT_EQUAL_INT(5, da_length(result.as.array));
-    
+
     for (int i = 0; i < 5; i++) {
         value_t* elem = (value_t*)da_get(result.as.array, i);
         TEST_ASSERT_EQUAL_INT(VAL_INT32, elem->type);
         TEST_ASSERT_EQUAL_INT32(i + 1, elem->as.int32);
     }
-    
+
     vm_release(result);
 
     // Empty array concatenation
     result = run_code("[] + [1, 2]");
     TEST_ASSERT_EQUAL_INT(VAL_ARRAY, result.type);
     TEST_ASSERT_EQUAL_INT(2, da_length(result.as.array));
-    
+
     value_t* elem_a = (value_t*)da_get(result.as.array, 0);
     value_t* elem_b = (value_t*)da_get(result.as.array, 1);
     TEST_ASSERT_EQUAL_INT32(1, elem_a->as.int32);
     TEST_ASSERT_EQUAL_INT32(2, elem_b->as.int32);
-    
+
     vm_release(result);
 
     // Mixed type array concatenation
     result = run_code("[1, \"hello\"] + [true, null]");
     TEST_ASSERT_EQUAL_INT(VAL_ARRAY, result.type);
     TEST_ASSERT_EQUAL_INT(4, da_length(result.as.array));
-    
+
     value_t* e0 = (value_t*)da_get(result.as.array, 0);
     value_t* e1 = (value_t*)da_get(result.as.array, 1);
     value_t* e2 = (value_t*)da_get(result.as.array, 2);
     value_t* e3 = (value_t*)da_get(result.as.array, 3);
-    
+
     TEST_ASSERT_EQUAL_INT(VAL_INT32, e0->type);
     TEST_ASSERT_EQUAL_INT(VAL_STRING, e1->type);
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, e2->type);
     TEST_ASSERT_EQUAL_INT(VAL_NULL, e3->type);
-    
+
     vm_release(result);
 }
 
 // Test compound assignment operators
 void test_vm_compound_assignments(void) {
     value_t result;
-    
+
     // Test += with integers
     result = run_code("var x = 10; x += 5; x");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(15, result.as.int32);
     vm_release(result);
-    
-    // Test -= with integers  
+
+    // Test -= with integers
     result = run_code("var y = 20; y -= 8; y");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(12, result.as.int32);
     vm_release(result);
-    
+
     // Test *= with integers
     result = run_code("var z = 4; z *= 3; z");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(12, result.as.int32);
     vm_release(result);
-    
+
     // Test /= with integers (should result in float)
     result = run_code("var w = 15; w /= 3; w");
     TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
     TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
     vm_release(result);
-    
+
     // Test %= with integers
     result = run_code("var m = 17; m %= 5; m");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
     vm_release(result);
-    
+
     // Test **= with integers (power always returns float)
     result = run_code("var p = 3; p **= 2; p");
     TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
     TEST_ASSERT_EQUAL_DOUBLE(9.0, result.as.number);
     vm_release(result);
-    
+
     // Test chained compound assignments
     result = run_code("var chain = 2; chain *= 3; chain += 1; chain");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -774,18 +601,14 @@ void test_vm_compound_assignments(void) {
 }
 
 // Test suite runner
-void test_vm_suite(void)
-{
-    RUN_TEST(test_vm_arithmetic);
-    RUN_TEST(test_vm_unary);
+void test_vm_suite(void) {
+    // Note: Arithmetic, unary, and division/modulo by zero tests moved to test_arithmetic.c
     RUN_TEST(test_vm_strings);
     RUN_TEST(test_vm_booleans);
     RUN_TEST(test_vm_null);
     RUN_TEST(test_vm_value_creation);
     RUN_TEST(test_vm_value_equality);
     RUN_TEST(test_vm_is_falsy);
-    RUN_TEST(test_vm_division_by_zero);
-    RUN_TEST(test_vm_modulo_by_zero);
     RUN_TEST(test_vm_object_literals);
     RUN_TEST(test_vm_string_concatenation_edge_cases);
     RUN_TEST(test_vm_arrays_edge_cases);
