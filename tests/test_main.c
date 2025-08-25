@@ -20,7 +20,7 @@ void tearDown(void) {
 
 int main(void) {
     UNITY_BEGIN();
-    
+
     // Run test suites
     test_lexer_suite();
     test_parser_suite();
@@ -29,7 +29,7 @@ int main(void) {
     test_while_loops_suite();
     test_builtins_suite();
     test_integers_suite();
-    // test_arithmetic_suite();
-    
+    test_arithmetic_suite();
+
     return UNITY_END();
 }
