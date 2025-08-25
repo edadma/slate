@@ -373,7 +373,12 @@ token_t lexer_next_token(lexer_t* lexer) {
         case ':': return make_token(lexer, TOKEN_COLON);
         case '.': return make_token(lexer, TOKEN_DOT);
         case '+': 
-            return make_token(lexer, match(lexer, '=') ? TOKEN_PLUS_ASSIGN : TOKEN_PLUS);
+            if (match(lexer, '=')) {
+                return make_token(lexer, TOKEN_PLUS_ASSIGN);
+            } else if (match(lexer, '+')) {
+                return make_token(lexer, TOKEN_INCREMENT);
+            }
+            return make_token(lexer, TOKEN_PLUS);
         case '*': 
             if (peek(lexer) == '*') {
                 advance(lexer);
@@ -384,7 +389,12 @@ token_t lexer_next_token(lexer_t* lexer) {
             }
             return make_token(lexer, match(lexer, '=') ? TOKEN_MULT_ASSIGN : TOKEN_MULTIPLY);
         case '/': 
-            return make_token(lexer, match(lexer, '=') ? TOKEN_DIV_ASSIGN : TOKEN_DIVIDE);
+            if (match(lexer, '=')) {
+                return make_token(lexer, TOKEN_DIV_ASSIGN);
+            } else if (match(lexer, '/')) {
+                return make_token(lexer, TOKEN_FLOOR_DIV);
+            }
+            return make_token(lexer, TOKEN_DIVIDE);
         case '%': 
             return make_token(lexer, match(lexer, '=') ? TOKEN_MOD_ASSIGN : TOKEN_MOD);
         case '\n': 
@@ -397,8 +407,12 @@ token_t lexer_next_token(lexer_t* lexer) {
         case '-':
             if (match(lexer, '>')) {
                 return make_token(lexer, TOKEN_ARROW);
+            } else if (match(lexer, '=')) {
+                return make_token(lexer, TOKEN_MINUS_ASSIGN);
+            } else if (match(lexer, '-')) {
+                return make_token(lexer, TOKEN_DECREMENT);
             }
-            return make_token(lexer, match(lexer, '=') ? TOKEN_MINUS_ASSIGN : TOKEN_MINUS);
+            return make_token(lexer, TOKEN_MINUS);
             
         case '!':
             return make_token(lexer, match(lexer, '=') ? TOKEN_NOT_EQUAL : TOKEN_LOGICAL_NOT);
@@ -407,23 +421,38 @@ token_t lexer_next_token(lexer_t* lexer) {
             return make_token(lexer, match(lexer, '=') ? TOKEN_EQUAL : TOKEN_ASSIGN);
             
         case '<':
-            return make_token(lexer, match(lexer, '=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
+            if (match(lexer, '=')) {
+                return make_token(lexer, TOKEN_LESS_EQUAL);
+            } else if (match(lexer, '<')) {
+                return make_token(lexer, TOKEN_LEFT_SHIFT);
+            }
+            return make_token(lexer, TOKEN_LESS);
             
         case '>':
-            return make_token(lexer, match(lexer, '=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
+            if (match(lexer, '=')) {
+                return make_token(lexer, TOKEN_GREATER_EQUAL);
+            } else if (match(lexer, '>')) {
+                if (match(lexer, '>')) {
+                    return make_token(lexer, TOKEN_LOGICAL_RIGHT_SHIFT);
+                }
+                return make_token(lexer, TOKEN_RIGHT_SHIFT);
+            }
+            return make_token(lexer, TOKEN_GREATER);
             
         case '&':
             if (match(lexer, '&')) {
                 return make_token(lexer, TOKEN_LOGICAL_AND);
             }
-            return error_token(lexer, "Unexpected character '&'");
+            return make_token(lexer, TOKEN_BITWISE_AND);
             
         case '|':
             if (match(lexer, '|')) {
                 return make_token(lexer, TOKEN_LOGICAL_OR);
             }
-            return error_token(lexer, "Unexpected character '|'");
+            return make_token(lexer, TOKEN_BITWISE_OR);
             
+        case '^': return make_token(lexer, TOKEN_BITWISE_XOR);
+        case '~': return make_token(lexer, TOKEN_BITWISE_NOT);
         case '"': return string_token(lexer);
     }
     
@@ -476,6 +505,16 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_LOGICAL_AND: return "LOGICAL_AND";
         case TOKEN_LOGICAL_OR: return "LOGICAL_OR";
         case TOKEN_LOGICAL_NOT: return "LOGICAL_NOT";
+        case TOKEN_BITWISE_AND: return "BITWISE_AND";
+        case TOKEN_BITWISE_OR: return "BITWISE_OR";
+        case TOKEN_BITWISE_XOR: return "BITWISE_XOR";
+        case TOKEN_BITWISE_NOT: return "BITWISE_NOT";
+        case TOKEN_LEFT_SHIFT: return "LEFT_SHIFT";
+        case TOKEN_RIGHT_SHIFT: return "RIGHT_SHIFT";
+        case TOKEN_LOGICAL_RIGHT_SHIFT: return "LOGICAL_RIGHT_SHIFT";
+        case TOKEN_INCREMENT: return "INCREMENT";
+        case TOKEN_DECREMENT: return "DECREMENT";
+        case TOKEN_FLOOR_DIV: return "FLOOR_DIV";
         case TOKEN_SEMICOLON: return "SEMICOLON";
         case TOKEN_COMMA: return "COMMA";
         case TOKEN_COLON: return "COLON";

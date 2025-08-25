@@ -64,13 +64,25 @@ typedef enum {
     BIN_GREATER,     // >
     BIN_GREATER_EQUAL,// >=
     BIN_LOGICAL_AND, // &&
-    BIN_LOGICAL_OR   // ||
+    BIN_LOGICAL_OR,  // ||
+    BIN_BITWISE_AND, // &
+    BIN_BITWISE_OR,  // |
+    BIN_BITWISE_XOR, // ^
+    BIN_LEFT_SHIFT,  // <<
+    BIN_RIGHT_SHIFT, // >> (arithmetic)
+    BIN_LOGICAL_RIGHT_SHIFT, // >>> (logical)
+    BIN_FLOOR_DIV    // //
 } binary_operator;
 
 // Unary operators
 typedef enum {
     UN_NEGATE,      // -
-    UN_NOT          // !
+    UN_NOT,         // !
+    UN_BITWISE_NOT, // ~
+    UN_PRE_INCREMENT,  // ++x
+    UN_PRE_DECREMENT,  // --x
+    UN_POST_INCREMENT, // x++
+    UN_POST_DECREMENT  // x--
 } unary_operator;
 
 // Base AST node structure

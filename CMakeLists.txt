@@ -52,6 +52,7 @@ if(BUILD_TESTS)
         tests/test_builtins.c
         tests/test_integers.c
         tests/test_arithmetic.c
+        tests/test_logical.c
         src/lexer.c
         src/parser.c
         src/ast.c

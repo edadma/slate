@@ -625,6 +625,26 @@ const char* opcode_name(opcode op) {
         return "AND";
     case OP_OR:
         return "OR";
+    case OP_BITWISE_AND:
+        return "BITWISE_AND";
+    case OP_BITWISE_OR:
+        return "BITWISE_OR";
+    case OP_BITWISE_XOR:
+        return "BITWISE_XOR";
+    case OP_BITWISE_NOT:
+        return "BITWISE_NOT";
+    case OP_LEFT_SHIFT:
+        return "LEFT_SHIFT";
+    case OP_RIGHT_SHIFT:
+        return "RIGHT_SHIFT";
+    case OP_LOGICAL_RIGHT_SHIFT:
+        return "LOGICAL_RIGHT_SHIFT";
+    case OP_FLOOR_DIV:
+        return "FLOOR_DIV";
+    case OP_INCREMENT:
+        return "INCREMENT";
+    case OP_DECREMENT:
+        return "DECREMENT";
     case OP_GET_LOCAL:
         return "GET_LOCAL";
     case OP_SET_LOCAL:
@@ -1404,6 +1424,243 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 vm_push(vm, a);
                 vm_release(b);
             }
+            break;
+        }
+
+        case OP_BITWISE_AND: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                vm_push(vm, make_int32_with_debug(a.as.int32 & b.as.int32, a.debug));
+            } else {
+                vm_runtime_error_with_values(vm, "Bitwise AND requires integers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_BITWISE_OR: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                vm_push(vm, make_int32_with_debug(a.as.int32 | b.as.int32, a.debug));
+            } else {
+                vm_runtime_error_with_values(vm, "Bitwise OR requires integers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_BITWISE_XOR: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                vm_push(vm, make_int32_with_debug(a.as.int32 ^ b.as.int32, a.debug));
+            } else {
+                vm_runtime_error_with_values(vm, "Bitwise XOR requires integers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_BITWISE_NOT: {
+            value_t a = vm_pop(vm);
+            
+            if (a.type == VAL_INT32) {
+                vm_push(vm, make_int32_with_debug(~a.as.int32, a.debug));
+            } else {
+                vm_runtime_error_with_values(vm, "Bitwise NOT requires integer", &a, NULL, NULL);
+                vm_release(a);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            break;
+        }
+
+        case OP_LEFT_SHIFT: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                vm_push(vm, make_int32_with_debug(a.as.int32 << b.as.int32, a.debug));
+            } else {
+                vm_runtime_error_with_values(vm, "Left shift requires integers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_RIGHT_SHIFT: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                // Arithmetic right shift (sign-extending)
+                vm_push(vm, make_int32_with_debug(a.as.int32 >> b.as.int32, a.debug));
+            } else {
+                vm_runtime_error_with_values(vm, "Arithmetic right shift requires integers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_LOGICAL_RIGHT_SHIFT: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                // Logical right shift (zero-filling)
+                // Cast to unsigned to ensure zero-fill behavior
+                uint32_t unsigned_a = (uint32_t)a.as.int32;
+                uint32_t result = unsigned_a >> b.as.int32;
+                vm_push(vm, make_int32_with_debug((int32_t)result, a.debug));
+            } else {
+                vm_runtime_error_with_values(vm, "Logical right shift requires integers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_FLOOR_DIV: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            if ((a.type == VAL_INT32 || a.type == VAL_NUMBER) && 
+                (b.type == VAL_INT32 || b.type == VAL_NUMBER)) {
+                
+                // Convert to doubles for division
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 : a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 : b.as.number;
+                
+                if (b_val == 0) {
+                    vm_runtime_error_with_values(vm, "Division by zero", &a, &b, NULL);
+                    vm_release(a);
+                    vm_release(b);
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
+                
+                // Floor division - truncate towards negative infinity
+                double result = floor(a_val / b_val);
+                
+                // If result fits in int32, return as int32
+                if (result >= INT32_MIN && result <= INT32_MAX) {
+                    vm_push(vm, make_int32_with_debug((int32_t)result, a.debug));
+                } else {
+                    vm_push(vm, make_number_with_debug(result, a.debug));
+                }
+            } else {
+                vm_runtime_error_with_values(vm, "Floor division requires numbers", &a, &b, NULL);
+                vm_release(a);
+                vm_release(b);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+        case OP_INCREMENT: {
+            value_t a = vm_pop(vm);
+            
+            if (a.type == VAL_INT32) {
+                // Check for overflow
+                if (a.as.int32 == INT32_MAX) {
+                    // Overflow - promote to BigInt
+                    db_bigint big = db_from_int64((int64_t)a.as.int32 + 1);
+                    vm_push(vm, make_bigint_with_debug(big, a.debug));
+                } else {
+                    vm_push(vm, make_int32_with_debug(a.as.int32 + 1, a.debug));
+                }
+            } else if (a.type == VAL_BIGINT) {
+                db_bigint one = db_from_int64(1);
+                db_bigint result = db_add(a.as.bigint, one);
+                db_release(&one);
+                vm_push(vm, make_bigint_with_debug(result, a.debug));
+            } else if (a.type == VAL_NUMBER) {
+                vm_push(vm, make_number_with_debug(a.as.number + 1, a.debug));
+            } else {
+                vm_runtime_error_with_values(vm, "Cannot increment %s", &a, NULL, NULL);
+                vm_release(a);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            break;
+        }
+
+        case OP_DECREMENT: {
+            value_t a = vm_pop(vm);
+            
+            if (a.type == VAL_INT32) {
+                // Check for underflow
+                if (a.as.int32 == INT32_MIN) {
+                    // Underflow - promote to BigInt
+                    db_bigint big = db_from_int64((int64_t)a.as.int32 - 1);
+                    vm_push(vm, make_bigint_with_debug(big, a.debug));
+                } else {
+                    vm_push(vm, make_int32_with_debug(a.as.int32 - 1, a.debug));
+                }
+            } else if (a.type == VAL_BIGINT) {
+                db_bigint one = db_from_int64(1);
+                db_bigint result = db_subtract(a.as.bigint, one);
+                db_release(&one);
+                vm_push(vm, make_bigint_with_debug(result, a.debug));
+            } else if (a.type == VAL_NUMBER) {
+                vm_push(vm, make_number_with_debug(a.as.number - 1, a.debug));
+            } else {
+                vm_runtime_error_with_values(vm, "Cannot decrement %s", &a, NULL, NULL);
+                vm_release(a);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
             break;
         }
 

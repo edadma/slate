@@ -57,6 +57,18 @@ typedef enum
     OP_AND, // Pop b, pop a, push a && b (short-circuit)
     OP_OR, // Pop b, pop a, push a || b (short-circuit)
 
+    // Bitwise operations
+    OP_BITWISE_AND, // Pop b, pop a, push a & b
+    OP_BITWISE_OR, // Pop b, pop a, push a | b
+    OP_BITWISE_XOR, // Pop b, pop a, push a ^ b
+    OP_BITWISE_NOT, // Pop a, push ~a
+    OP_LEFT_SHIFT, // Pop b, pop a, push a << b
+    OP_RIGHT_SHIFT, // Pop b, pop a, push a >> b (arithmetic)
+    OP_LOGICAL_RIGHT_SHIFT, // Pop b, pop a, push a >>> b (logical)
+    OP_FLOOR_DIV, // Pop b, pop a, push floor(a / b)
+    OP_INCREMENT, // Pop a, push a + 1
+    OP_DECREMENT, // Pop a, push a - 1
+
     // Variable operations
     OP_GET_LOCAL, // Push local variable value
     OP_SET_LOCAL, // Set local variable value (pops value)

@@ -5,6 +5,12 @@
 #include <errno.h>
 #include <limits.h>
 
+// Forward declarations for parser functions
+static ast_node* parse_bitwise_or(parser_t* parser);
+static ast_node* parse_bitwise_xor(parser_t* parser);
+static ast_node* parse_bitwise_and(parser_t* parser);
+static ast_node* parse_shift(parser_t* parser);
+
 // Helper function to extract string from token
 static char* token_to_string(token_t* token) {
     if (!token || !token->start) return NULL;
@@ -199,6 +205,13 @@ binary_operator token_to_binary_op(token_type_t type) {
         case TOKEN_AND: return BIN_LOGICAL_AND;
         case TOKEN_LOGICAL_OR: return BIN_LOGICAL_OR;
         case TOKEN_OR: return BIN_LOGICAL_OR;
+        case TOKEN_BITWISE_AND: return BIN_BITWISE_AND;
+        case TOKEN_BITWISE_OR: return BIN_BITWISE_OR;
+        case TOKEN_BITWISE_XOR: return BIN_BITWISE_XOR;
+        case TOKEN_LEFT_SHIFT: return BIN_LEFT_SHIFT;
+        case TOKEN_RIGHT_SHIFT: return BIN_RIGHT_SHIFT;
+        case TOKEN_LOGICAL_RIGHT_SHIFT: return BIN_LOGICAL_RIGHT_SHIFT;
+        case TOKEN_FLOOR_DIV: return BIN_FLOOR_DIV;
         default: return BIN_ADD; // Fallback
     }
 }
@@ -209,6 +222,9 @@ unary_operator token_to_unary_op(token_type_t type) {
         case TOKEN_MINUS: return UN_NEGATE;
         case TOKEN_LOGICAL_NOT: return UN_NOT;
         case TOKEN_NOT: return UN_NOT;
+        case TOKEN_BITWISE_NOT: return UN_BITWISE_NOT;
+        case TOKEN_INCREMENT: return UN_PRE_INCREMENT;
+        case TOKEN_DECREMENT: return UN_PRE_DECREMENT;
         default: return UN_NEGATE; // Fallback
     }
 }
@@ -549,10 +565,55 @@ ast_node* parse_or(parser_t* parser) {
 
 // Parse logical AND
 ast_node* parse_and(parser_t* parser) {
-    ast_node* expr = parse_equality(parser);
+    ast_node* expr = parse_bitwise_or(parser);
     
     while (parser_match(parser, TOKEN_LOGICAL_AND) || parser_match(parser, TOKEN_AND)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
+        ast_node* right = parse_bitwise_or(parser);
+        expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
+    }
+    
+    return expr;
+}
+
+// Parse bitwise OR
+static ast_node* parse_bitwise_or(parser_t* parser) {
+    ast_node* expr = parse_bitwise_xor(parser);
+    
+    while (parser_match(parser, TOKEN_BITWISE_OR)) {
+        binary_operator op = BIN_BITWISE_OR;
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
+        ast_node* right = parse_bitwise_xor(parser);
+        expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
+    }
+    
+    return expr;
+}
+
+// Parse bitwise XOR
+static ast_node* parse_bitwise_xor(parser_t* parser) {
+    ast_node* expr = parse_bitwise_and(parser);
+    
+    while (parser_match(parser, TOKEN_BITWISE_XOR)) {
+        binary_operator op = BIN_BITWISE_XOR;
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
+        ast_node* right = parse_bitwise_and(parser);
+        expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
+    }
+    
+    return expr;
+}
+
+// Parse bitwise AND
+static ast_node* parse_bitwise_and(parser_t* parser) {
+    ast_node* expr = parse_equality(parser);
+    
+    while (parser_match(parser, TOKEN_BITWISE_AND)) {
+        binary_operator op = BIN_BITWISE_AND;
         int op_line = parser->previous.line;
         int op_column = parser->previous.column;
         ast_node* right = parse_equality(parser);
@@ -579,11 +640,28 @@ ast_node* parse_equality(parser_t* parser) {
 
 // Parse comparison
 ast_node* parse_comparison(parser_t* parser) {
-    ast_node* expr = parse_term(parser);
+    ast_node* expr = parse_shift(parser);
     
     while (parser_match(parser, TOKEN_GREATER) || parser_match(parser, TOKEN_GREATER_EQUAL) ||
            parser_match(parser, TOKEN_LESS) || parser_match(parser, TOKEN_LESS_EQUAL)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
+        ast_node* right = parse_shift(parser);
+        expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
+    }
+    
+    return expr;
+}
+
+// Parse shift operations
+static ast_node* parse_shift(parser_t* parser) {
+    ast_node* expr = parse_term(parser);
+    
+    while (parser_match(parser, TOKEN_LEFT_SHIFT) || parser_match(parser, TOKEN_RIGHT_SHIFT) || 
+           parser_match(parser, TOKEN_LOGICAL_RIGHT_SHIFT)) {
+        binary_operator op = (parser->previous.type == TOKEN_LEFT_SHIFT) ? BIN_LEFT_SHIFT :
+                            (parser->previous.type == TOKEN_RIGHT_SHIFT) ? BIN_RIGHT_SHIFT : BIN_LOGICAL_RIGHT_SHIFT;
         int op_line = parser->previous.line;
         int op_column = parser->previous.column;
         ast_node* right = parse_term(parser);
@@ -610,11 +688,13 @@ ast_node* parse_term(parser_t* parser) {
 
 // Parse factor (* /)
 static ast_node* parse_power(parser_t* parser);
+static ast_node* parse_postfix(parser_t* parser);
 
 ast_node* parse_factor(parser_t* parser) {
     ast_node* expr = parse_power(parser);
     
-    while (parser_match(parser, TOKEN_MULTIPLY) || parser_match(parser, TOKEN_DIVIDE) || parser_match(parser, TOKEN_MOD)) {
+    while (parser_match(parser, TOKEN_MULTIPLY) || parser_match(parser, TOKEN_DIVIDE) || 
+           parser_match(parser, TOKEN_MOD) || parser_match(parser, TOKEN_FLOOR_DIV)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
         int op_line = parser->previous.line;
         int op_column = parser->previous.column;
@@ -639,16 +719,34 @@ static ast_node* parse_power(parser_t* parser) {
     return expr;
 }
 
-// Parse unary (! -)
+// Parse unary (! - ~ ++ --)
 ast_node* parse_unary(parser_t* parser) {
-    if (parser_match(parser, TOKEN_LOGICAL_NOT) || parser_match(parser, TOKEN_NOT) || parser_match(parser, TOKEN_MINUS)) {
+    // Prefix operators
+    if (parser_match(parser, TOKEN_LOGICAL_NOT) || parser_match(parser, TOKEN_NOT) || 
+        parser_match(parser, TOKEN_MINUS) || parser_match(parser, TOKEN_BITWISE_NOT) ||
+        parser_match(parser, TOKEN_INCREMENT) || parser_match(parser, TOKEN_DECREMENT)) {
         unary_operator op = token_to_unary_op(parser->previous.type);
         ast_node* right = parse_unary(parser);
         return (ast_node*)ast_create_unary_op(op, right,
                                              parser->previous.line, parser->previous.column);
     }
     
-    return parse_call(parser);
+    return parse_postfix(parser);
+}
+
+// Parse postfix operations (++ --)
+ast_node* parse_postfix(parser_t* parser) {
+    ast_node* expr = parse_call(parser);
+    
+    if (parser_match(parser, TOKEN_INCREMENT)) {
+        return (ast_node*)ast_create_unary_op(UN_POST_INCREMENT, expr,
+                                             parser->previous.line, parser->previous.column);
+    } else if (parser_match(parser, TOKEN_DECREMENT)) {
+        return (ast_node*)ast_create_unary_op(UN_POST_DECREMENT, expr,
+                                             parser->previous.line, parser->previous.column);
+    }
+    
+    return expr;
 }
 
 // Parse call

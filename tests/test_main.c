@@ -9,6 +9,7 @@ void test_while_loops_suite(void);
 void test_builtins_suite(void);
 void test_integers_suite(void);
 void test_arithmetic_suite(void);
+void test_logical_suite(void);
 
 void setUp(void) {
     // Setup code that runs before each test
@@ -30,6 +31,7 @@ int main(void) {
     test_builtins_suite();
     test_integers_suite();
     test_arithmetic_suite();
+    test_logical_suite();
 
     return UNITY_END();
 }

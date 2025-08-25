@@ -180,10 +180,96 @@ void test_large_arithmetic() {
     vm_release(result);
 }
 
+// Test floor division operator
+void test_floor_division() {
+    value_t result;
+
+    // Basic floor division with positive numbers
+    result = execute_expression("17 // 3");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);  // floor(17/3) = floor(5.666) = 5
+    vm_release(result);
+
+    result = execute_expression("20 // 3");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(6, result.as.int32);  // floor(20/3) = floor(6.666) = 6
+    vm_release(result);
+
+    // Floor division with negative numbers (towards negative infinity)
+    result = execute_expression("-17 // 3");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-6, result.as.int32);  // floor(-17/3) = floor(-5.666) = -6
+    vm_release(result);
+
+    result = execute_expression("17 // -3");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-6, result.as.int32);  // floor(17/-3) = floor(-5.666) = -6
+    vm_release(result);
+
+    result = execute_expression("-17 // -3");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);  // floor(-17/-3) = floor(5.666) = 5
+    vm_release(result);
+
+    // Floor division with floating point
+    result = execute_expression("17.5 // 3.0");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);  // floor(17.5/3.0) = floor(5.833) = 5
+    vm_release(result);
+
+    // Exact division
+    result = execute_expression("15 // 3");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
+    vm_release(result);
+}
+
+// Test increment and decrement operators
+void test_increment_decrement() {
+    value_t result;
+
+    // Pre-increment
+    result = execute_expression("var x = 5; ++x");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(6, result.as.int32);
+    vm_release(result);
+
+    // Pre-decrement
+    result = execute_expression("var y = 10; --y");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(9, result.as.int32);
+    vm_release(result);
+
+    // Increment with overflow (should promote to bigint)
+    result = execute_expression("var max = 2147483647; ++max");
+    TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
+    // Should be 2147483648 as bigint
+    vm_release(result);
+
+    // Decrement with underflow (should promote to bigint)
+    result = execute_expression("var min = -2147483648; --min");
+    TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
+    // Should be -2147483649 as bigint
+    vm_release(result);
+
+    // Increment with floating point
+    result = execute_expression("var f = 3.14; ++f");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 4.14, result.as.number);
+    vm_release(result);
+
+    // Decrement with floating point
+    result = execute_expression("var g = 2.71; --g");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 1.71, result.as.number);
+    vm_release(result);
+}
+
 void test_zero_division_errors() {
     // This is tested in test_vm.c, but included here for completeness
     // Division by zero should be caught
     // Modulo by zero should be caught
+    // Floor division by zero should be caught
     // These are runtime errors, not arithmetic test results
 }
 
@@ -197,4 +283,6 @@ void test_arithmetic_suite(void) {
     RUN_TEST(test_unary_arithmetic);
     RUN_TEST(test_unary_minus_overflow);
     RUN_TEST(test_large_arithmetic);
+    RUN_TEST(test_floor_division);
+    RUN_TEST(test_increment_decrement);
 }

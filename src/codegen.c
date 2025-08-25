@@ -444,6 +444,13 @@ void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node) {
         case BIN_GREATER_EQUAL: codegen_emit_op(codegen, OP_GREATER_EQUAL); break;
         case BIN_LOGICAL_AND:   codegen_emit_op(codegen, OP_AND); break;
         case BIN_LOGICAL_OR:    codegen_emit_op(codegen, OP_OR); break;
+        case BIN_BITWISE_AND:   codegen_emit_op(codegen, OP_BITWISE_AND); break;
+        case BIN_BITWISE_OR:    codegen_emit_op(codegen, OP_BITWISE_OR); break;
+        case BIN_BITWISE_XOR:   codegen_emit_op(codegen, OP_BITWISE_XOR); break;
+        case BIN_LEFT_SHIFT:    codegen_emit_op(codegen, OP_LEFT_SHIFT); break;
+        case BIN_RIGHT_SHIFT:   codegen_emit_op(codegen, OP_RIGHT_SHIFT); break;
+        case BIN_LOGICAL_RIGHT_SHIFT: codegen_emit_op(codegen, OP_LOGICAL_RIGHT_SHIFT); break;
+        case BIN_FLOOR_DIV:     codegen_emit_op(codegen, OP_FLOOR_DIV); break;
     }
 }
 
@@ -455,6 +462,21 @@ void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
     switch (node->op) {
         case UN_NEGATE: codegen_emit_op(codegen, OP_NEGATE); break;
         case UN_NOT:    codegen_emit_op(codegen, OP_NOT); break;
+        case UN_BITWISE_NOT: codegen_emit_op(codegen, OP_BITWISE_NOT); break;
+        case UN_PRE_INCREMENT: codegen_emit_op(codegen, OP_INCREMENT); break;
+        case UN_PRE_DECREMENT: codegen_emit_op(codegen, OP_DECREMENT); break;
+        case UN_POST_INCREMENT:
+            // For post-increment, we need to duplicate the value first
+            codegen_emit_op(codegen, OP_DUP);
+            codegen_emit_op(codegen, OP_INCREMENT);
+            codegen_emit_op(codegen, OP_POP);  // Pop the incremented value, leaving original
+            break;
+        case UN_POST_DECREMENT:
+            // For post-decrement, we need to duplicate the value first
+            codegen_emit_op(codegen, OP_DUP);
+            codegen_emit_op(codegen, OP_DECREMENT);
+            codegen_emit_op(codegen, OP_POP);  // Pop the decremented value, leaving original
+            break;
     }
 }
 
