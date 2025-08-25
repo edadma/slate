@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 // Debug info functions
 debug_info* debug_info_create(const char* source_code) {
@@ -454,7 +455,38 @@ void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node) {
     }
 }
 
+// Helper function to check if an AST node represents an l-value
+bool is_lvalue(ast_node* node) {
+    if (!node) return false;
+    
+    switch (node->type) {
+        case AST_IDENTIFIER:
+            // Variables are l-values (when variables are implemented)
+            return true;
+        case AST_INDEX:
+            // Array/object indexing is an l-value (e.g., arr[0]++)
+            return true;
+        case AST_MEMBER:
+            // Object member access is an l-value (e.g., obj.prop++)
+            return true;
+        default:
+            // Literals, expressions, etc. are not l-values
+            return false;
+    }
+}
+
 void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
+    // Check if increment/decrement operators are applied to l-values
+    if (node->op == UN_PRE_INCREMENT || node->op == UN_PRE_DECREMENT ||
+        node->op == UN_POST_INCREMENT || node->op == UN_POST_DECREMENT) {
+        if (!is_lvalue(node->operand)) {
+            printf("Compile error: %s operator can only be applied to l-values (variables, array elements, object properties)\n",
+                   (node->op == UN_PRE_INCREMENT || node->op == UN_POST_INCREMENT) ? "Increment" : "Decrement");
+            codegen->had_error = 1;
+            return;
+        }
+    }
+    
     // Generate operand
     codegen_emit_expression(codegen, node->operand);
     

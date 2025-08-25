@@ -266,7 +266,7 @@ void test_shift_precedence_and_combinations(void) {
 
     result = run_code("16 >> 1 + 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(8, result.as.int32);  // 16 >> (1 + 1) = 16 >> 2 = 4... wait, let me check precedence
+    TEST_ASSERT_EQUAL_INT32(4, result.as.int32);  // 16 >> (1 + 1) = 16 >> 2 = 4 (shifts have lower precedence than addition)
 
     // Let's test with explicit parentheses to be sure
     result = run_code("(16 >> 1) + 1");

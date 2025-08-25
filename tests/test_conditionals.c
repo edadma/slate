@@ -335,8 +335,8 @@ void test_comments(void) {
     value_t result;
 
     // Line comments
-    result = run_conditional_test("// This is a comment\n"
-                                  "if true then 42 // inline comment");
+    result = run_conditional_test("\\ This is a comment\n"
+                                  "if true then 42 \\ inline comment");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
@@ -349,7 +349,7 @@ void test_comments(void) {
 
     // Comments in indented blocks
     result = run_conditional_test("if true\n"
-                                  "    // Comment in block\n"
+                                  "    \\ Comment in block\n"
                                   "    var x = 10\n"
                                   "    /* Another comment */\n"
                                   "    x * 2");
@@ -363,7 +363,7 @@ void test_edge_cases(void) {
 
     // Empty if block (should be null)
     result = run_conditional_test("if true\n"
-                                  "    // Empty block\n");
+                                  "    \\ Empty block\n");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
 
     // Multiple nested empty blocks

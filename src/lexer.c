@@ -153,12 +153,7 @@ static void skip_whitespace(lexer_t* lexer) {
                 }
                 break;
             case '/':
-                if (peek_next(lexer) == '/') {
-                    // C++-style line comment - skip until end of line
-                    while (peek(lexer) != '\n' && !is_at_end(lexer)) {
-                        advance(lexer);
-                    }
-                } else if (peek_next(lexer) == '*') {
+                if (peek_next(lexer) == '*') {
                     // Block comment - skip until */
                     advance(lexer); // Skip '/'
                     advance(lexer); // Skip '*'
