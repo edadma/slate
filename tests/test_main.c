@@ -28,8 +28,8 @@ int main(void) {
     test_conditionals_suite();
     test_while_loops_suite();
     test_builtins_suite();
-    test_integers_suite(); // TESTING - does this cause segfault?
-    // test_arithmetic_suite(); // COMMENTED OUT - testing for segfault
+    test_integers_suite();
+    // test_arithmetic_suite();
     
     return UNITY_END();
 }
