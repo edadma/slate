@@ -298,6 +298,15 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             }
             break;
         }
+        
+        case AST_COMPOUND_ASSIGNMENT: {
+            ast_compound_assignment* comp_assign = (ast_compound_assignment*)expr;
+            
+            // For compound assignments in expressions, we emit the same logic as statements
+            codegen_emit_compound_assignment(codegen, comp_assign);
+            
+            break;
+        }
 
         case AST_IF:
             codegen_emit_if(codegen, (ast_if*)expr);
@@ -344,6 +353,10 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             
         case AST_ASSIGNMENT:
             codegen_emit_assignment(codegen, (ast_assignment*)stmt);
+            break;
+            
+        case AST_COMPOUND_ASSIGNMENT:
+            codegen_emit_compound_assignment(codegen, (ast_compound_assignment*)stmt);
             break;
             
         default:
@@ -505,6 +518,44 @@ void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node) {
     } else {
         codegen_error(codegen, "Only variable assignments are currently supported");
     }
+}
+
+void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignment* node) {
+    // For now, only handle simple variable compound assignments
+    if (node->target->type != AST_IDENTIFIER) {
+        codegen_error(codegen, "Only variable compound assignments are currently supported");
+        return;
+    }
+    
+    ast_identifier* var = (ast_identifier*)node->target;
+    size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
+    
+    // Get the current value of the variable
+    chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
+    codegen_emit_op_operand(codegen, OP_GET_GLOBAL, (uint16_t)constant);
+    
+    // Generate code for the right-hand side value
+    codegen_emit_expression(codegen, node->value);
+    
+    // Emit the appropriate binary operation
+    switch (node->op) {
+        case BIN_ADD:      codegen_emit_op(codegen, OP_ADD); break;
+        case BIN_SUBTRACT: codegen_emit_op(codegen, OP_SUBTRACT); break;
+        case BIN_MULTIPLY: codegen_emit_op(codegen, OP_MULTIPLY); break;
+        case BIN_DIVIDE:   codegen_emit_op(codegen, OP_DIVIDE); break;
+        case BIN_MOD:      codegen_emit_op(codegen, OP_MOD); break;
+        case BIN_POWER:    codegen_emit_op(codegen, OP_POWER); break;
+        default:
+            codegen_error(codegen, "Unsupported compound assignment operation");
+            return;
+    }
+    
+    // Duplicate the result for expression contexts
+    codegen_emit_op(codegen, OP_DUP);
+    
+    // Store the result back to the variable
+    chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
+    codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
 }
 
 void codegen_emit_expression_stmt(codegen_t* codegen, ast_expression_stmt* node) {

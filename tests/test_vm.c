@@ -726,6 +726,53 @@ void test_vm_array_concatenation(void) {
     vm_release(result);
 }
 
+// Test compound assignment operators
+void test_vm_compound_assignments(void) {
+    value_t result;
+    
+    // Test += with integers
+    result = run_code("var x = 10; x += 5; x");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(15, result.as.int32);
+    vm_release(result);
+    
+    // Test -= with integers  
+    result = run_code("var y = 20; y -= 8; y");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(12, result.as.int32);
+    vm_release(result);
+    
+    // Test *= with integers
+    result = run_code("var z = 4; z *= 3; z");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(12, result.as.int32);
+    vm_release(result);
+    
+    // Test /= with integers (should result in float)
+    result = run_code("var w = 15; w /= 3; w");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    vm_release(result);
+    
+    // Test %= with integers
+    result = run_code("var m = 17; m %= 5; m");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
+    vm_release(result);
+    
+    // Test **= with integers (power always returns float)
+    result = run_code("var p = 3; p **= 2; p");
+    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(9.0, result.as.number);
+    vm_release(result);
+    
+    // Test chained compound assignments
+    result = run_code("var chain = 2; chain *= 3; chain += 1; chain");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(7, result.as.int32);
+    vm_release(result);
+}
+
 // Test suite runner
 void test_vm_suite(void)
 {
@@ -750,5 +797,6 @@ void test_vm_suite(void)
     RUN_TEST(test_vm_undefined_string_concatenation);
     RUN_TEST(test_vm_comments);
     RUN_TEST(test_vm_array_concatenation);
+    RUN_TEST(test_vm_compound_assignments);
     // Conditional and block tests moved to test_conditionals.c
 }

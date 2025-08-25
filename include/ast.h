@@ -38,6 +38,7 @@ typedef enum {
     // Statements
     AST_VAR_DECLARATION,
     AST_ASSIGNMENT,
+    AST_COMPOUND_ASSIGNMENT,
     AST_IF,
     AST_WHILE,
     AST_RETURN,
@@ -194,6 +195,14 @@ typedef struct {
     ast_node* value;
 } ast_assignment;
 
+// Compound assignment node  
+typedef struct {
+    ast_node base;
+    ast_node* target;       // Identifier, member access, or index access
+    ast_node* value;        // Right-hand side expression
+    binary_operator op;     // The operation to perform (ADD, SUBTRACT, etc.)
+} ast_compound_assignment;
+
 // If statement node
 typedef struct {
     ast_node base;
@@ -257,6 +266,7 @@ ast_object_literal* ast_create_object_literal(object_property* properties, size_
 
 ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int line, int column);
 ast_assignment* ast_create_assignment(ast_node* target, ast_node* value, int line, int column);
+ast_compound_assignment* ast_create_compound_assignment(ast_node* target, ast_node* value, binary_operator op, int line, int column);
 
 ast_if* ast_create_if(ast_node* condition, ast_node* then_stmt, ast_node* else_stmt, int line, int column);
 ast_while* ast_create_while(ast_node* condition, ast_node* body, int line, int column);

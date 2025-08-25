@@ -168,6 +168,101 @@ void test_parser_undefined_assignment_restrictions(void) {
     lexer_cleanup(&lexer);
 }
 
+// Test parsing compound assignments
+void test_parser_compound_assignments(void) {
+    ast_node* node;
+    lexer_t lexer;
+    parser_t parser;
+    
+    // Test += operator
+    lexer_init(&lexer, "x += 5");
+    parser_init(&parser, &lexer);
+    node = parse_expression(&parser);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_FALSE(parser.had_error);
+    TEST_ASSERT_EQUAL_INT(AST_COMPOUND_ASSIGNMENT, node->type);
+    
+    ast_compound_assignment* comp_assign = (ast_compound_assignment*)node;
+    TEST_ASSERT_EQUAL_INT(BIN_ADD, comp_assign->op);
+    TEST_ASSERT_NOT_NULL(comp_assign->target);
+    TEST_ASSERT_EQUAL_INT(AST_IDENTIFIER, comp_assign->target->type);
+    TEST_ASSERT_NOT_NULL(comp_assign->value);
+    TEST_ASSERT_EQUAL_INT(AST_INTEGER, comp_assign->value->type);
+    
+    ast_free(node);
+    lexer_cleanup(&lexer);
+    
+    // Test -= operator
+    lexer_init(&lexer, "y -= 3");
+    parser_init(&parser, &lexer);
+    node = parse_expression(&parser);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_FALSE(parser.had_error);
+    TEST_ASSERT_EQUAL_INT(AST_COMPOUND_ASSIGNMENT, node->type);
+    
+    comp_assign = (ast_compound_assignment*)node;
+    TEST_ASSERT_EQUAL_INT(BIN_SUBTRACT, comp_assign->op);
+    
+    ast_free(node);
+    lexer_cleanup(&lexer);
+    
+    // Test *= operator
+    lexer_init(&lexer, "z *= 2");
+    parser_init(&parser, &lexer);
+    node = parse_expression(&parser);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_FALSE(parser.had_error);
+    TEST_ASSERT_EQUAL_INT(AST_COMPOUND_ASSIGNMENT, node->type);
+    
+    comp_assign = (ast_compound_assignment*)node;
+    TEST_ASSERT_EQUAL_INT(BIN_MULTIPLY, comp_assign->op);
+    
+    ast_free(node);
+    lexer_cleanup(&lexer);
+    
+    // Test /= operator
+    lexer_init(&lexer, "w /= 4");
+    parser_init(&parser, &lexer);
+    node = parse_expression(&parser);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_FALSE(parser.had_error);
+    TEST_ASSERT_EQUAL_INT(AST_COMPOUND_ASSIGNMENT, node->type);
+    
+    comp_assign = (ast_compound_assignment*)node;
+    TEST_ASSERT_EQUAL_INT(BIN_DIVIDE, comp_assign->op);
+    
+    ast_free(node);
+    lexer_cleanup(&lexer);
+    
+    // Test %= operator
+    lexer_init(&lexer, "m %= 3");
+    parser_init(&parser, &lexer);
+    node = parse_expression(&parser);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_FALSE(parser.had_error);
+    TEST_ASSERT_EQUAL_INT(AST_COMPOUND_ASSIGNMENT, node->type);
+    
+    comp_assign = (ast_compound_assignment*)node;
+    TEST_ASSERT_EQUAL_INT(BIN_MOD, comp_assign->op);
+    
+    ast_free(node);
+    lexer_cleanup(&lexer);
+    
+    // Test **= operator
+    lexer_init(&lexer, "p **= 2");
+    parser_init(&parser, &lexer);
+    node = parse_expression(&parser);
+    TEST_ASSERT_NOT_NULL(node);
+    TEST_ASSERT_FALSE(parser.had_error);
+    TEST_ASSERT_EQUAL_INT(AST_COMPOUND_ASSIGNMENT, node->type);
+    
+    comp_assign = (ast_compound_assignment*)node;
+    TEST_ASSERT_EQUAL_INT(BIN_POWER, comp_assign->op);
+    
+    ast_free(node);
+    lexer_cleanup(&lexer);
+}
+
 // Test suite runner
 void test_parser_suite(void) {
     RUN_TEST(test_parser_numbers);
@@ -179,4 +274,5 @@ void test_parser_suite(void) {
     RUN_TEST(test_parser_undefined);
     RUN_TEST(test_parser_parentheses);
     RUN_TEST(test_parser_undefined_assignment_restrictions);
+    RUN_TEST(test_parser_compound_assignments);
 }

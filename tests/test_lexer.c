@@ -149,6 +149,34 @@ void test_lexer_identifiers(void) {
     TEST_ASSERT_EQUAL_INT(TOKEN_IDENTIFIER, token.type);
 }
 
+// Test lexing compound assignment operators
+void test_lexer_compound_assignments(void) {
+    lexer_t lexer;
+    token_t token;
+    
+    lexer_init(&lexer, "+= -= *= /= %= **=");
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_PLUS_ASSIGN, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_MINUS_ASSIGN, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_MULT_ASSIGN, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_DIV_ASSIGN, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_MOD_ASSIGN, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_POWER_ASSIGN, token.type);
+    
+    lexer_cleanup(&lexer);
+}
+
 // Test suite runner
 void test_lexer_suite(void) {
     RUN_TEST(test_lexer_numbers);
@@ -156,4 +184,5 @@ void test_lexer_suite(void) {
     RUN_TEST(test_lexer_operators);
     RUN_TEST(test_lexer_keywords);
     RUN_TEST(test_lexer_identifiers);
+    RUN_TEST(test_lexer_compound_assignments);
 }

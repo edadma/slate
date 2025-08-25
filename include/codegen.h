@@ -77,6 +77,7 @@ void codegen_emit_object(codegen_t* codegen, ast_object_literal* node);
 // Statement code generation
 void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node);
 void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node);
+void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignment* node);
 void codegen_emit_expression_stmt(codegen_t* codegen, ast_expression_stmt* node);
 void codegen_emit_block(codegen_t* codegen, ast_block* node);
 void codegen_emit_block_expression(codegen_t* codegen, ast_block* node);

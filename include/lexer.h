@@ -37,6 +37,12 @@ typedef enum {
     TOKEN_MOD,           // mod
     TOKEN_POWER,         // **
     TOKEN_ASSIGN,        // =
+    TOKEN_PLUS_ASSIGN,   // +=
+    TOKEN_MINUS_ASSIGN,  // -=
+    TOKEN_MULT_ASSIGN,   // *=
+    TOKEN_DIV_ASSIGN,    // /=
+    TOKEN_MOD_ASSIGN,    // %=
+    TOKEN_POWER_ASSIGN,  // **=
     TOKEN_EQUAL,         // ==
     TOKEN_NOT_EQUAL,     // !=
     TOKEN_LESS,          // <

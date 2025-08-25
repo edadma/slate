@@ -502,6 +502,33 @@ ast_node* parse_assignment(parser_t* parser) {
                                                parser->previous.line, parser->previous.column);
     }
     
+    // Handle compound assignments
+    if (parser_check(parser, TOKEN_PLUS_ASSIGN) || parser_check(parser, TOKEN_MINUS_ASSIGN) ||
+        parser_check(parser, TOKEN_MULT_ASSIGN) || parser_check(parser, TOKEN_DIV_ASSIGN) ||
+        parser_check(parser, TOKEN_MOD_ASSIGN) || parser_check(parser, TOKEN_POWER_ASSIGN)) {
+        
+        token_t op_token = parser->current;
+        parser_advance(parser);  // consume the compound assignment operator
+        ast_node* value = parse_assignment(parser);
+        
+        // Map compound assignment tokens to binary operators
+        binary_operator binary_op;
+        switch (op_token.type) {
+            case TOKEN_PLUS_ASSIGN:  binary_op = BIN_ADD; break;
+            case TOKEN_MINUS_ASSIGN: binary_op = BIN_SUBTRACT; break;
+            case TOKEN_MULT_ASSIGN:  binary_op = BIN_MULTIPLY; break;
+            case TOKEN_DIV_ASSIGN:   binary_op = BIN_DIVIDE; break;
+            case TOKEN_MOD_ASSIGN:   binary_op = BIN_MOD; break;
+            case TOKEN_POWER_ASSIGN: binary_op = BIN_POWER; break;
+            default: 
+                parser_error_at(parser, &op_token, "Unknown compound assignment operator");
+                return expr;
+        }
+        
+        return (ast_node*)ast_create_compound_assignment(expr, value, binary_op,
+                                                        op_token.line, op_token.column);
+    }
+    
     return expr;
 }
 

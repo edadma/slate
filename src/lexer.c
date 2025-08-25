@@ -372,14 +372,21 @@ token_t lexer_next_token(lexer_t* lexer) {
         case ',': return make_token(lexer, TOKEN_COMMA);
         case ':': return make_token(lexer, TOKEN_COLON);
         case '.': return make_token(lexer, TOKEN_DOT);
-        case '+': return make_token(lexer, TOKEN_PLUS);
+        case '+': 
+            return make_token(lexer, match(lexer, '=') ? TOKEN_PLUS_ASSIGN : TOKEN_PLUS);
         case '*': 
             if (peek(lexer) == '*') {
                 advance(lexer);
+                if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_POWER_ASSIGN);
+                }
                 return make_token(lexer, TOKEN_POWER);
             }
-            return make_token(lexer, TOKEN_MULTIPLY);
-        case '/': return make_token(lexer, TOKEN_DIVIDE);
+            return make_token(lexer, match(lexer, '=') ? TOKEN_MULT_ASSIGN : TOKEN_MULTIPLY);
+        case '/': 
+            return make_token(lexer, match(lexer, '=') ? TOKEN_DIV_ASSIGN : TOKEN_DIVIDE);
+        case '%': 
+            return make_token(lexer, match(lexer, '=') ? TOKEN_MOD_ASSIGN : TOKEN_MOD);
         case '\n': 
             // Only track line starts when not inside braces
             if (lexer->brace_depth == 0) {
@@ -391,7 +398,7 @@ token_t lexer_next_token(lexer_t* lexer) {
             if (match(lexer, '>')) {
                 return make_token(lexer, TOKEN_ARROW);
             }
-            return make_token(lexer, TOKEN_MINUS);
+            return make_token(lexer, match(lexer, '=') ? TOKEN_MINUS_ASSIGN : TOKEN_MINUS);
             
         case '!':
             return make_token(lexer, match(lexer, '=') ? TOKEN_NOT_EQUAL : TOKEN_LOGICAL_NOT);
@@ -454,6 +461,12 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_MOD: return "MOD";
         case TOKEN_POWER: return "POWER";
         case TOKEN_ASSIGN: return "ASSIGN";
+        case TOKEN_PLUS_ASSIGN: return "PLUS_ASSIGN";
+        case TOKEN_MINUS_ASSIGN: return "MINUS_ASSIGN";
+        case TOKEN_MULT_ASSIGN: return "MULT_ASSIGN";
+        case TOKEN_DIV_ASSIGN: return "DIV_ASSIGN";
+        case TOKEN_MOD_ASSIGN: return "MOD_ASSIGN";
+        case TOKEN_POWER_ASSIGN: return "POWER_ASSIGN";
         case TOKEN_EQUAL: return "EQUAL";
         case TOKEN_NOT_EQUAL: return "NOT_EQUAL";
         case TOKEN_LESS: return "LESS";

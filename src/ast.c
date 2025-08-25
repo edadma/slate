@@ -230,6 +230,20 @@ ast_assignment* ast_create_assignment(ast_node* target, ast_node* value, int lin
     return node;
 }
 
+ast_compound_assignment* ast_create_compound_assignment(ast_node* target, ast_node* value, binary_operator op, int line, int column) {
+    ast_compound_assignment* node = malloc(sizeof(ast_compound_assignment));
+    if (!node) return NULL;
+    
+    node->base.type = AST_COMPOUND_ASSIGNMENT;
+    node->base.line = line;
+    node->base.column = column;
+    node->target = target;
+    node->value = value;
+    node->op = op;
+    
+    return node;
+}
+
 ast_if* ast_create_if(ast_node* condition, ast_node* then_stmt, ast_node* else_stmt, int line, int column) {
     ast_if* node = malloc(sizeof(ast_if));
     if (!node) return NULL;
@@ -412,6 +426,13 @@ void ast_free(ast_node* node) {
             break;
         }
         
+        case AST_COMPOUND_ASSIGNMENT: {
+            ast_compound_assignment* comp_assign_node = (ast_compound_assignment*)node;
+            ast_free(comp_assign_node->target);
+            ast_free(comp_assign_node->value);
+            break;
+        }
+        
         case AST_IF: {
             ast_if* if_node = (ast_if*)node;
             ast_free(if_node->condition);
@@ -481,6 +502,7 @@ const char* ast_node_type_name(ast_node_type type) {
         case AST_OBJECT_LITERAL: return "OBJECT_LITERAL";
         case AST_VAR_DECLARATION: return "VAR_DECLARATION";
         case AST_ASSIGNMENT: return "ASSIGNMENT";
+        case AST_COMPOUND_ASSIGNMENT: return "COMPOUND_ASSIGNMENT";
         case AST_IF: return "IF";
         case AST_WHILE: return "WHILE";
         case AST_RETURN: return "RETURN";
@@ -615,6 +637,15 @@ void ast_print(ast_node* node, int indent) {
             ast_expression_stmt* expr_stmt = (ast_expression_stmt*)node;
             printf("\n");
             ast_print(expr_stmt->expression, indent + 1);
+            break;
+        }
+        
+        case AST_COMPOUND_ASSIGNMENT: {
+            ast_compound_assignment* comp_assign_node = (ast_compound_assignment*)node;
+            const char* op_names[] = {"+", "-", "*", "/", "mod", "**"};
+            printf(": %s=\n", (comp_assign_node->op < 6) ? op_names[comp_assign_node->op] : "?");
+            ast_print(comp_assign_node->target, indent + 1);
+            ast_print(comp_assign_node->value, indent + 1);
             break;
         }
         
