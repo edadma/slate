@@ -38,6 +38,5 @@ value_t builtin_tan(bitty_vm* vm, int arg_count, value_t* args);
 
 // Helper functions
 void register_builtin(bitty_vm* vm, const char* name, builtin_func_t func, int min_args, int max_args);
-value_t call_builtin(bitty_vm* vm, const char* name, int arg_count, value_t* args);
 
 #endif // BITTY_BUILTINS_H

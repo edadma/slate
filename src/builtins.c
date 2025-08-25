@@ -17,43 +17,6 @@ void register_builtin(bitty_vm* vm, const char* name, builtin_func_t func, int m
     do_set(vm->globals, name, &builtin_val, sizeof(value_t));
 }
 
-// Call a built-in function by name
-value_t call_builtin(bitty_vm* vm, const char* name, int arg_count, value_t* args) {
-    // For now, dispatch manually to the functions
-    // In a full implementation, this would look up the function from globals
-    
-    if (strcmp(name, "print") == 0) {
-        return builtin_print(vm, arg_count, args);
-    } else if (strcmp(name, "type") == 0) {
-        return builtin_type(vm, arg_count, args);
-    } else if (strcmp(name, "abs") == 0) {
-        return builtin_abs(vm, arg_count, args);
-    } else if (strcmp(name, "sqrt") == 0) {
-        return builtin_sqrt(vm, arg_count, args);
-    } else if (strcmp(name, "floor") == 0) {
-        return builtin_floor(vm, arg_count, args);
-    } else if (strcmp(name, "ceil") == 0) {
-        return builtin_ceil(vm, arg_count, args);
-    } else if (strcmp(name, "round") == 0) {
-        return builtin_round(vm, arg_count, args);
-    } else if (strcmp(name, "min") == 0) {
-        return builtin_min(vm, arg_count, args);
-    } else if (strcmp(name, "max") == 0) {
-        return builtin_max(vm, arg_count, args);
-    } else if (strcmp(name, "random") == 0) {
-        return builtin_random(vm, arg_count, args);
-    } else if (strcmp(name, "sin") == 0) {
-        return builtin_sin(vm, arg_count, args);
-    } else if (strcmp(name, "cos") == 0) {
-        return builtin_cos(vm, arg_count, args);
-    } else if (strcmp(name, "tan") == 0) {
-        return builtin_tan(vm, arg_count, args);
-    }
-    
-    // Unknown function
-    printf("Runtime error: Unknown function '%s'\n", name);
-    return make_null();
-}
 
 // Initialize all built-in functions
 void builtins_init(bitty_vm* vm) {
