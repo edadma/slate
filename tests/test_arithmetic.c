@@ -27,18 +27,17 @@ static value_t execute_expression(const char* source) {
     vm_result result = vm_execute(vm, function);
     TEST_ASSERT_EQUAL(VM_OK, result);
 
-    // Retain the result before destroying the VM to avoid use-after-free
-    value_t ret_value = vm_retain(vm->result);
+    // Copy the result (simple copy for int32, retain for reference-counted types)
+    value_t ret_value = vm->result;
+    if (ret_value.type == VAL_BIGINT) {
+        ret_value.as.bigint = db_retain(ret_value.as.bigint);
+    }
 
-    // Clear vm->result so vm_destroy doesn't double-release it
-    vm->result = make_undefined();
-
-    // Cleanup
+    // Cleanup (function already destroyed by VM during OP_HALT)
     vm_destroy(vm);
     codegen_destroy(codegen);
     ast_free((ast_node*)program);
     lexer_cleanup(&lexer);
-    function_destroy(function);
 
     return ret_value;
 }
@@ -50,23 +49,23 @@ void test_basic_int32_arithmetic() {
     TEST_ASSERT_EQUAL_INT32(300, result.as.int32);
     vm_release(result);
 
-    // // int32 multiplication
-    // result = execute_expression("50 * 20");
-    // TEST_ASSERT_EQUAL(VAL_INT32, result.type);
-    // TEST_ASSERT_EQUAL_INT32(1000, result.as.int32);
-    // vm_release(result);
-    //
-    // // int32 subtraction
-    // result = execute_expression("1000 - 250");
-    // TEST_ASSERT_EQUAL(VAL_INT32, result.type);
-    // TEST_ASSERT_EQUAL_INT32(750, result.as.int32);
-    // vm_release(result);
-    //
-    // // int32 modulo
-    // result = execute_expression("17 mod 5");
-    // TEST_ASSERT_EQUAL(VAL_INT32, result.type);
-    // TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
-    // vm_release(result);
+    // int32 multiplication
+    result = execute_expression("50 * 20");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1000, result.as.int32);
+    vm_release(result);
+
+    // int32 subtraction
+    result = execute_expression("1000 - 250");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(750, result.as.int32);
+    vm_release(result);
+
+    // int32 modulo
+    result = execute_expression("17 mod 5");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
+    vm_release(result);
 }
 
 void test_int32_division_always_float() {
@@ -191,11 +190,11 @@ void test_zero_division_errors() {
 // Test suite function for integration with main test runner
 void test_arithmetic_suite(void) {
     RUN_TEST(test_basic_int32_arithmetic);
-    // RUN_TEST(test_int32_division_always_float);
-    // RUN_TEST(test_int32_overflow_promotion);
-    // RUN_TEST(test_mixed_int_float_arithmetic);
-    // RUN_TEST(test_operator_precedence_with_integers);
-    // RUN_TEST(test_unary_arithmetic);
-    // RUN_TEST(test_unary_minus_overflow);
-    // RUN_TEST(test_large_arithmetic);
+    RUN_TEST(test_int32_division_always_float);
+    RUN_TEST(test_int32_overflow_promotion);
+    RUN_TEST(test_mixed_int_float_arithmetic);
+    RUN_TEST(test_operator_precedence_with_integers);
+    RUN_TEST(test_unary_arithmetic);
+    RUN_TEST(test_unary_minus_overflow);
+    RUN_TEST(test_large_arithmetic);
 }

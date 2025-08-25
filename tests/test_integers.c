@@ -35,12 +35,11 @@ static value_t execute_expression(const char* source) {
         ret_value.as.bigint = db_retain(ret_value.as.bigint);
     }
     
-    // Cleanup
+    // Cleanup (function already destroyed by VM during OP_HALT)
     vm_destroy(vm);
     codegen_destroy(codegen);
     ast_free((ast_node*)program);
     lexer_cleanup(&lexer);
-    function_destroy(function);
     
     return ret_value;
 }
