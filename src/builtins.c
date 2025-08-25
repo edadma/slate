@@ -42,6 +42,12 @@ value_t call_builtin(bitty_vm* vm, const char* name, int arg_count, value_t* arg
         return builtin_max(vm, arg_count, args);
     } else if (strcmp(name, "random") == 0) {
         return builtin_random(vm, arg_count, args);
+    } else if (strcmp(name, "sin") == 0) {
+        return builtin_sin(vm, arg_count, args);
+    } else if (strcmp(name, "cos") == 0) {
+        return builtin_cos(vm, arg_count, args);
+    } else if (strcmp(name, "tan") == 0) {
+        return builtin_tan(vm, arg_count, args);
     }
     
     // Unknown function
@@ -68,6 +74,9 @@ void builtins_init(bitty_vm* vm) {
     register_builtin(vm, "min", builtin_min, 2, 2);
     register_builtin(vm, "max", builtin_max, 2, 2);
     register_builtin(vm, "random", builtin_random, 0, 0);
+    register_builtin(vm, "sin", builtin_sin, 1, 1);
+    register_builtin(vm, "cos", builtin_cos, 1, 1);
+    register_builtin(vm, "tan", builtin_tan, 1, 1);
 }
 
 // Built-in function implementations
@@ -404,4 +413,79 @@ value_t builtin_random(bitty_vm* vm, int arg_count, value_t* args) {
     }
     
     return make_number((double)rand() / RAND_MAX);
+}
+
+// sin(number) - Sine function (radians)
+value_t builtin_sin(bitty_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        printf("Runtime error: sin() takes exactly 1 argument (%d given)\n", arg_count);
+        return make_null();
+    }
+    
+    value_t arg = args[0];
+    
+    // Convert to double for sin calculation
+    double val;
+    if (arg.type == VAL_INT32) {
+        val = (double)arg.as.int32;
+    } else if (arg.type == VAL_BIGINT) {
+        val = db_to_double(arg.as.bigint);
+    } else if (arg.type == VAL_NUMBER) {
+        val = arg.as.number;
+    } else {
+        printf("Runtime error: sin() requires a number argument\n");
+        return make_null();
+    }
+    
+    return make_number(sin(val));
+}
+
+// cos(number) - Cosine function (radians)
+value_t builtin_cos(bitty_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        printf("Runtime error: cos() takes exactly 1 argument (%d given)\n", arg_count);
+        return make_null();
+    }
+    
+    value_t arg = args[0];
+    
+    // Convert to double for cos calculation
+    double val;
+    if (arg.type == VAL_INT32) {
+        val = (double)arg.as.int32;
+    } else if (arg.type == VAL_BIGINT) {
+        val = db_to_double(arg.as.bigint);
+    } else if (arg.type == VAL_NUMBER) {
+        val = arg.as.number;
+    } else {
+        printf("Runtime error: cos() requires a number argument\n");
+        return make_null();
+    }
+    
+    return make_number(cos(val));
+}
+
+// tan(number) - Tangent function (radians)
+value_t builtin_tan(bitty_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        printf("Runtime error: tan() takes exactly 1 argument (%d given)\n", arg_count);
+        return make_null();
+    }
+    
+    value_t arg = args[0];
+    
+    // Convert to double for tan calculation
+    double val;
+    if (arg.type == VAL_INT32) {
+        val = (double)arg.as.int32;
+    } else if (arg.type == VAL_BIGINT) {
+        val = db_to_double(arg.as.bigint);
+    } else if (arg.type == VAL_NUMBER) {
+        val = arg.as.number;
+    } else {
+        printf("Runtime error: tan() requires a number argument\n");
+        return make_null();
+    }
+    
+    return make_number(tan(val));
 }

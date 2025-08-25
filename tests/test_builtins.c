@@ -213,6 +213,59 @@ void test_builtin_random(void) {
     vm_release(result);
 }
 
+// Test sin function
+void test_builtin_sin_zero(void) {
+    value_t result = interpret_expression("sin(0)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_sin_pi_half(void) {
+    value_t result = interpret_expression("sin(3.14159265359/2)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.0, result.as.number);
+    vm_release(result);
+}
+
+// Test cos function
+void test_builtin_cos_zero(void) {
+    value_t result = interpret_expression("cos(0)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_cos_pi(void) {
+    value_t result = interpret_expression("cos(3.14159265359)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -1.0, result.as.number);
+    vm_release(result);
+}
+
+// Test tan function
+void test_builtin_tan_zero(void) {
+    value_t result = interpret_expression("tan(0)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_tan_pi_quarter(void) {
+    value_t result = interpret_expression("tan(3.14159265359/4)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.0, result.as.number);
+    vm_release(result);
+}
+
+// Test trig functions with integer arguments
+void test_builtin_sin_integer(void) {
+    value_t result = interpret_expression("sin(1)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.841471, result.as.number);
+    vm_release(result);
+}
+
 // Test suite function
 void test_builtins_suite(void) {
     RUN_TEST(test_builtin_print);
@@ -237,4 +290,11 @@ void test_builtins_suite(void) {
     RUN_TEST(test_builtin_max);
     RUN_TEST(test_builtin_max_negative);
     RUN_TEST(test_builtin_random);
+    RUN_TEST(test_builtin_sin_zero);
+    RUN_TEST(test_builtin_sin_pi_half);
+    RUN_TEST(test_builtin_cos_zero);
+    RUN_TEST(test_builtin_cos_pi);
+    RUN_TEST(test_builtin_tan_zero);
+    RUN_TEST(test_builtin_tan_pi_quarter);
+    RUN_TEST(test_builtin_sin_integer);
 }

@@ -31,6 +31,11 @@ value_t builtin_min(bitty_vm* vm, int arg_count, value_t* args);
 value_t builtin_max(bitty_vm* vm, int arg_count, value_t* args);
 value_t builtin_random(bitty_vm* vm, int arg_count, value_t* args);
 
+// Trigonometric functions
+value_t builtin_sin(bitty_vm* vm, int arg_count, value_t* args);
+value_t builtin_cos(bitty_vm* vm, int arg_count, value_t* args);
+value_t builtin_tan(bitty_vm* vm, int arg_count, value_t* args);
+
 // Helper functions
 void register_builtin(bitty_vm* vm, const char* name, builtin_func_t func, int min_args, int max_args);
 value_t call_builtin(bitty_vm* vm, const char* name, int arg_count, value_t* args);
