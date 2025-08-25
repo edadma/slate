@@ -85,7 +85,7 @@ void test_if_then_with_conditions(void) {
     result = run_conditional_test("if true || false then 3 else 4");
     TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
     TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
-    
+
     // Logical conditions with keyword operators
     result = run_conditional_test("if true and false then 1 else 2");
     TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
@@ -357,8 +357,6 @@ void test_comments(void) {
     TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number);
 }
 
-
-
 // Test edge cases and error conditions
 void test_edge_cases(void) {
     value_t result;
@@ -548,128 +546,128 @@ void test_comprehensive_syntax_variations(void) {
 // Test logical operators comprehensively
 void test_logical_operators(void) {
     value_t result;
-    
+
     // === LOGICAL AND (&&, and) ===
-    
+
     // Both symbolic and keyword forms with booleans
     result = run_conditional_test("true && true");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     result = run_conditional_test("true and false");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
-    
+
     result = run_conditional_test("false && true");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
-    
+
     result = run_conditional_test("false and false");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
-    
+
     // AND with different value types (returns first falsy or last value)
     result = run_conditional_test("5 && \"hello\"");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
     TEST_ASSERT_EQUAL_STRING("hello", result.as.string);
     vm_release(result);
-    
+
     result = run_conditional_test("0 and 42");
     TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
     TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
-    
+
     result = run_conditional_test("null && \"never reached\"");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
-    
+
     // === LOGICAL OR (||, or) ===
-    
+
     // Both symbolic and keyword forms with booleans
     result = run_conditional_test("true || false");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     result = run_conditional_test("false or true");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     result = run_conditional_test("true || true");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     result = run_conditional_test("false or false");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
-    
+
     // OR with different value types (returns first truthy or last value)
     result = run_conditional_test("0 || \"fallback\"");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
     TEST_ASSERT_EQUAL_STRING("fallback", result.as.string);
     vm_release(result);
-    
+
     result = run_conditional_test("42 or \"never reached\"");
     TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
     TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
-    
+
     result = run_conditional_test("\"\" || null");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
-    
+
     // === LOGICAL NOT (!, not) ===
-    
+
     // Both symbolic and keyword forms
     result = run_conditional_test("!true");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
-    
+
     result = run_conditional_test("not false");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     // NOT with different value types
     result = run_conditional_test("!42");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
-    
+
     result = run_conditional_test("not 0");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     result = run_conditional_test("!\"hello\"");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
-    
+
     result = run_conditional_test("not \"\"");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     result = run_conditional_test("!null");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     result = run_conditional_test("not undefined");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     // === COMPLEX COMBINATIONS ===
-    
+
     // Mixed operators and precedence
     result = run_conditional_test("true and false or true");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     result = run_conditional_test("not false && true");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
-    
+
     result = run_conditional_test("!(true or false)");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
-    
+
     // With numbers and strings
     result = run_conditional_test("5 > 3 && \"yes\" || \"no\"");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
     TEST_ASSERT_EQUAL_STRING("yes", result.as.string);
     vm_release(result);
-    
+
     result = run_conditional_test("0 or null or \"default\"");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
     TEST_ASSERT_EQUAL_STRING("default", result.as.string);
