@@ -93,6 +93,8 @@ value_t vm_retain(value_t value) {
         value.as.array = da_retain(value.as.array);  
     } else if (value.type == VAL_OBJECT) {
         value.as.object = do_retain(value.as.object);
+    } else if (value.type == VAL_BIGINT) {
+        value.as.bigint = db_retain(value.as.bigint);
     }
     return value;
 }
@@ -104,6 +106,8 @@ void vm_release(value_t value) {
         da_release(&value.as.array);
     } else if (value.type == VAL_OBJECT) {
         do_release(&value.as.object);
+    } else if (value.type == VAL_BIGINT) {
+        db_release(&value.as.bigint);
     }
 }
 
@@ -141,6 +145,22 @@ value_t make_boolean(int val) {
     value_t value;
     value.type = VAL_BOOLEAN;
     value.as.boolean = val;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_int32(int32_t val) {
+    value_t value;
+    value.type = VAL_INT32;
+    value.as.int32 = val;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_bigint(db_bigint big) {
+    value_t value;
+    value.type = VAL_BIGINT;
+    value.as.bigint = big;
     value.debug = NULL;
     return value;
 }
@@ -228,6 +248,18 @@ value_t make_boolean_with_debug(int val, debug_location* debug) {
     return value;
 }
 
+value_t make_int32_with_debug(int32_t val, debug_location* debug) {
+    value_t value = make_int32(val);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_bigint_with_debug(db_bigint big, debug_location* debug) {
+    value_t value = make_bigint(big);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
 value_t make_number_with_debug(double val, debug_location* debug) {
     value_t value = make_number(val);
     value.debug = debug_location_copy(debug);
@@ -285,6 +317,10 @@ int is_falsy(value_t value) {
         return 1;
     case VAL_BOOLEAN:
         return !value.as.boolean;
+    case VAL_INT32:
+        return value.as.int32 == 0;
+    case VAL_BIGINT:
+        return db_is_zero(value.as.bigint);
     case VAL_NUMBER:
         return value.as.number == 0.0;
     case VAL_STRING:
@@ -295,6 +331,28 @@ int is_falsy(value_t value) {
 }
 
 int values_equal(value_t a, value_t b) {
+    // Handle cross-type numeric comparisons
+    if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+        (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+        // Convert to common type for comparison
+        if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+            return a.as.int32 == b.as.int32;
+        } else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
+            return db_equal(a.as.bigint, b.as.bigint);
+        } else if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
+            return a.as.number == b.as.number;
+        }
+        // Cross-type comparisons - convert to common type
+        // For now, convert to double for simplicity
+        double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                       (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                       a.as.number;
+        double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                       (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                       b.as.number;
+        return a_val == b_val;
+    }
+    
     if (a.type != b.type)
         return 0;
 
@@ -305,8 +363,6 @@ int values_equal(value_t a, value_t b) {
         return 1;
     case VAL_BOOLEAN:
         return a.as.boolean == b.as.boolean;
-    case VAL_NUMBER:
-        return a.as.number == b.as.number;
     case VAL_STRING:
         if (a.as.string == NULL && b.as.string == NULL)
             return 1;
@@ -339,6 +395,19 @@ void print_value(value_t value) {
     case VAL_BOOLEAN:
         printf(value.as.boolean ? "true" : "false");
         break;
+    case VAL_INT32:
+        printf("%d", value.as.int32);
+        break;
+    case VAL_BIGINT: {
+        char* str = db_to_string(value.as.bigint, 10);
+        if (str) {
+            printf("%s", str);
+            free(str);
+        } else {
+            printf("<bigint>");
+        }
+        break;
+    }
     case VAL_NUMBER:
         printf("%.6g", value.as.number);
         break;
@@ -692,6 +761,10 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
                 if (a.type == VAL_STRING) {
                     str_a = ds_retain(a.as.string);
+                } else if (a.type == VAL_INT32) {
+                    char buffer[32];
+                    snprintf(buffer, sizeof(buffer), "%d", a.as.int32);
+                    str_a = ds_new(buffer);
                 } else if (a.type == VAL_NUMBER) {
                     char buffer[32];
                     snprintf(buffer, sizeof(buffer), "%.6g", a.as.number);
@@ -706,6 +779,10 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
                 if (b.type == VAL_STRING) {
                     str_b = ds_retain(b.as.string);
+                } else if (b.type == VAL_INT32) {
+                    char buffer[32];
+                    snprintf(buffer, sizeof(buffer), "%d", b.as.int32);
+                    str_b = ds_new(buffer);
                 } else if (b.type == VAL_NUMBER) {
                     char buffer[32];
                     snprintf(buffer, sizeof(buffer), "%.6g", b.as.number);
@@ -749,9 +826,47 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 
                 vm_push(vm, make_array_with_debug(result_array, a.debug));
             }
-            // Numeric addition (if both operands are numbers)  
-            else if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_number_with_debug(a.as.number + b.as.number, a.debug));
+            // Numeric addition - handle all numeric type combinations
+            else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                     (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                
+                // int32 + int32 with overflow detection
+                if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                    int32_t result;
+                    if (db_add_overflow_int32(a.as.int32, b.as.int32, &result)) {
+                        vm_push(vm, make_int32_with_debug(result, a.debug));
+                    } else {
+                        // Overflow - promote to BigInt
+                        int64_t big_result = (int64_t)a.as.int32 + (int64_t)b.as.int32;
+                        db_bigint big = db_from_int64(big_result);
+                        vm_push(vm, make_bigint_with_debug(big, a.debug));
+                    }
+                }
+                // BigInt + BigInt
+                else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
+                    db_bigint result = db_add(a.as.bigint, b.as.bigint);
+                    vm_push(vm, make_bigint_with_debug(result, a.debug));
+                }
+                // int32 + BigInt
+                else if (a.type == VAL_INT32 && b.type == VAL_BIGINT) {
+                    db_bigint result = db_add_int32(b.as.bigint, a.as.int32);
+                    vm_push(vm, make_bigint_with_debug(result, a.debug));
+                }
+                // BigInt + int32
+                else if (a.type == VAL_BIGINT && b.type == VAL_INT32) {
+                    db_bigint result = db_add_int32(a.as.bigint, b.as.int32);
+                    vm_push(vm, make_bigint_with_debug(result, a.debug));
+                }
+                // Mixed with floating point - convert to double
+                else {
+                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                                   (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                                   a.as.number;
+                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                                   (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                                   b.as.number;
+                    vm_push(vm, make_number_with_debug(a_val + b_val, a.debug));
+                }
             }
             else {
                 // Find the first non-numeric operand for error location
@@ -781,14 +896,41 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_SUBTRACT: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_number_with_debug(a.as.number - b.as.number, a.debug));
+            
+            // Handle all numeric type combinations
+            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                
+                // int32 - int32 with overflow detection
+                if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                    int32_t result;
+                    if (db_subtract_overflow_int32(a.as.int32, b.as.int32, &result)) {
+                        vm_push(vm, make_int32_with_debug(result, a.debug));
+                    } else {
+                        // Overflow - promote to BigInt
+                        int64_t big_result = (int64_t)a.as.int32 - (int64_t)b.as.int32;
+                        db_bigint big = db_from_int64(big_result);
+                        vm_push(vm, make_bigint_with_debug(big, a.debug));
+                    }
+                }
+                // Mixed with floating point - convert to double
+                else {
+                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                                   (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                                   a.as.number;
+                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                                   (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                                   b.as.number;
+                    vm_push(vm, make_number_with_debug(a_val - b_val, a.debug));
+                }
             } else {
                 // For subtraction, determine which operand is problematic
                 debug_location* error_debug = NULL;
-                if (a.type != VAL_NUMBER && b.type == VAL_NUMBER) {
+                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) && 
+                    (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
                     error_debug = a.debug;  // Left operand is problematic
-                } else if (a.type == VAL_NUMBER && b.type != VAL_NUMBER) {
+                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) && 
+                          (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
                     error_debug = b.debug;  // Right operand is problematic
                 } else {
                     error_debug = a.debug;  // Both problematic, use left
@@ -809,14 +951,57 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_MULTIPLY: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_number_with_debug(a.as.number * b.as.number, a.debug));
-            } else {
-                // For multiplication, determine which operand is problematic
+            
+            // Handle all numeric type combinations
+            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                
+                // int32 * int32 with overflow detection
+                if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                    int32_t result;
+                    if (db_multiply_overflow_int32(a.as.int32, b.as.int32, &result)) {
+                        vm_push(vm, make_int32_with_debug(result, a.debug));
+                    } else {
+                        // Overflow - promote to BigInt
+                        int64_t big_result = (int64_t)a.as.int32 * (int64_t)b.as.int32;
+                        db_bigint big = db_from_int64(big_result);
+                        vm_push(vm, make_bigint_with_debug(big, a.debug));
+                    }
+                }
+                // BigInt * BigInt
+                else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
+                    db_bigint result = db_multiply(a.as.bigint, b.as.bigint);
+                    vm_push(vm, make_bigint_with_debug(result, a.debug));
+                }
+                // int32 * BigInt
+                else if (a.type == VAL_INT32 && b.type == VAL_BIGINT) {
+                    db_bigint result = db_multiply_int32(b.as.bigint, a.as.int32);
+                    vm_push(vm, make_bigint_with_debug(result, a.debug));
+                }
+                // BigInt * int32
+                else if (a.type == VAL_BIGINT && b.type == VAL_INT32) {
+                    db_bigint result = db_multiply_int32(a.as.bigint, b.as.int32);
+                    vm_push(vm, make_bigint_with_debug(result, a.debug));
+                }
+                // Mixed with floating point - convert to double
+                else {
+                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                                   (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                                   a.as.number;
+                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                                   (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                                   b.as.number;
+                    vm_push(vm, make_number_with_debug(a_val * b_val, a.debug));
+                }
+            }
+            else {
+                // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if (a.type != VAL_NUMBER && b.type == VAL_NUMBER) {
+                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) && 
+                    (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
                     error_debug = a.debug;  // Left operand is problematic
-                } else if (a.type == VAL_NUMBER && b.type != VAL_NUMBER) {
+                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) && 
+                          (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
                     error_debug = b.debug;  // Right operand is problematic
                 } else {
                     error_debug = a.debug;  // Both problematic, use left
@@ -837,22 +1022,44 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_DIVIDE: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                if (b.as.number == 0) {
-                    vm_runtime_error_with_values(vm, "Division by zero", &a, &b, NULL);
+            
+            // Handle all numeric type combinations
+            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                
+                // Check for division by zero
+                bool is_zero = false;
+                if (b.type == VAL_INT32 && b.as.int32 == 0) is_zero = true;
+                else if (b.type == VAL_BIGINT && db_is_zero(b.as.bigint)) is_zero = true;
+                else if (b.type == VAL_NUMBER && b.as.number == 0) is_zero = true;
+                
+                if (is_zero) {
+                    vm_runtime_error_with_values(vm, "Division by zero", &a, &b, b.debug);
                     vm_release(a);
                     vm_release(b);
                     vm->frame_count--;
                     closure_destroy(closure);
                     return VM_RUNTIME_ERROR;
                 }
-                vm_push(vm, make_number_with_debug(a.as.number / b.as.number, a.debug));
-            } else {
-                // For division, determine which operand is problematic
+                
+                // Division always produces floating point result for simplicity
+                // (matches Python 3 behavior: 5 / 2 = 2.5)
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                               a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                               b.as.number;
+                vm_push(vm, make_number_with_debug(a_val / b_val, a.debug));
+            }
+            else {
+                // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if (a.type != VAL_NUMBER && b.type == VAL_NUMBER) {
+                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) && 
+                    (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
                     error_debug = a.debug;  // Left operand is problematic
-                } else if (a.type == VAL_NUMBER && b.type != VAL_NUMBER) {
+                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) && 
+                          (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
                     error_debug = b.debug;  // Right operand is problematic
                 } else {
                     error_debug = a.debug;  // Both problematic, use left
@@ -873,23 +1080,69 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_MOD: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                if (b.as.number == 0) {
-                    vm_runtime_error_with_values(vm, "Modulo by zero", &a, &b, NULL);
+            
+            // Handle all numeric type combinations
+            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                
+                // Check for modulo by zero
+                bool is_zero = false;
+                if (b.type == VAL_INT32 && b.as.int32 == 0) is_zero = true;
+                else if (b.type == VAL_BIGINT && db_is_zero(b.as.bigint)) is_zero = true;
+                else if (b.type == VAL_NUMBER && b.as.number == 0) is_zero = true;
+                
+                if (is_zero) {
+                    vm_runtime_error_with_values(vm, "Modulo by zero", &a, &b, b.debug);
                     vm_release(a);
                     vm_release(b);
                     vm->frame_count--;
                     closure_destroy(closure);
                     return VM_RUNTIME_ERROR;
                 }
-                // Use fmod for floating point modulo
-                vm_push(vm, make_number_with_debug(fmod(a.as.number, b.as.number), a.debug));
-            } else {
-                // For modulo, determine which operand is problematic
+                
+                // int32 % int32
+                if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                    // No overflow possible with modulo
+                    vm_push(vm, make_int32_with_debug(a.as.int32 % b.as.int32, a.debug));
+                }
+                // BigInt % BigInt
+                else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
+                    db_bigint result = db_mod(a.as.bigint, b.as.bigint);
+                    vm_push(vm, make_bigint_with_debug(result, a.debug));
+                }
+                // int32 % BigInt
+                else if (a.type == VAL_INT32 && b.type == VAL_BIGINT) {
+                    db_bigint a_big = db_from_int32(a.as.int32);
+                    db_bigint result = db_mod(a_big, b.as.bigint);
+                    db_release(&a_big);
+                    vm_push(vm, make_bigint_with_debug(result, a.debug));
+                }
+                // BigInt % int32
+                else if (a.type == VAL_BIGINT && b.type == VAL_INT32) {
+                    db_bigint b_big = db_from_int32(b.as.int32);
+                    db_bigint result = db_mod(a.as.bigint, b_big);
+                    db_release(&b_big);
+                    vm_push(vm, make_bigint_with_debug(result, a.debug));
+                }
+                // Mixed with floating point - use fmod
+                else {
+                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                                   (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                                   a.as.number;
+                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                                   (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                                   b.as.number;
+                    vm_push(vm, make_number_with_debug(fmod(a_val, b_val), a.debug));
+                }
+            }
+            else {
+                // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if (a.type != VAL_NUMBER && b.type == VAL_NUMBER) {
+                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) && 
+                    (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
                     error_debug = a.debug;  // Left operand is problematic
-                } else if (a.type == VAL_NUMBER && b.type != VAL_NUMBER) {
+                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) && 
+                          (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
                     error_debug = b.debug;  // Right operand is problematic
                 } else {
                     error_debug = a.debug;  // Both problematic, use left
@@ -910,14 +1163,28 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_POWER: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_number_with_debug(pow(a.as.number, b.as.number), a.debug));
+            
+            // Handle all numeric type combinations for power operations
+            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                
+                // Convert to double for power calculation (always returns float)
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                               a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                               b.as.number;
+                               
+                vm_push(vm, make_number_with_debug(pow(a_val, b_val), a.debug));
             } else {
-                // For power, determine which operand is problematic
+                // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if (a.type != VAL_NUMBER && b.type == VAL_NUMBER) {
+                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) && 
+                    (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
                     error_debug = a.debug;  // Left operand is problematic
-                } else if (a.type == VAL_NUMBER && b.type != VAL_NUMBER) {
+                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) && 
+                          (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
                     error_debug = b.debug;  // Right operand is problematic
                 } else {
                     error_debug = a.debug;  // Both problematic, use left
@@ -937,7 +1204,19 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
         case OP_NEGATE: {
             value_t a = vm_pop(vm);
-            if (a.type == VAL_NUMBER) {
+            if (a.type == VAL_INT32) {
+                // Check for int32 overflow on negation
+                if (a.as.int32 == INT32_MIN) {
+                    // INT32_MIN negation overflows - promote to BigInt
+                    db_bigint big = db_from_int64(-((int64_t)INT32_MIN));
+                    vm_push(vm, make_bigint_with_debug(big, a.debug));
+                } else {
+                    vm_push(vm, make_int32_with_debug(-a.as.int32, a.debug));
+                }
+            } else if (a.type == VAL_BIGINT) {
+                db_bigint negated = db_negate(a.as.bigint);
+                vm_push(vm, make_bigint_with_debug(negated, a.debug));
+            } else if (a.type == VAL_NUMBER) {
                 vm_push(vm, make_number_with_debug(-a.as.number, a.debug));
             } else {
                 vm_runtime_error_with_values(vm, "Cannot negate %s", &a, NULL, NULL);
@@ -981,8 +1260,20 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_LESS: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_boolean(a.as.number < b.as.number));
+            
+            // Handle all numeric type combinations for comparison
+            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                
+                // Convert both to double for comparison (simple but works)
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                               a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                               b.as.number;
+                               
+                vm_push(vm, make_boolean(a_val < b_val));
             } else {
                 vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
                 vm_release(a);
@@ -999,8 +1290,20 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_LESS_EQUAL: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_boolean(a.as.number <= b.as.number));
+            
+            // Handle all numeric type combinations for comparison
+            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                
+                // Convert both to double for comparison (simple but works)
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                               a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                               b.as.number;
+                               
+                vm_push(vm, make_boolean(a_val <= b_val));
             } else {
                 vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
                 vm_release(a);
@@ -1017,8 +1320,20 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_GREATER: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_boolean(a.as.number > b.as.number));
+            
+            // Handle all numeric type combinations for comparison
+            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                
+                // Convert both to double for comparison (simple but works)
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                               a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                               b.as.number;
+                               
+                vm_push(vm, make_boolean(a_val > b_val));
             } else {
                 vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
                 vm_release(a);
@@ -1035,8 +1350,20 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_GREATER_EQUAL: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-                vm_push(vm, make_boolean(a.as.number >= b.as.number));
+            
+            // Handle all numeric type combinations for comparison
+            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                
+                // Convert both to double for comparison (simple but works)
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
+                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                               a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
+                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                               b.as.number;
+                               
+                vm_push(vm, make_boolean(a_val >= b_val));
             } else {
                 vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
                 vm_release(a);
@@ -1272,15 +1599,15 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                     return VM_RUNTIME_ERROR;
                 }
                 value_t index = args[0];
-                if (index.type != VAL_NUMBER) {
-                    printf("Runtime error: Array index must be a number\n");
+                if (index.type != VAL_INT32) {
+                    printf("Runtime error: Array index must be an integer\n");
                     if (args)
                         free(args);
                     vm->frame_count--;
                     closure_destroy(closure);
                     return VM_RUNTIME_ERROR;
                 }
-                int idx = (int)index.as.number;
+                int idx = index.as.int32;
                 // Check bounds - out of bounds is an error
                 if (idx < 0 || idx >= da_length(callable.as.array)) {
                     printf("Runtime error: Array index %d out of bounds (length: %d)\n", idx,
@@ -1307,15 +1634,15 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                     return VM_RUNTIME_ERROR;
                 }
                 value_t index = args[0];
-                if (index.type != VAL_NUMBER) {
-                    printf("Runtime error: String index must be a number\n");
+                if (index.type != VAL_INT32) {
+                    printf("Runtime error: String index must be an integer\n");
                     if (args)
                         free(args);
                     vm->frame_count--;
                     closure_destroy(closure);
                     return VM_RUNTIME_ERROR;
                 }
-                int idx = (int)index.as.number;
+                int idx = index.as.int32;
                 ds_string str = callable.as.string;
                 if (idx < 0 || idx >= (int)ds_length(str)) {
                     printf("Runtime error: String index %d out of bounds (length: %d)\n", idx, (int)ds_length(str));
@@ -1509,14 +1836,14 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
             if (object.type == VAL_ARRAY) {
                 if (strcmp(prop_name, "length") == 0) {
-                    vm_push(vm, make_number((double)da_length(object.as.array)));
+                    vm_push(vm, make_int32((int32_t)da_length(object.as.array)));
                 } else {
                     // Invalid property returns undefined, not error
                     vm_push(vm, make_undefined());
                 }
             } else if (object.type == VAL_STRING) {
                 if (strcmp(prop_name, "length") == 0) {
-                    vm_push(vm, make_number((double)ds_length(object.as.string)));
+                    vm_push(vm, make_int32((int32_t)ds_length(object.as.string)));
                 } else {
                     // Invalid property returns undefined, not error
                     vm_push(vm, make_undefined());
@@ -1790,6 +2117,8 @@ const char* value_type_name(value_type type) {
         case VAL_NULL: return "null";
         case VAL_UNDEFINED: return "undefined";
         case VAL_BOOLEAN: return "boolean";
+        case VAL_INT32: return "int32";
+        case VAL_BIGINT: return "bigint";
         case VAL_NUMBER: return "number";
         case VAL_STRING: return "string";
         case VAL_ARRAY: return "array";

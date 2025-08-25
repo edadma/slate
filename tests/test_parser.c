@@ -22,11 +22,13 @@ ast_node* parse_expression_helper(const char* source) {
 void test_parser_numbers(void) {
     ast_node* node;
     
+    // Integer literal should parse as AST_INTEGER
     node = parse_expression_helper("42");
     TEST_ASSERT_NOT_NULL(node);
-    TEST_ASSERT_EQUAL_INT(AST_NUMBER, node->type);
+    TEST_ASSERT_EQUAL_INT(AST_INTEGER, node->type);
     ast_free(node);
     
+    // Float literal should parse as AST_NUMBER
     node = parse_expression_helper("3.14");
     TEST_ASSERT_NOT_NULL(node);
     TEST_ASSERT_EQUAL_INT(AST_NUMBER, node->type);

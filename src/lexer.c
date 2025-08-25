@@ -218,12 +218,15 @@ static token_t string_token(lexer_t* lexer) {
 }
 
 static token_t number_token(lexer_t* lexer) {
+    int is_float = 0;
+    
     while (is_digit(peek(lexer))) {
         advance(lexer);
     }
     
     // Look for decimal point
     if (peek(lexer) == '.' && is_digit(peek_next(lexer))) {
+        is_float = 1;
         // Consume the '.'
         advance(lexer);
         
@@ -232,7 +235,24 @@ static token_t number_token(lexer_t* lexer) {
         }
     }
     
-    return make_token(lexer, TOKEN_NUMBER);
+    // Look for exponent notation (e.g., 1e10, 2.5e-3)
+    if ((peek(lexer) == 'e' || peek(lexer) == 'E')) {
+        char next = peek_next(lexer);
+        if (is_digit(next) || (next == '+' || next == '-')) {
+            is_float = 1;
+            advance(lexer); // Consume 'e' or 'E'
+            
+            if (peek(lexer) == '+' || peek(lexer) == '-') {
+                advance(lexer); // Consume sign
+            }
+            
+            while (is_digit(peek(lexer))) {
+                advance(lexer);
+            }
+        }
+    }
+    
+    return make_token(lexer, is_float ? TOKEN_NUMBER : TOKEN_INTEGER);
 }
 
 static token_t identifier_token(lexer_t* lexer) {
@@ -407,6 +427,7 @@ token_t lexer_next_token(lexer_t* lexer) {
 
 const char* token_type_name(token_type_t type) {
     switch (type) {
+        case TOKEN_INTEGER: return "INTEGER";
         case TOKEN_NUMBER: return "NUMBER";
         case TOKEN_STRING: return "STRING";
         case TOKEN_IDENTIFIER: return "IDENTIFIER";

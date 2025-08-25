@@ -49,9 +49,16 @@ void test_builtin_print(void) {
     vm_release(result);
 }
 
-// Test type function
+// Test type function for numeric types
 void test_builtin_type_number(void) {
+    // Test int32 type
     value_t result = interpret_expression("type(42)");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("int32", result.as.string);
+    vm_release(result);
+    
+    // Test number (float) type
+    result = interpret_expression("type(3.14)");
     TEST_ASSERT_EQUAL(VAL_STRING, result.type);
     TEST_ASSERT_EQUAL_STRING("number", result.as.string);
     vm_release(result);
@@ -81,22 +88,22 @@ void test_builtin_type_null(void) {
 // Test abs function
 void test_builtin_abs_positive(void) {
     value_t result = interpret_expression("abs(5)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
     vm_release(result);
 }
 
 void test_builtin_abs_negative(void) {
     value_t result = interpret_expression("abs(-5)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
     vm_release(result);
 }
 
 void test_builtin_abs_zero(void) {
     value_t result = interpret_expression("abs(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
     vm_release(result);
 }
 
@@ -118,82 +125,82 @@ void test_builtin_sqrt_zero(void) {
 // Test floor function
 void test_builtin_floor(void) {
     value_t result = interpret_expression("floor(3.7)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
     vm_release(result);
 }
 
 void test_builtin_floor_negative(void) {
     value_t result = interpret_expression("floor(-3.7)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(-4.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-4, result.as.int32);
     vm_release(result);
 }
 
 // Test ceil function
 void test_builtin_ceil(void) {
     value_t result = interpret_expression("ceil(3.2)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(4.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(4, result.as.int32);
     vm_release(result);
 }
 
 void test_builtin_ceil_negative(void) {
     value_t result = interpret_expression("ceil(-3.2)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(-3.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-3, result.as.int32);
     vm_release(result);
 }
 
 // Test round function
 void test_builtin_round_up(void) {
     value_t result = interpret_expression("round(3.6)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(4.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(4, result.as.int32);
     vm_release(result);
 }
 
 void test_builtin_round_down(void) {
     value_t result = interpret_expression("round(3.4)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
     vm_release(result);
 }
 
 void test_builtin_round_half(void) {
     value_t result = interpret_expression("round(3.5)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(4.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(4, result.as.int32);
     vm_release(result);
 }
 
 // Test min function
 void test_builtin_min(void) {
     value_t result = interpret_expression("min(3, 7)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
     vm_release(result);
 }
 
 void test_builtin_min_negative(void) {
     value_t result = interpret_expression("min(-5, -2)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(-5.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-5, result.as.int32);
     vm_release(result);
 }
 
 // Test max function
 void test_builtin_max(void) {
     value_t result = interpret_expression("max(3, 7)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(7.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(7, result.as.int32);
     vm_release(result);
 }
 
 void test_builtin_max_negative(void) {
     value_t result = interpret_expression("max(-5, -2)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(-2.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-2, result.as.int32);
     vm_release(result);
 }
 

@@ -196,6 +196,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
     if (!expr) return;
     
     switch (expr->type) {
+        case AST_INTEGER:
+            codegen_emit_integer(codegen, (ast_integer*)expr);
+            break;
+            
         case AST_NUMBER:
             codegen_emit_number(codegen, (ast_number*)expr);
             break;
@@ -349,6 +353,14 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
 }
 
 // Literal emission functions
+void codegen_emit_integer(codegen_t* codegen, ast_integer* node) {
+    // Emit debug location before pushing the value
+    codegen_emit_debug_location(codegen, (ast_node*)node);
+    
+    size_t constant = chunk_add_constant(codegen->chunk, make_int32(node->value));
+    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)constant);
+}
+
 void codegen_emit_number(codegen_t* codegen, ast_number* node) {
     // Emit debug location before pushing the value
     codegen_emit_debug_location(codegen, (ast_node*)node);

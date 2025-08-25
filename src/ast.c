@@ -14,6 +14,18 @@ static char* strdup_safe(const char* str) {
 }
 
 // AST creation functions
+ast_integer* ast_create_integer(int32_t value, int line, int column) {
+    ast_integer* node = malloc(sizeof(ast_integer));
+    if (!node) return NULL;
+    
+    node->base.type = AST_INTEGER;
+    node->base.line = line;
+    node->base.column = column;
+    node->value = value;
+    
+    return node;
+}
+
 ast_number* ast_create_number(double value, int line, int column) {
     ast_number* node = malloc(sizeof(ast_number));
     if (!node) return NULL;
@@ -300,6 +312,7 @@ void ast_free(ast_node* node) {
     if (!node) return;
     
     switch (node->type) {
+        case AST_INTEGER:
         case AST_NUMBER:
         case AST_BOOLEAN:
         case AST_NULL:
@@ -451,6 +464,7 @@ void ast_free(ast_node* node) {
 // AST node type name function
 const char* ast_node_type_name(ast_node_type type) {
     switch (type) {
+        case AST_INTEGER: return "INTEGER";
         case AST_NUMBER: return "NUMBER";
         case AST_STRING: return "STRING";
         case AST_BOOLEAN: return "BOOLEAN";
@@ -495,6 +509,12 @@ void ast_print(ast_node* node, int indent) {
     printf("%s", ast_node_type_name(node->type));
     
     switch (node->type) {
+        case AST_INTEGER: {
+            ast_integer* int_node = (ast_integer*)node;
+            printf(": %d\n", int_node->value);
+            break;
+        }
+        
         case AST_NUMBER: {
             ast_number* num_node = (ast_number*)node;
             printf(": %.6g\n", num_node->value);

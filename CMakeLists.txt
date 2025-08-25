@@ -50,6 +50,8 @@ if(BUILD_TESTS)
         tests/test_conditionals.c
         tests/test_while_loops.c
         tests/test_builtins.c
+        tests/test_integers.c
+        tests/test_arithmetic.c
         src/lexer.c
         src/parser.c
         src/ast.c

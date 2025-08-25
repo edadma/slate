@@ -11,7 +11,8 @@ typedef struct bit_object bit_object;
 // AST Node types
 typedef enum {
     // Literals
-    AST_NUMBER,
+    AST_INTEGER,     // 32-bit integer literal
+    AST_NUMBER,      // Floating point literal
     AST_STRING,
     AST_BOOLEAN,
     AST_NULL,
@@ -79,6 +80,11 @@ typedef struct ast_node {
 } ast_node;
 
 // Literal nodes
+typedef struct {
+    ast_node base;
+    int32_t value;
+} ast_integer;
+
 typedef struct {
     ast_node base;
     double value;
@@ -230,6 +236,7 @@ typedef struct {
 } ast_program;
 
 // AST creation functions
+ast_integer* ast_create_integer(int32_t value, int line, int column);
 ast_number* ast_create_number(double value, int line, int column);
 ast_string* ast_create_string(const char* value, int line, int column);
 ast_boolean* ast_create_boolean(int value, int line, int column);

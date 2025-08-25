@@ -6,7 +6,8 @@
 // Token types for the Bitty language
 typedef enum {
     // Literals
-    TOKEN_NUMBER,        // 123, 3.14
+    TOKEN_INTEGER,       // 123 (no decimal point)
+    TOKEN_NUMBER,        // 3.14 (floating point)
     TOKEN_STRING,        // "hello"
     TOKEN_IDENTIFIER,    // variable names
     TOKEN_TRUE,          // true

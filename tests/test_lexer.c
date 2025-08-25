@@ -8,17 +8,21 @@ void test_lexer_numbers(void) {
     lexer_t lexer;
     token_t token;
     
-    lexer_init(&lexer, "42 3.14 0");
+    lexer_init(&lexer, "42 3.14 0 1e5");
     
-    // Test integer
+    // Test integer (should be TOKEN_INTEGER now)
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_INTEGER, token.type);
+    
+    // Test float (should be TOKEN_NUMBER)
     token = lexer_next_token(&lexer);
     TEST_ASSERT_EQUAL_INT(TOKEN_NUMBER, token.type);
     
-    // Test float
+    // Test zero integer (should be TOKEN_INTEGER)
     token = lexer_next_token(&lexer);
-    TEST_ASSERT_EQUAL_INT(TOKEN_NUMBER, token.type);
+    TEST_ASSERT_EQUAL_INT(TOKEN_INTEGER, token.type);
     
-    // Test zero
+    // Test scientific notation (should be TOKEN_NUMBER)
     token = lexer_next_token(&lexer);
     TEST_ASSERT_EQUAL_INT(TOKEN_NUMBER, token.type);
     

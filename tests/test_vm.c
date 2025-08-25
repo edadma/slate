@@ -50,53 +50,53 @@ void test_vm_arithmetic(void)
     value_t result;
 
     result = run_code("42");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     result = run_code("2 + 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
 
     result = run_code("10 - 4");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(6.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(6, result.as.int32);
 
     result = run_code("3 * 7");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(21.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(21, result.as.int32);
 
     result = run_code("15 / 3");
     TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
     TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
 
     result = run_code("2 + 3 * 4");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(14.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(14, result.as.int32);
 
     result = run_code("(2 + 3) * 4");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(20, result.as.int32);
 
     // Test modulo operations
     result = run_code("10 mod 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
 
     result = run_code("7 mod 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
 
     result = run_code("100 mod 7");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 
     result = run_code("5 mod 5");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 
     result = run_code("4 mod 5");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(4.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(4, result.as.int32);
 
     // Test floating point modulo
     result = run_code("15.5 mod 4.2");
@@ -105,17 +105,17 @@ void test_vm_arithmetic(void)
 
     // Test modulo precedence (same as multiply/divide)
     result = run_code("10 + 7 mod 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(11.0, result.as.number); // 10 + (7 mod 3) = 10 + 1 = 11
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(11, result.as.int32); // 10 + (7 mod 3) = 10 + 1 = 11
 
     // Test mixed operator precedence with modulo
     result = run_code("2 * 5 mod 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number); // (2 * 5) mod 3 = 10 mod 3 = 1
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32); // (2 * 5) mod 3 = 10 mod 3 = 1
 
     result = run_code("15 mod 4 + 1");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(4.0, result.as.number); // (15 mod 4) + 1 = 3 + 1 = 4
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(4, result.as.int32); // (15 mod 4) + 1 = 3 + 1 = 4
 
     // Test power operator
     result = run_code("2 ** 3");
@@ -156,16 +156,16 @@ void test_vm_unary(void)
     value_t result;
 
     result = run_code("-42");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(-42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-42, result.as.int32);
 
     result = run_code("3 + -4");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(-1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-1, result.as.int32);
 
     result = run_code("-(-5)");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
 }
 
 // Test string operations
@@ -441,8 +441,8 @@ void test_vm_arrays_edge_cases(void)
 
     // Empty array length
     result = run_code("[].length");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 
     // Out of bounds access should be error (returns null on error)
     result = run_code("[1, 2, 3](10)");
@@ -460,8 +460,8 @@ void test_vm_arrays_edge_cases(void)
 
     // Nested array access
     result = run_code("[[1, 2], [3, 4]](0)(1)");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 }
 
 // Test string indexing edge cases
@@ -550,23 +550,23 @@ void test_vm_complex_expressions(void)
 
     // Array operations in expressions
     result = run_code("[1, 2, 3].length + 5");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(8.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(8, result.as.int32);
 
     // String operations in expressions
     result = run_code("\"hello\".length * 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(10.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(10, result.as.int32);
 
     // Array indexing in expressions
     result = run_code("[10, 20, 30](1) + 5");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(25.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(25, result.as.int32);
 
     // Complex nested operations
     result = run_code("([1, 2, 3].length * 2) + [4, 5](1)");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(11.0, result.as.number); // (3 * 2) + 5 = 11
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(11, result.as.int32); // (3 * 2) + 5 = 11
 }
 
 // Test property access edge cases
@@ -586,8 +586,8 @@ void test_vm_property_access_edge_cases(void)
 
     // Empty string length
     result = run_code("\"\".length");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 
     // Null property access
     result = run_code("null.length");
@@ -651,18 +651,18 @@ void test_vm_comments(void) {
 
     // Backslash comment
     result = run_code("42 \\\\ This is a comment");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     // Simple expression with comment at end
     result = run_code("5 * 5 \\\\ End with comment");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(25.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(25, result.as.int32);
 
     // Simple addition test (comments consume rest of line)  
     result = run_code("1 + 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
 }
 
 // Test array concatenation
@@ -676,10 +676,10 @@ void test_vm_array_concatenation(void) {
     
     value_t* elem0 = (value_t*)da_get(result.as.array, 0);
     value_t* elem1 = (value_t*)da_get(result.as.array, 1);
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, elem0->type);
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, elem1->type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, elem0->as.number);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, elem1->as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, elem0->type);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, elem1->type);
+    TEST_ASSERT_EQUAL_INT32(1, elem0->as.int32);
+    TEST_ASSERT_EQUAL_INT32(2, elem1->as.int32);
     
     vm_release(result);
 
@@ -690,8 +690,8 @@ void test_vm_array_concatenation(void) {
     
     for (int i = 0; i < 5; i++) {
         value_t* elem = (value_t*)da_get(result.as.array, i);
-        TEST_ASSERT_EQUAL_INT(VAL_NUMBER, elem->type);
-        TEST_ASSERT_EQUAL_DOUBLE((double)(i + 1), elem->as.number);
+        TEST_ASSERT_EQUAL_INT(VAL_INT32, elem->type);
+        TEST_ASSERT_EQUAL_INT32(i + 1, elem->as.int32);
     }
     
     vm_release(result);
@@ -703,8 +703,8 @@ void test_vm_array_concatenation(void) {
     
     value_t* elem_a = (value_t*)da_get(result.as.array, 0);
     value_t* elem_b = (value_t*)da_get(result.as.array, 1);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, elem_a->as.number);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, elem_b->as.number);
+    TEST_ASSERT_EQUAL_INT32(1, elem_a->as.int32);
+    TEST_ASSERT_EQUAL_INT32(2, elem_b->as.int32);
     
     vm_release(result);
 
@@ -718,7 +718,7 @@ void test_vm_array_concatenation(void) {
     value_t* e2 = (value_t*)da_get(result.as.array, 2);
     value_t* e3 = (value_t*)da_get(result.as.array, 3);
     
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, e0->type);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, e0->type);
     TEST_ASSERT_EQUAL_INT(VAL_STRING, e1->type);
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, e2->type);
     TEST_ASSERT_EQUAL_INT(VAL_NULL, e3->type);

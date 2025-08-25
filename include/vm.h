@@ -10,6 +10,7 @@
 // Include dynamic library headers directly
 #include "/home/ed/CLionProjects/dynamic_array.h/dynamic_array.h"
 #include "/home/ed/CLionProjects/dynamic_object.h/dynamic_object.h"
+#include "/home/ed/CLionProjects/dynamic_bigint.h/dynamic_bigint.h"
 
 // Forward declarations
 typedef struct value value_t;
@@ -100,7 +101,9 @@ typedef enum
     VAL_NULL,
     VAL_UNDEFINED,
     VAL_BOOLEAN,
-    VAL_NUMBER,
+    VAL_INT32,     // 32-bit integer (MCU-friendly default)
+    VAL_BIGINT,    // Arbitrary precision integer
+    VAL_NUMBER,    // Floating point (double)
     VAL_STRING,
     VAL_ARRAY,
     VAL_OBJECT,
@@ -116,7 +119,9 @@ typedef struct value
     union
     {
         int boolean;
-        double number;
+        int32_t int32;    // 32-bit integer (direct storage)
+        db_bigint bigint; // Arbitrary precision integer (ref-counted)
+        double number;    // Floating point
         ds_string string; // Using dynamic_string.h!
         da_array array; // Using dynamic_array.h!
         do_object object; // Using dynamic_object.h!
@@ -231,6 +236,8 @@ value_t vm_peek(bitty_vm* vm, int distance);
 value_t make_null(void);
 value_t make_undefined(void);
 value_t make_boolean(int value);
+value_t make_int32(int32_t value);
+value_t make_bigint(db_bigint big);
 value_t make_number(double value);
 value_t make_string(const char* value);
 value_t make_array(da_array array);
@@ -243,6 +250,8 @@ value_t make_builtin(void* builtin_func);
 value_t make_null_with_debug(debug_location* debug);
 value_t make_undefined_with_debug(debug_location* debug);
 value_t make_boolean_with_debug(int value, debug_location* debug);
+value_t make_int32_with_debug(int32_t value, debug_location* debug);
+value_t make_bigint_with_debug(db_bigint big, debug_location* debug);
 value_t make_number_with_debug(double value, debug_location* debug);
 value_t make_string_with_debug(const char* value, debug_location* debug);
 value_t make_string_ds_with_debug(ds_string str, debug_location* debug);

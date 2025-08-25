@@ -62,6 +62,7 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr);
 void codegen_emit_statement(codegen_t* codegen, ast_node* stmt);
 
 // Expression code generation
+void codegen_emit_integer(codegen_t* codegen, ast_integer* node);
 void codegen_emit_number(codegen_t* codegen, ast_number* node);
 void codegen_emit_string(codegen_t* codegen, ast_string* node);
 void codegen_emit_boolean(codegen_t* codegen, ast_boolean* node);

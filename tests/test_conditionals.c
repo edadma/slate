@@ -47,20 +47,20 @@ void test_single_line_if_then(void) {
 
     // Simple if/then
     result = run_conditional_test("if true then 42");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     result = run_conditional_test("if false then 42");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
 
     // if/then/else
     result = run_conditional_test("if true then 42 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     result = run_conditional_test("if false then 42 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 }
 
 // Test if/then with conditions
@@ -74,31 +74,31 @@ void test_if_then_with_conditions(void) {
     vm_release(result);
 
     result = run_conditional_test("if 2 == 2 then 100 else 200");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(100.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(100, result.as.int32);
 
     // Logical conditions with symbolic operators
     result = run_conditional_test("if true && false then 1 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 
     result = run_conditional_test("if true || false then 3 else 4");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
 
     // Logical conditions with keyword operators
     result = run_conditional_test("if true and false then 1 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 
     result = run_conditional_test("if true or false then 3 else 4");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
 
     // Test 'not' keyword
     result = run_conditional_test("if not false then 5 else 6");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
 }
 
 // Test multi-line if/then with indented blocks
@@ -109,23 +109,23 @@ void test_multiline_if_then_blocks(void) {
     result = run_conditional_test("if true then\n"
                                   "    var x = 10\n"
                                   "    x * 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(20, result.as.int32);
 
     // if without then, with indented block
     result = run_conditional_test("if true\n"
                                   "    var y = 5\n"
                                   "    y + 10");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(15.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(15, result.as.int32);
 
     // if/then/else with indented blocks
     result = run_conditional_test("if false then\n"
                                   "    100\n"
                                   "else\n"
                                   "    200");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(200.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(200, result.as.int32);
 }
 
 // Test mixed single-line and multi-line forms
@@ -137,22 +137,22 @@ void test_mixed_single_multiline(void) {
                                   "else\n"
                                   "    var x = 20\n"
                                   "    x + 5");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(25.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(25, result.as.int32);
 
     // Multi-line then, single-line else
     result = run_conditional_test("if true then\n"
                                   "    var y = 30\n"
                                   "    y - 10\n"
                                   "else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(20, result.as.int32);
 
     // then on same line, block follows
     result = run_conditional_test("if true then\n"
                                   "    42");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 }
 
 // Test nested if expressions
@@ -161,8 +161,8 @@ void test_nested_if_expressions(void) {
 
     // Nested single-line
     result = run_conditional_test("if true then if false then 1 else 2 else 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 
     // Nested multi-line
     result = run_conditional_test("if true\n"
@@ -170,15 +170,15 @@ void test_nested_if_expressions(void) {
                                   "        100\n"
                                   "    else\n"
                                   "        200");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(200.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(200, result.as.int32);
 
     // Complex nesting with mixed forms
     result = run_conditional_test("if true then\n"
                                   "    var x = if false then 10 else 20\n"
                                   "    x + 5");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(25.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(25, result.as.int32);
 }
 
 // Test optional end markers
@@ -189,8 +189,8 @@ void test_end_markers(void) {
     result = run_conditional_test("if true\n"
                                   "    42\n"
                                   "end if");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     // if/else with end if
     result = run_conditional_test("if false\n"
@@ -198,8 +198,8 @@ void test_end_markers(void) {
                                   "else\n"
                                   "    200\n"
                                   "end if");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(200.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(200, result.as.int32);
 
     // Nested with end markers
     result = run_conditional_test("if true\n"
@@ -211,8 +211,8 @@ void test_end_markers(void) {
                                   "else\n"
                                   "    3\n"
                                   "end if");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 }
 
 // Test if as expression (can be assigned to variables)
@@ -221,13 +221,13 @@ void test_if_as_expression(void) {
 
     // Assign if result to variable
     result = run_conditional_test("var x = if true then 10 else 20\nx");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(10.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(10, result.as.int32);
 
     // Use if in arithmetic
     result = run_conditional_test("5 + if false then 3 else 7");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(12.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(12, result.as.int32);
 
     // Use if in string concatenation
     result = run_conditional_test("\"Result: \" + if true then \"yes\" else \"no\"");
@@ -242,41 +242,41 @@ void test_falsy_truthy_conditions(void) {
 
     // Falsy values
     result = run_conditional_test("if false then 1 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 
     result = run_conditional_test("if null then 1 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 
     result = run_conditional_test("if undefined then 1 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 
     result = run_conditional_test("if 0 then 1 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 
     result = run_conditional_test("if \"\" then 1 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 
     // Truthy values
     result = run_conditional_test("if true then 1 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
 
     result = run_conditional_test("if 42 then 1 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
 
     result = run_conditional_test("if \"hello\" then 1 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
 
     result = run_conditional_test("if [] then 1 else 2"); // Empty array is truthy
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
 }
 
 // Test complex expressions with blocks
@@ -288,8 +288,8 @@ void test_complex_block_expressions(void) {
                                   "    var base = 10\n"
                                   "    var multiplier = 3\n"
                                   "    base * multiplier + if false then 5 else 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(32.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(32, result.as.int32);
 
     // Nested blocks with variables
     result = run_conditional_test("if true\n"
@@ -299,8 +299,8 @@ void test_complex_block_expressions(void) {
                                   "        inner + 3\n"
                                   "    else\n"
                                   "        0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(13.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(13, result.as.int32);
 }
 
 
@@ -311,23 +311,23 @@ void test_direct_if_blocks(void) {
     // Direct if without then
     result = run_conditional_test("if true\n"
                                   "    42");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     // Direct if-else without then
     result = run_conditional_test("if false\n"
                                   "    10\n"
                                   "else\n"
                                   "    20");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(20, result.as.int32);
 
     // Mixed: direct if with then else
     result = run_conditional_test("if true\n"
                                   "    5 + 5\n"
                                   "else 99");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(10.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(10, result.as.int32);
 }
 
 // Test comments in various positions
@@ -337,15 +337,15 @@ void test_comments(void) {
     // Line comments
     result = run_conditional_test("// This is a comment\n"
                                   "if true then 42 // inline comment");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     // Block comments
     result = run_conditional_test("/* This is a\n"
                                   "   multi-line comment */\n"
                                   "if /* comment */ true then 42");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     // Comments in indented blocks
     result = run_conditional_test("if true\n"
@@ -353,8 +353,8 @@ void test_comments(void) {
                                   "    var x = 10\n"
                                   "    /* Another comment */\n"
                                   "    x * 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(20, result.as.int32);
 }
 
 // Test edge cases and error conditions
@@ -371,8 +371,8 @@ void test_edge_cases(void) {
                                   "    if false then null\n"
                                   "    else\n"
                                   "        42");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     // Very deep nesting
     result = run_conditional_test("if true\n"
@@ -386,8 +386,8 @@ void test_edge_cases(void) {
                                   "        end if\n"
                                   "    end if\n"
                                   "end if");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(100.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(100, result.as.int32);
 }
 
 // Test comprehensive syntax variations that are actually implemented
@@ -398,51 +398,51 @@ void test_comprehensive_syntax_variations(void) {
 
     // 1. if condition then expression
     result = run_conditional_test("if true then 42");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     // 2. if condition then expression else expression
     result = run_conditional_test("if false then 42 else 99");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(99.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(99, result.as.int32);
 
     // === CONDITION TYPES ===
 
     // Boolean literals
     result = run_conditional_test("if true then 1 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
 
     result = run_conditional_test("if false then 1 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 
     // Numbers (truthy/falsy)
     result = run_conditional_test("if 1 then 1 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
 
     result = run_conditional_test("if 0 then 1 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 
     // Strings (truthy/falsy)
     result = run_conditional_test("if \"hello\" then 1 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
 
     result = run_conditional_test("if \"\" then 1 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 
     // null and undefined
     result = run_conditional_test("if null then 1 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 
     result = run_conditional_test("if undefined then 1 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 
     // === COMPARISON OPERATORS ===
 
@@ -482,8 +482,8 @@ void test_comprehensive_syntax_variations(void) {
 
     // Numbers
     result = run_conditional_test("if true then 42 else 99");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     // Strings
     result = run_conditional_test("if true then \"yes\" else \"no\"");
@@ -504,13 +504,13 @@ void test_comprehensive_syntax_variations(void) {
 
     // Simple nesting
     result = run_conditional_test("if true then if false then 1 else 2 else 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
 
     // In condition
     result = run_conditional_test("if if true then true else false then 1 else 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
 
     // === ARITHMETIC IN CONDITIONS AND EXPRESSIONS ===
 
@@ -522,8 +522,8 @@ void test_comprehensive_syntax_variations(void) {
 
     // Arithmetic expressions
     result = run_conditional_test("if true then 2 * 3 else 4 + 5");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(6.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(6, result.as.int32);
 
     // === STRING OPERATIONS ===
 
@@ -536,8 +536,8 @@ void test_comprehensive_syntax_variations(void) {
     // === IF WITHOUT ELSE (returns null when false) ===
 
     result = run_conditional_test("if true then 42");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     result = run_conditional_test("if false then 42");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
@@ -573,8 +573,8 @@ void test_logical_operators(void) {
     vm_release(result);
 
     result = run_conditional_test("0 and 42");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 
     result = run_conditional_test("null && \"never reached\"");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
@@ -605,8 +605,8 @@ void test_logical_operators(void) {
     vm_release(result);
 
     result = run_conditional_test("42 or \"never reached\"");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
 
     result = run_conditional_test("\"\" || null");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);

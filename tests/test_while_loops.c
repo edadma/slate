@@ -50,8 +50,8 @@ void test_basic_while_loops(void) {
                            "while i > 0\n"
                            "    i = i - 1\n"
                            "i");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
     vm_release(result);
 
     // While with end marker
@@ -61,8 +61,8 @@ void test_basic_while_loops(void) {
                            "    i\n"
                            "end while\n"
                            "i");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
     vm_release(result);
 }
 
@@ -78,8 +78,8 @@ void test_while_loops_with_modulo(void) {
                            "    if i mod 3 == 0\n"
                            "        count = count + 1\n"
                            "count");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number); // 3, 6, 9, 12, 15 = 5 multiples
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32); // 3, 6, 9, 12, 15 = 5 multiples
     vm_release(result);
 
     // While loop with modulo for even numbers
@@ -90,8 +90,8 @@ void test_while_loops_with_modulo(void) {
                            "        sum_evens = sum_evens + n\n"
                            "    n = n + 1\n"
                            "sum_evens");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(20.0, result.as.number); // 0 + 2 + 4 + 6 + 8 = 20
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(20, result.as.int32); // 0 + 2 + 4 + 6 + 8 = 20
     vm_release(result);
 
     // While loop with complex modulo condition
@@ -99,8 +99,8 @@ void test_while_loops_with_modulo(void) {
                            "while x mod 7 != 0 or x <= 10\n"
                            "    x = x + 1\n"
                            "x");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(14.0, result.as.number); // First multiple of 7 > 10
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(14, result.as.int32); // First multiple of 7 > 10
     vm_release(result);
 }
 
@@ -115,8 +115,8 @@ void test_while_loops_with_do_multiline(void) {
                            "    sum = sum + i\n"
                            "    i = i + 1\n"
                            "sum");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(15.0, result.as.number); // 1+2+3+4+5 = 15
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(15, result.as.int32); // 1+2+3+4+5 = 15
     vm_release(result);
 
     // Multi-line while with 'do' and 'end while'
@@ -127,8 +127,8 @@ void test_while_loops_with_do_multiline(void) {
                            "    i = i + 1\n"
                            "end while\n"
                            "product");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(24.0, result.as.number); // 1*2*3*4 = 24
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(24, result.as.int32); // 1*2*3*4 = 24
     vm_release(result);
 
     // While with 'do' and no 'end while'
@@ -136,8 +136,8 @@ void test_while_loops_with_do_multiline(void) {
                            "while count < 3 do\n"
                            "    count = count + 1\n"
                            "count");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(3.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
     vm_release(result);
 }
 
@@ -149,24 +149,24 @@ void test_single_line_while_loops_with_do(void) {
     result = run_while_test("var x = 10\n"
                            "while x > 7 do x = x - 1\n"
                            "x");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(7.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(7, result.as.int32);
     vm_release(result);
 
     // Single-line while with 'do' - simple increment
     result = run_while_test("var i = 1\n"
                            "while i < 5 do i = i + 1\n"
                            "i");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
     vm_release(result);
 
     // Single-line while with modulo condition
     result = run_while_test("var n = 1\n"
                            "while n mod 5 != 0 do n = n + 1\n"
                            "n");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
     vm_release(result);
 }
 
@@ -179,8 +179,8 @@ void test_while_syntax_variations(void) {
                            "while a < 5\n"
                            "    a = a + 1\n"
                            "a");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
     vm_release(result);
 
     // With 'do', multi-line
@@ -188,16 +188,16 @@ void test_while_syntax_variations(void) {
                            "while b < 5 do\n"
                            "    b = b + 1\n"
                            "b");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
     vm_release(result);
 
     // With 'do', single-line
     result = run_while_test("var c = 2\n"
                            "while c < 5 do c = c + 1\n"
                            "c");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
     vm_release(result);
 }
 
@@ -209,8 +209,8 @@ void test_while_loop_edge_cases(void) {
     result = run_while_test("var never_run = 42\n"
                            "while false do never_run = 0\n"
                            "never_run");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(42.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
     vm_release(result);
 
     // While loop with complex boolean expression
@@ -220,8 +220,8 @@ void test_while_loop_edge_cases(void) {
                            "    x = x + 1\n"
                            "    y = y - 1\n"
                            "x + y");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(11.0, result.as.number); // x=4, y=7 -> 4+7=11
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(11, result.as.int32); // x=4, y=7 -> 4+7=11
     vm_release(result);
 
     // Nested while loops with 'do'
@@ -234,8 +234,8 @@ void test_while_loop_edge_cases(void) {
                            "        j = j + 1\n"
                            "    i = i + 1\n"
                            "total");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(6.0, result.as.number); // 3 * 2 = 6 iterations
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(6, result.as.int32); // 3 * 2 = 6 iterations
     vm_release(result);
 }
 

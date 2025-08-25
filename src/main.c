@@ -318,9 +318,36 @@ static void run_tests(void) {
     printf("\n");
 }
 
+// Read from stdin until EOF
+static char* read_stdin(void) {
+    size_t capacity = 1024;
+    size_t length = 0;
+    char* buffer = malloc(capacity);
+    if (!buffer) return NULL;
+    
+    int c;
+    while ((c = fgetc(stdin)) != EOF) {
+        if (length + 1 >= capacity) {
+            capacity *= 2;
+            char* new_buffer = realloc(buffer, capacity);
+            if (!new_buffer) {
+                free(buffer);
+                return NULL;
+            }
+            buffer = new_buffer;
+        }
+        buffer[length++] = c;
+    }
+    
+    buffer[length] = '\0';
+    return buffer;
+}
+
 int main(int argc, char* argv[]) {
     // Parse command line arguments
     int file_arg_index = -1;
+    int use_stdin = 0;
+    char* script_content = NULL;
     
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--debug") == 0) {
@@ -328,6 +355,16 @@ int main(int argc, char* argv[]) {
         } else if (strcmp(argv[i], "--test") == 0) {
             run_tests();
             return 0;
+        } else if (strcmp(argv[i], "--stdin") == 0 || strcmp(argv[i], "--eval") == 0) {
+            use_stdin = 1;
+        } else if (strcmp(argv[i], "--script") == 0) {
+            // Next argument should be the script content
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: --script requires a script argument\n");
+                return 1;
+            }
+            script_content = argv[i + 1];
+            i++; // Skip the next argument since we consumed it
         } else if (argv[i][0] != '-') {
             // This is a filename
             if (file_arg_index == -1) {
@@ -338,12 +375,37 @@ int main(int argc, char* argv[]) {
             }
         } else {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            fprintf(stderr, "Usage: %s [--debug] [script] or %s --test\n", argv[0], argv[0]);
+            fprintf(stderr, "Usage: %s [--debug] [--stdin] [--script <code>] [file] or %s --test\n", argv[0], argv[0]);
             return 1;
         }
     }
     
-    if (file_arg_index != -1) {
+    if (use_stdin) {
+        // Read and interpret from stdin with result display
+        char* source = read_stdin();
+        if (source) {
+            // Create a shared VM to maintain state and show results
+            bitty_vm* vm = vm_create();
+            
+            // Split by lines and interpret each one
+            char* line = strtok(source, "\n");
+            while (line) {
+                if (strlen(line) > 0) {  // Skip empty lines
+                    printf("> %s\n", line);
+                    interpret_with_vm(line, vm);
+                }
+                line = strtok(NULL, "\n");
+            }
+            
+            vm_destroy(vm);
+            free(source);
+        }
+    } else if (script_content) {
+        // Execute script content directly with result display
+        bitty_vm* vm = vm_create();
+        interpret_with_vm(script_content, vm);
+        vm_destroy(vm);
+    } else if (file_arg_index != -1) {
         // Run file
         char* source = read_file(argv[file_arg_index]);
         if (source) {

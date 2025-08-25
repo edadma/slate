@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
 
 // Helper function to extract string from token
 static char* token_to_string(token_t* token) {
@@ -685,6 +687,29 @@ ast_node* parse_primary(parser_t* parser) {
     
     if (parser_match(parser, TOKEN_UNDEFINED)) {
         return (ast_node*)ast_create_undefined(parser->previous.line, parser->previous.column);
+    }
+    
+    if (parser_match(parser, TOKEN_INTEGER)) {
+        // Parse as integer - check for overflow to int32_t
+        char buffer[256];
+        size_t len = parser->previous.length < 255 ? parser->previous.length : 255;
+        memcpy(buffer, parser->previous.start, len);
+        buffer[len] = '\0';
+        
+        // Try to parse as int64 first to detect int32 overflow
+        char* endptr;
+        errno = 0;
+        long long value = strtoll(buffer, &endptr, 10);
+        
+        if (errno == ERANGE || value < INT32_MIN || value > INT32_MAX) {
+            // Too large for int32, create as floating point for now
+            // TODO: In future, create BigInt AST node here
+            double dval = strtod(buffer, NULL);
+            return (ast_node*)ast_create_number(dval, parser->previous.line, parser->previous.column);
+        } else {
+            // Fits in int32 - create integer AST node
+            return (ast_node*)ast_create_integer((int32_t)value, parser->previous.line, parser->previous.column);
+        }
     }
     
     if (parser_match(parser, TOKEN_NUMBER)) {
