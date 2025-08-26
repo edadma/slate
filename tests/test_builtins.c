@@ -42,10 +42,10 @@ static value_t interpret_expression(const char* source) {
 }
 
 
-// Test print function (returns null)
+// Test print function (returns undefined)
 void test_builtin_print(void) {
     value_t result = interpret_expression("print(42)");
-    TEST_ASSERT_EQUAL(VAL_NULL, result.type);
+    TEST_ASSERT_EQUAL(VAL_UNDEFINED, result.type);
     vm_release(result);
 }
 
@@ -266,6 +266,71 @@ void test_builtin_sin_integer(void) {
     vm_release(result);
 }
 
+// Test string concatenation with arrays
+void test_string_concat_with_array(void) {
+    value_t result = interpret_expression("\"Array: \" + [1, 2, 3]");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Array: [1, 2, 3]", result.as.string);
+    vm_release(result);
+}
+
+void test_string_concat_with_empty_array(void) {
+    value_t result = interpret_expression("\"Empty: \" + []");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Empty: []", result.as.string);
+    vm_release(result);
+}
+
+void test_string_concat_with_nested_array(void) {
+    value_t result = interpret_expression("\"Nested: \" + [[1, 2], [3, 4]]");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Nested: [[1, 2], [3, 4]]", result.as.string);
+    vm_release(result);
+}
+
+// Test string concatenation with objects
+void test_string_concat_with_object(void) {
+    value_t result = interpret_expression("\"Object: \" + {name: \"Test\", value: 42}");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    // Note: Object property order might vary
+    TEST_ASSERT_TRUE(strstr(result.as.string, "Object: {") != NULL);
+    TEST_ASSERT_TRUE(strstr(result.as.string, "name: \"Test\"") != NULL);
+    TEST_ASSERT_TRUE(strstr(result.as.string, "value: 42") != NULL);
+    vm_release(result);
+}
+
+void test_string_concat_with_empty_object(void) {
+    value_t result = interpret_expression("\"Empty: \" + {}");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Empty: {}", result.as.string);
+    vm_release(result);
+}
+
+// Test array with mixed types including strings
+void test_array_with_strings(void) {
+    value_t result = interpret_expression("[1, \"hello\", true, null]");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    // Convert to string to check display format
+    value_t str_result = interpret_expression("\"\" + [1, \"hello\", true, null]");
+    TEST_ASSERT_EQUAL(VAL_STRING, str_result.type);
+    TEST_ASSERT_EQUAL_STRING("[1, \"hello\", true, null]", str_result.as.string);
+    vm_release(result);
+    vm_release(str_result);
+}
+
+// Test object with string values
+void test_object_with_string_values(void) {
+    value_t result = interpret_expression("{greeting: \"hello\", name: \"world\"}");
+    TEST_ASSERT_EQUAL(VAL_OBJECT, result.type);
+    // Convert to string to check display format
+    value_t str_result = interpret_expression("\"\" + {greeting: \"hello\", name: \"world\"}");
+    TEST_ASSERT_EQUAL(VAL_STRING, str_result.type);
+    TEST_ASSERT_TRUE(strstr(str_result.as.string, "greeting: \"hello\"") != NULL);
+    TEST_ASSERT_TRUE(strstr(str_result.as.string, "name: \"world\"") != NULL);
+    vm_release(result);
+    vm_release(str_result);
+}
+
 // Test suite function
 void test_builtins_suite(void) {
     RUN_TEST(test_builtin_print);
@@ -297,4 +362,13 @@ void test_builtins_suite(void) {
     RUN_TEST(test_builtin_tan_zero);
     RUN_TEST(test_builtin_tan_pi_quarter);
     RUN_TEST(test_builtin_sin_integer);
+    
+    // String concatenation tests
+    RUN_TEST(test_string_concat_with_array);
+    RUN_TEST(test_string_concat_with_empty_array);
+    RUN_TEST(test_string_concat_with_nested_array);
+    RUN_TEST(test_string_concat_with_object);
+    RUN_TEST(test_string_concat_with_empty_object);
+    RUN_TEST(test_array_with_strings);
+    RUN_TEST(test_object_with_string_values);
 }
