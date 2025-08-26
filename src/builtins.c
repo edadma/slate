@@ -4,9 +4,23 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <stdarg.h>
 
 // Static random initialization flag
 static int random_initialized = 0;
+
+// Runtime error handling - exits with non-zero code for now, will throw exception later
+void runtime_error(const char* message, ...) {
+    va_list args;
+    va_start(args, message);
+    
+    fprintf(stderr, "Runtime error: ");
+    vfprintf(stderr, message, args);
+    fprintf(stderr, "\n");
+    
+    va_end(args);
+    exit(1);  // Non-zero exit code
+}
 
 // Register a built-in function in the VM's global namespace
 void register_builtin(bitty_vm* vm, const char* name, builtin_func_t func, int min_args, int max_args) {
@@ -40,6 +54,10 @@ void builtins_init(bitty_vm* vm) {
     register_builtin(vm, "sin", builtin_sin, 1, 1);
     register_builtin(vm, "cos", builtin_cos, 1, 1);
     register_builtin(vm, "tan", builtin_tan, 1, 1);
+    register_builtin(vm, "input", builtin_input, 0, 1);
+    register_builtin(vm, "parse_int", builtin_parse_int, 1, 1);
+    register_builtin(vm, "parse_number", builtin_parse_number, 1, 1);
+    register_builtin(vm, "args", builtin_args, 0, 0);
 }
 
 // Built-in function implementations
@@ -47,72 +65,22 @@ void builtins_init(bitty_vm* vm) {
 // print(value) - Print any value to console
 value_t builtin_print(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        printf("Runtime error: print() takes exactly 1 argument (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("print() takes exactly 1 argument (%d given)", arg_count);
     }
     
     value_t arg = args[0];
     
-    switch (arg.type) {
-    case VAL_INT32:
-        printf("%d\n", arg.as.int32);
-        break;
-    case VAL_BIGINT: {
-        // Try to convert BigInt to int64 for display
-        int64_t int_val;
-        if (db_to_int64(arg.as.bigint, &int_val)) {
-            printf("%lld\n", (long long)int_val);
-        } else {
-            // Fall back to double display (lossy)
-            double double_val = db_to_double(arg.as.bigint);
-            printf("%.0f\n", double_val);
-        }
-        break;
-    }
-    case VAL_NUMBER:
-        if (arg.as.number == (int)arg.as.number) {
-            printf("%d\n", (int)arg.as.number);
-        } else {
-            printf("%.6g\n", arg.as.number);
-        }
-        break;
-    case VAL_STRING:
-        printf("%s\n", arg.as.string);
-        break;
-    case VAL_BOOLEAN:
-        printf("%s\n", arg.as.boolean ? "true" : "false");
-        break;
-    case VAL_NULL:
-        printf("null\n");
-        break;
-    case VAL_UNDEFINED:
-        printf("undefined\n");
-        break;
-    case VAL_ARRAY:
-        printf("[Array with %d elements]\n", da_length(arg.as.array));
-        break;
-    case VAL_OBJECT:
-        printf("[Object]\n");
-        break;
-    case VAL_FUNCTION:
-        printf("[Function]\n");
-        break;
-    case VAL_CLOSURE:
-        printf("[Closure]\n");
-        break;
-    default:
-        printf("[Unknown type]\n");
-        break;
-    }
+    // Use the specialized print function for builtins
+    print_for_builtin(arg);
+    printf("\n");
     
-    return make_null(); // print returns null/void
+    return make_undefined(); // print returns void
 }
 
 // type(value) - Get type name as string
 value_t builtin_type(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        printf("Runtime error: type() takes exactly 1 argument (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("type() takes exactly 1 argument (%d given)", arg_count);
     }
     
     value_t arg = args[0];
@@ -163,8 +131,7 @@ value_t builtin_type(bitty_vm* vm, int arg_count, value_t* args) {
 // abs(number) - Absolute value
 value_t builtin_abs(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        printf("Runtime error: abs() takes exactly 1 argument (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("abs() takes exactly 1 argument (%d given)", arg_count);
     }
     
     value_t arg = args[0];
@@ -185,16 +152,14 @@ value_t builtin_abs(bitty_vm* vm, int arg_count, value_t* args) {
     } else if (arg.type == VAL_NUMBER) {
         return make_number(fabs(arg.as.number));
     } else {
-        printf("Runtime error: abs() requires a number argument\n");
-        return make_null();
+        runtime_error("abs() requires a number argument");
     }
 }
 
 // sqrt(number) - Square root
 value_t builtin_sqrt(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        printf("Runtime error: sqrt() takes exactly 1 argument (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("sqrt() takes exactly 1 argument (%d given)", arg_count);
     }
     
     value_t arg = args[0];
@@ -208,13 +173,11 @@ value_t builtin_sqrt(bitty_vm* vm, int arg_count, value_t* args) {
     } else if (arg.type == VAL_NUMBER) {
         val = arg.as.number;
     } else {
-        printf("Runtime error: sqrt() requires a number argument\n");
-        return make_null();
+        runtime_error("sqrt() requires a number argument");
     }
     
     if (val < 0) {
-        printf("Runtime error: sqrt() of negative number\n");
-        return make_null();
+        runtime_error("sqrt() of negative number");
     }
     
     return make_number(sqrt(val));
@@ -223,8 +186,7 @@ value_t builtin_sqrt(bitty_vm* vm, int arg_count, value_t* args) {
 // floor(number) - Floor function
 value_t builtin_floor(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        printf("Runtime error: floor() takes exactly 1 argument (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("floor() takes exactly 1 argument (%d given)", arg_count);
     }
     
     value_t arg = args[0];
@@ -245,16 +207,14 @@ value_t builtin_floor(bitty_vm* vm, int arg_count, value_t* args) {
             return make_number(result);
         }
     } else {
-        printf("Runtime error: floor() requires a number argument\n");
-        return make_null();
+        runtime_error("floor() requires a number argument");
     }
 }
 
 // ceil(number) - Ceiling function
 value_t builtin_ceil(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        printf("Runtime error: ceil() takes exactly 1 argument (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("ceil() takes exactly 1 argument (%d given)", arg_count);
     }
     
     value_t arg = args[0];
@@ -275,16 +235,14 @@ value_t builtin_ceil(bitty_vm* vm, int arg_count, value_t* args) {
             return make_number(result);
         }
     } else {
-        printf("Runtime error: ceil() requires a number argument\n");
-        return make_null();
+        runtime_error("ceil() requires a number argument");
     }
 }
 
 // round(number) - Round to nearest integer
 value_t builtin_round(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        printf("Runtime error: round() takes exactly 1 argument (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("round() takes exactly 1 argument (%d given)", arg_count);
     }
     
     value_t arg = args[0];
@@ -305,16 +263,14 @@ value_t builtin_round(bitty_vm* vm, int arg_count, value_t* args) {
             return make_number(result);
         }
     } else {
-        printf("Runtime error: round() requires a number argument\n");
-        return make_null();
+        runtime_error("round() requires a number argument");
     }
 }
 
 // min(a, b) - Minimum of two values
 value_t builtin_min(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        printf("Runtime error: min() takes exactly 2 arguments (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("min() takes exactly 2 arguments (%d given)", arg_count);
     }
     
     value_t a = args[0];
@@ -323,8 +279,7 @@ value_t builtin_min(bitty_vm* vm, int arg_count, value_t* args) {
     // Check if both are numeric types
     if (!((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
           (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER))) {
-        printf("Runtime error: min() requires number arguments\n");
-        return make_null();
+        runtime_error("min() requires number arguments");
     }
     
     // Convert both to double for comparison
@@ -342,8 +297,7 @@ value_t builtin_min(bitty_vm* vm, int arg_count, value_t* args) {
 // max(a, b) - Maximum of two values
 value_t builtin_max(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        printf("Runtime error: max() takes exactly 2 arguments (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("max() takes exactly 2 arguments (%d given)", arg_count);
     }
     
     value_t a = args[0];
@@ -352,8 +306,7 @@ value_t builtin_max(bitty_vm* vm, int arg_count, value_t* args) {
     // Check if both are numeric types
     if (!((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
           (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER))) {
-        printf("Runtime error: max() requires number arguments\n");
-        return make_null();
+        runtime_error("max() requires number arguments");
     }
     
     // Convert both to double for comparison
@@ -371,8 +324,7 @@ value_t builtin_max(bitty_vm* vm, int arg_count, value_t* args) {
 // random() - Random number 0.0 to 1.0
 value_t builtin_random(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 0) {
-        printf("Runtime error: random() takes no arguments (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("random() takes no arguments (%d given)", arg_count);
     }
     
     return make_number((double)rand() / RAND_MAX);
@@ -381,8 +333,7 @@ value_t builtin_random(bitty_vm* vm, int arg_count, value_t* args) {
 // sin(number) - Sine function (radians)
 value_t builtin_sin(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        printf("Runtime error: sin() takes exactly 1 argument (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("sin() takes exactly 1 argument (%d given)", arg_count);
     }
     
     value_t arg = args[0];
@@ -396,8 +347,7 @@ value_t builtin_sin(bitty_vm* vm, int arg_count, value_t* args) {
     } else if (arg.type == VAL_NUMBER) {
         val = arg.as.number;
     } else {
-        printf("Runtime error: sin() requires a number argument\n");
-        return make_null();
+        runtime_error("sin() requires a number argument");
     }
     
     return make_number(sin(val));
@@ -406,8 +356,7 @@ value_t builtin_sin(bitty_vm* vm, int arg_count, value_t* args) {
 // cos(number) - Cosine function (radians)
 value_t builtin_cos(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        printf("Runtime error: cos() takes exactly 1 argument (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("cos() takes exactly 1 argument (%d given)", arg_count);
     }
     
     value_t arg = args[0];
@@ -421,8 +370,7 @@ value_t builtin_cos(bitty_vm* vm, int arg_count, value_t* args) {
     } else if (arg.type == VAL_NUMBER) {
         val = arg.as.number;
     } else {
-        printf("Runtime error: cos() requires a number argument\n");
-        return make_null();
+        runtime_error("cos() requires a number argument");
     }
     
     return make_number(cos(val));
@@ -431,8 +379,7 @@ value_t builtin_cos(bitty_vm* vm, int arg_count, value_t* args) {
 // tan(number) - Tangent function (radians)
 value_t builtin_tan(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        printf("Runtime error: tan() takes exactly 1 argument (%d given)\n", arg_count);
-        return make_null();
+        runtime_error("tan() takes exactly 1 argument (%d given)", arg_count);
     }
     
     value_t arg = args[0];
@@ -446,9 +393,140 @@ value_t builtin_tan(bitty_vm* vm, int arg_count, value_t* args) {
     } else if (arg.type == VAL_NUMBER) {
         val = arg.as.number;
     } else {
-        printf("Runtime error: tan() requires a number argument\n");
-        return make_null();
+        runtime_error("tan() requires a number argument");
     }
     
     return make_number(tan(val));
+}
+
+// input(prompt) - Read user input with optional prompt
+value_t builtin_input(bitty_vm* vm, int arg_count, value_t* args) {
+    if (arg_count > 1) {
+        runtime_error("input() takes 0 or 1 arguments (%d given)", arg_count);
+    }
+    
+    // Print prompt if provided
+    if (arg_count == 1) {
+        value_t prompt = args[0];
+        if (prompt.type == VAL_STRING) {
+            printf("%s", prompt.as.string);
+            fflush(stdout);
+        } else {
+            runtime_error("input() prompt must be a string");
+        }
+    }
+    
+    // Read line from stdin
+    char* line = NULL;
+    size_t len = 0;
+    ssize_t read = getline(&line, &len, stdin);
+    
+    if (read == -1) {
+        // EOF or error
+        free(line);
+        return make_null();
+    }
+    
+    // Remove trailing newline if present
+    if (read > 0 && line[read - 1] == '\n') {
+        line[read - 1] = '\0';
+    }
+    
+    // Create string value and free the buffer
+    ds_string result = ds_new(line);
+    free(line);
+    
+    return make_string_ds(result);
+}
+
+// parse_int(string) - Convert string to integer
+value_t builtin_parse_int(bitty_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("parse_int() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t arg = args[0];
+    if (arg.type != VAL_STRING) {
+        runtime_error("parse_int() requires a string argument");
+    }
+    
+    char* endptr;
+    const char* str = arg.as.string;
+    
+    // Try parsing as long long first
+    long long val = strtoll(str, &endptr, 10);
+    
+    // Check if entire string was consumed
+    if (*endptr != '\0') {
+        runtime_error("'%s' is not a valid integer", str);
+    }
+    
+    // Check if it fits in int32
+    if (val >= INT32_MIN && val <= INT32_MAX) {
+        return make_int32((int32_t)val);
+    } else {
+        // Use BigInt for large numbers
+        db_bigint big = db_from_int64(val);
+        return make_bigint(big);
+    }
+}
+
+// parse_number(string) - Convert string to number (int or float)
+value_t builtin_parse_number(bitty_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("parse_number() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t arg = args[0];
+    if (arg.type != VAL_STRING) {
+        runtime_error("parse_number() requires a string argument");
+    }
+    
+    const char* str = arg.as.string;
+    char* endptr;
+    
+    // Check if it contains a decimal point
+    if (strchr(str, '.') != NULL) {
+        // Parse as float
+        double val = strtod(str, &endptr);
+        
+        if (*endptr != '\0') {
+            runtime_error("'%s' is not a valid number", str);
+        }
+        
+        return make_number(val);
+    } else {
+        // Parse as integer first, then convert to appropriate type
+        long long val = strtoll(str, &endptr, 10);
+        
+        if (*endptr != '\0') {
+            runtime_error("'%s' is not a valid number", str);
+        }
+        
+        // Check if it fits in int32
+        if (val >= INT32_MIN && val <= INT32_MAX) {
+            return make_int32((int32_t)val);
+        } else {
+            // Use BigInt for large numbers
+            db_bigint big = db_from_int64(val);
+            return make_bigint(big);
+        }
+    }
+}
+
+// args() - Get command line arguments as array
+value_t builtin_args(bitty_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 0) {
+        runtime_error("args() takes no arguments (%d given)", arg_count);
+    }
+    
+    // Create array of command line arguments
+    da_array arg_array = da_new(sizeof(value_t));
+    
+    for (int i = 0; i < vm->argc; i++) {
+        value_t arg_val = make_string(vm->argv[i]);
+        da_push(arg_array, &arg_val);
+    }
+    
+    return make_array(arg_array);
 }

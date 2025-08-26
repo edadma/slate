@@ -36,6 +36,15 @@ value_t builtin_sin(bitty_vm* vm, int arg_count, value_t* args);
 value_t builtin_cos(bitty_vm* vm, int arg_count, value_t* args);
 value_t builtin_tan(bitty_vm* vm, int arg_count, value_t* args);
 
+// Input/conversion functions
+value_t builtin_input(bitty_vm* vm, int arg_count, value_t* args);
+value_t builtin_parse_int(bitty_vm* vm, int arg_count, value_t* args);
+value_t builtin_parse_number(bitty_vm* vm, int arg_count, value_t* args);
+value_t builtin_args(bitty_vm* vm, int arg_count, value_t* args);
+
+// Runtime error handling
+void runtime_error(const char* message, ...);
+
 // Helper functions
 void register_builtin(bitty_vm* vm, const char* name, builtin_func_t func, int min_args, int max_args);
 

@@ -206,6 +206,10 @@ typedef struct bitty_vm
     // Debug info for current operation (NULL when debugging disabled)
     debug_location* current_debug;
 
+    // Command line arguments
+    char** argv;
+    int argc;
+    
     // Memory management
     size_t bytes_allocated; // For GC later
 } bitty_vm;
@@ -219,6 +223,7 @@ typedef struct instruction
 
 // VM lifecycle functions
 bitty_vm* vm_create(void);
+bitty_vm* vm_create_with_args(int argc, char** argv);
 void vm_destroy(bitty_vm* vm);
 void vm_reset(bitty_vm* vm);
 
@@ -252,6 +257,7 @@ value_t make_int32(int32_t value);
 value_t make_bigint(db_bigint big);
 value_t make_number(double value);
 value_t make_string(const char* value);
+value_t make_string_ds(ds_string str);
 value_t make_array(da_array array);
 value_t make_object(do_object object);
 value_t make_function(function_t* function);
@@ -282,6 +288,7 @@ void debug_location_free(debug_location* debug);
 int is_falsy(value_t value);
 int values_equal(value_t a, value_t b);
 void print_value(value_t value);
+void print_for_builtin(value_t value);
 void free_value(value_t value);
 
 // Constant pool management

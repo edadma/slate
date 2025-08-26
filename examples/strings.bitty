@@ -1,0 +1,56 @@
+\ String manipulation and operations
+
+print("=== String Playground ===")
+
+\ Basic string operations
+var greeting = "Hello"
+var name = "Alice"
+var full_greeting = greeting + ", " + name + "!"
+print(full_greeting)
+
+print("")
+
+\ String with numbers
+var age = 25
+var message = name + " is " + age + " years old"
+print(message)
+
+\ Mixed concatenation
+var score = 95.5
+var result = "Test score: " + score + "% - " + if score >= 90 then "Excellent!" else "Good work!"
+print(result)
+
+print("")
+
+\ String indexing
+var word = "Programming"
+print("Word: " + word)
+print("First letter: " + word(0))
+print("Last letter: " + word(word.length - 1))
+print("Middle letter: " + word(word.length // 2))
+
+print("")
+
+\ Building strings character by character
+var letters = ["H", "e", "l", "l", "o"]
+var built_word = ""
+var i = 0
+while i < letters.length do
+    built_word = built_word + letters(i)
+    i = i + 1
+print("Built word: " + built_word)
+
+print("")
+
+\ String comparison and conditionals
+var password = "secret123"
+var input = "secret123"
+
+if password == input then
+    print("Access granted!")
+else
+    print("Access denied!")
+
+\ Working with boolean strings
+var status = if true then "active" else "inactive"
+print("System status: " + status)

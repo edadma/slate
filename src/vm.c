@@ -45,8 +45,21 @@ bitty_vm* vm_create(void) {
     
     // Initialize debug location
     vm->current_debug = NULL;
+    
+    // Initialize command line arguments (empty by default)
+    vm->argc = 0;
+    vm->argv = NULL;
 
     vm_reset(vm);
+    return vm;
+}
+
+bitty_vm* vm_create_with_args(int argc, char** argv) {
+    bitty_vm* vm = vm_create();
+    if (vm) {
+        vm->argc = argc;
+        vm->argv = argv;
+    }
     return vm;
 }
 
@@ -306,6 +319,184 @@ value_t make_builtin_with_debug(void* builtin_func, debug_location* debug) {
     value_t value = make_builtin(builtin_func);
     value.debug = debug_location_copy(debug);
     return value;
+}
+
+// Forward declarations
+static ds_string value_to_string_representation(value_t value);
+static ds_string display_value_to_string(value_t value);
+
+// Context for object property iteration
+struct object_string_context {
+    ds_string* result_ptr;
+    int count;
+};
+
+// Callback function for object property iteration
+static void object_property_to_string_callback(const char* key, void* data, size_t size, void* ctx) {
+    struct object_string_context* context = (struct object_string_context*)ctx;
+    ds_string* result_ptr = context->result_ptr;
+    
+    // Add comma separator for subsequent properties
+    if (context->count > 0) {
+        ds_string comma = ds_new(", ");
+        ds_string temp = ds_concat(*result_ptr, comma);
+        ds_release(result_ptr);
+        ds_release(&comma);
+        *result_ptr = temp;
+    }
+    
+    // Add key: value
+    ds_string key_str = ds_new(key);
+    ds_string colon = ds_new(": ");
+    ds_string temp1 = ds_concat(*result_ptr, key_str);
+    ds_string temp2 = ds_concat(temp1, colon);
+    ds_release(result_ptr);
+    ds_release(&key_str);
+    ds_release(&colon);
+    ds_release(&temp1);
+    
+    // Convert value to string (assuming it's a value_t)
+    if (size == sizeof(value_t)) {
+        value_t* val = (value_t*)data;
+        ds_string val_str = display_value_to_string(*val);
+        ds_string temp3 = ds_concat(temp2, val_str);
+        ds_release(&temp2);
+        ds_release(&val_str);
+        *result_ptr = temp3;
+    } else {
+        ds_string unknown = ds_new("?");
+        ds_string temp3 = ds_concat(temp2, unknown);
+        ds_release(&temp2);
+        ds_release(&unknown);
+        *result_ptr = temp3;
+    }
+    
+    context->count++;
+}
+
+// Helper function to convert any value to string representation for concatenation
+static ds_string value_to_string_representation(value_t value) {
+    switch (value.type) {
+    case VAL_STRING:
+        return ds_retain(value.as.string);
+    case VAL_INT32: {
+        char buffer[32];
+        snprintf(buffer, sizeof(buffer), "%d", value.as.int32);
+        return ds_new(buffer);
+    }
+    case VAL_BIGINT: {
+        char* str = db_to_string(value.as.bigint, 10);
+        if (str) {
+            ds_string result = ds_new(str);
+            free(str);
+            return result;
+        } else {
+            return ds_new("<bigint>");
+        }
+    }
+    case VAL_NUMBER: {
+        char buffer[32];
+        snprintf(buffer, sizeof(buffer), "%.6g", value.as.number);
+        return ds_new(buffer);
+    }
+    case VAL_BOOLEAN:
+        return ds_new(value.as.boolean ? "true" : "false");
+    case VAL_UNDEFINED:
+        return ds_new("undefined");
+    case VAL_NULL:
+        return ds_new("null");
+    case VAL_ARRAY: {
+        // Create string representation like [1, 2, 3]
+        ds_string result = ds_new("[");
+        if (value.as.array) {
+            int length = da_length(value.as.array);
+            for (int i = 0; i < length; i++) {
+                if (i > 0) {
+                    ds_string comma = ds_new(", ");
+                    ds_string temp = ds_concat(result, comma);
+                    ds_release(&result);
+                    ds_release(&comma);
+                    result = temp;
+                }
+                value_t* element = (value_t*)da_get(value.as.array, i);
+                if (element) {
+                    ds_string element_str = display_value_to_string(*element);
+                    ds_string temp = ds_concat(result, element_str);
+                    ds_release(&result);
+                    ds_release(&element_str);
+                    result = temp;
+                }
+            }
+        }
+        ds_string bracket = ds_new("]");
+        ds_string temp = ds_concat(result, bracket);
+        ds_release(&result);
+        ds_release(&bracket);
+        return temp;
+    }
+    case VAL_OBJECT: {
+        // Create string representation like {key: value, key2: value2}
+        ds_string result = ds_new("{");
+        if (value.as.object) {
+            // Use a context structure to track iteration state
+            struct object_string_context context = { &result, 0 };
+            
+            // Iterate through properties using do_foreach_property
+            do_foreach_property(value.as.object, object_property_to_string_callback, &context);
+        }
+        ds_string bracket = ds_new("}");
+        ds_string temp = ds_concat(result, bracket);
+        ds_release(&result);
+        ds_release(&bracket);
+        return temp;
+    }
+    case VAL_FUNCTION:
+        return ds_new("{Function}");
+    case VAL_CLOSURE:
+        return ds_new("{Closure}");
+    default:
+        return ds_new("{Unknown}");
+    }
+}
+
+// Helper function to convert values to display string (with quotes for strings, for use inside aggregates)
+static ds_string display_value_to_string(value_t value) {
+    switch (value.type) {
+    case VAL_STRING: {
+        // Add quotes around strings for display inside aggregates
+        ds_string quoted = ds_new("\"");
+        if (value.as.string) {
+            ds_string temp1 = ds_concat(quoted, value.as.string);
+            ds_release(&quoted);
+            quoted = temp1;
+        }
+        ds_string end_quote = ds_new("\"");
+        ds_string temp2 = ds_concat(quoted, end_quote);
+        ds_release(&quoted);
+        ds_release(&end_quote);
+        return temp2;
+    }
+    default:
+        // For all other types, use the regular representation
+        return value_to_string_representation(value);
+    }
+}
+
+// Print function specifically for the print() builtin - shows strings without quotes
+void print_for_builtin(value_t value) {
+    switch (value.type) {
+    case VAL_STRING:
+        // Print strings without quotes for direct printing
+        printf("%s", value.as.string ? value.as.string : "");
+        break;
+    default: {
+        // For aggregates and other types, use the string representation and print it
+        ds_string str = value_to_string_representation(value);
+        printf("%s", str);
+        ds_release(&str);
+        break;
+    }
+    }
 }
 
 // Value utility functions
@@ -776,44 +967,9 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
             // String concatenation (if either operand is a string)
             if (a.type == VAL_STRING || b.type == VAL_STRING) {
-                // Convert both to strings
-                ds_string str_a, str_b;
-
-                if (a.type == VAL_STRING) {
-                    str_a = ds_retain(a.as.string);
-                } else if (a.type == VAL_INT32) {
-                    char buffer[32];
-                    snprintf(buffer, sizeof(buffer), "%d", a.as.int32);
-                    str_a = ds_new(buffer);
-                } else if (a.type == VAL_NUMBER) {
-                    char buffer[32];
-                    snprintf(buffer, sizeof(buffer), "%.6g", a.as.number);
-                    str_a = ds_new(buffer);
-                } else if (a.type == VAL_BOOLEAN) {
-                    str_a = ds_new(a.as.boolean ? "true" : "false");
-                } else if (a.type == VAL_UNDEFINED) {
-                    str_a = ds_new("undefined");
-                } else {
-                    str_a = ds_new("null");
-                }
-
-                if (b.type == VAL_STRING) {
-                    str_b = ds_retain(b.as.string);
-                } else if (b.type == VAL_INT32) {
-                    char buffer[32];
-                    snprintf(buffer, sizeof(buffer), "%d", b.as.int32);
-                    str_b = ds_new(buffer);
-                } else if (b.type == VAL_NUMBER) {
-                    char buffer[32];
-                    snprintf(buffer, sizeof(buffer), "%.6g", b.as.number);
-                    str_b = ds_new(buffer);
-                } else if (b.type == VAL_BOOLEAN) {
-                    str_b = ds_new(b.as.boolean ? "true" : "false");
-                } else if (b.type == VAL_UNDEFINED) {
-                    str_b = ds_new("undefined");
-                } else {
-                    str_b = ds_new("null");
-                }
+                // Convert both to strings using helper function
+                ds_string str_a = value_to_string_representation(a);
+                ds_string str_b = value_to_string_representation(b);
 
                 // Concatenate using DS library
                 ds_string result = ds_append(str_a, str_b);

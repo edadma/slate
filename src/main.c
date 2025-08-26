@@ -33,10 +33,15 @@ static void print_ast(ast_node* node) {
 
 // Forward declaration
 static void interpret_with_vm(const char* source, bitty_vm* vm);
+static void interpret_with_vm_mode(const char* source, bitty_vm* vm, int show_undefined);
 
 static void interpret(const char* source) { interpret_with_vm(source, NULL); }
 
 static void interpret_with_vm(const char* source, bitty_vm* vm) {
+    interpret_with_vm_mode(source, vm, 1); // REPL mode - show undefined
+}
+
+static void interpret_with_vm_mode(const char* source, bitty_vm* vm, int show_undefined) {
     // Only show "Interpreting:" for file mode, not REPL (REPL handles this itself)
     if (debug_mode && !vm) {
         printf("Interpreting: %s\n", source);
@@ -97,10 +102,12 @@ static void interpret_with_vm(const char* source, bitty_vm* vm) {
 
         // Print the result register value (value of the last statement)
         if (vm) {
-            // In REPL mode, always show the result (including undefined)
-            printf("Result: ");
-            print_value(vm_to_use->result);
-            printf("\n");
+            // Show result based on mode
+            if (show_undefined || vm_to_use->result.type != VAL_UNDEFINED) {
+                printf("Result: ");
+                print_value(vm_to_use->result);
+                printf("\n");
+            }
         }
     } else {
         printf("Execution error: %d\n", result);
@@ -146,7 +153,10 @@ static char* read_file(const char* path) {
     return buffer;
 }
 
-static void repl(void) {
+static void repl_with_args(int argc, char** argv);
+static void repl(void) { repl_with_args(0, NULL); }
+
+static void repl_with_args(int argc, char** argv) {
     char line[1024];
     char accumulated_input[4096] = "";
     int in_continuation = 0;
@@ -154,8 +164,8 @@ static void repl(void) {
     printf("Bitty v0.1.0 - A tiny programming language\n");
     printf("Type 'exit' to quit. Empty line cancels multi-line input.\n\n");
 
-    // Create persistent VM for the REPL session
-    bitty_vm* vm = vm_create();
+    // Create persistent VM for the REPL session with command line arguments
+    bitty_vm* vm = vm_create_with_args(argc, argv);
     if (!vm) {
         printf("Failed to create VM\n");
         return;
@@ -345,9 +355,10 @@ static char* read_stdin(void) {
 
 int main(int argc, char* argv[]) {
     // Parse command line arguments
-    int file_arg_index = -1;
+    char* script_file = NULL;
     int use_stdin = 0;
     char* script_content = NULL;
+    int script_args_start = -1;  // Index where script arguments begin
     
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--debug") == 0) {
@@ -365,19 +376,47 @@ int main(int argc, char* argv[]) {
             }
             script_content = argv[i + 1];
             i++; // Skip the next argument since we consumed it
-        } else if (argv[i][0] != '-') {
-            // This is a filename
-            if (file_arg_index == -1) {
-                file_arg_index = i;
-            } else {
-                fprintf(stderr, "Error: Multiple input files specified\n");
+            // All remaining arguments are script arguments
+            if (i + 1 < argc) {
+                script_args_start = i + 1;
+            }
+            break; // Stop parsing, rest are script args
+        } else if (strcmp(argv[i], "-f") == 0) {
+            // Next argument should be the filename
+            if (i + 1 >= argc) {
+                fprintf(stderr, "Error: -f requires a filename argument\n");
                 return 1;
             }
+            script_file = argv[i + 1];
+            i++; // Skip the next argument since we consumed it
+            // All remaining arguments are script arguments
+            if (i + 1 < argc) {
+                script_args_start = i + 1;
+            }
+            break; // Stop parsing, rest are script args
+        } else if (argv[i][0] != '-') {
+            // Non-switch arguments after switches - these are script arguments
+            script_args_start = i;
+            break;
         } else {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            fprintf(stderr, "Usage: %s [--debug] [--stdin] [--script <code>] [file] or %s --test\n", argv[0], argv[0]);
+            fprintf(stderr, "Usage: %s [--debug] [--stdin] [--script <code>] [-f <file>] [script_args...] or %s --test\n", argv[0], argv[0]);
             return 1;
         }
+    }
+    
+    // Create script arguments for VM (either all args or subset starting from script_args_start)
+    char** script_argv = NULL;
+    int script_argc = 0;
+    
+    if (script_args_start != -1) {
+        // Script arguments start at script_args_start
+        script_argc = argc - script_args_start;
+        script_argv = &argv[script_args_start];
+    } else {
+        // No script arguments
+        script_argc = 0;
+        script_argv = NULL;
     }
     
     if (use_stdin) {
@@ -385,7 +424,7 @@ int main(int argc, char* argv[]) {
         char* source = read_stdin();
         if (source) {
             // Create a shared VM to maintain state and show results
-            bitty_vm* vm = vm_create();
+            bitty_vm* vm = vm_create_with_args(script_argc, script_argv);
             
             // Split by lines and interpret each one
             char* line = strtok(source, "\n");
@@ -402,19 +441,21 @@ int main(int argc, char* argv[]) {
         }
     } else if (script_content) {
         // Execute script content directly with result display
-        bitty_vm* vm = vm_create();
-        interpret_with_vm(script_content, vm);
+        bitty_vm* vm = vm_create_with_args(script_argc, script_argv);
+        interpret_with_vm_mode(script_content, vm, 0); // Hide undefined results
         vm_destroy(vm);
-    } else if (file_arg_index != -1) {
-        // Run file
-        char* source = read_file(argv[file_arg_index]);
+    } else if (script_file) {
+        // Run file with script arguments
+        char* source = read_file(script_file);
         if (source) {
-            interpret(source);
+            bitty_vm* vm = vm_create_with_args(script_argc, script_argv);
+            interpret_with_vm_mode(source, vm, 0); // Hide undefined results
+            vm_destroy(vm);
             free(source);
         }
     } else {
         // No file specified - start REPL
-        repl();
+        repl_with_args(script_argc, script_argv);
     }
 
     return 0;
