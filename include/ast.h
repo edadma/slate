@@ -44,6 +44,7 @@ typedef enum {
     AST_COMPOUND_ASSIGNMENT,
     AST_IF,
     AST_WHILE,
+    AST_LOOP,
     AST_RETURN,
     AST_EXPRESSION_STMT,
     AST_BLOCK,
@@ -241,6 +242,12 @@ typedef struct {
     ast_node* body;
 } ast_while;
 
+// Infinite loop node
+typedef struct {
+    ast_node base;
+    ast_node* body;
+} ast_loop;
+
 // Return statement node
 typedef struct {
     ast_node base;
@@ -294,6 +301,7 @@ ast_compound_assignment* ast_create_compound_assignment(ast_node* target, ast_no
 
 ast_if* ast_create_if(ast_node* condition, ast_node* then_stmt, ast_node* else_stmt, int line, int column);
 ast_while* ast_create_while(ast_node* condition, ast_node* body, int line, int column);
+ast_loop* ast_create_loop(ast_node* body, int line, int column);
 ast_return* ast_create_return(ast_node* value, int line, int column);
 
 ast_expression_stmt* ast_create_expression_stmt(ast_node* expression, int line, int column);

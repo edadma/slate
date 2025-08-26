@@ -285,6 +285,18 @@ ast_while* ast_create_while(ast_node* condition, ast_node* body, int line, int c
     return node;
 }
 
+ast_loop* ast_create_loop(ast_node* body, int line, int column) {
+    ast_loop* node = malloc(sizeof(ast_loop));
+    if (!node) return NULL;
+    
+    node->base.type = AST_LOOP;
+    node->base.line = line;
+    node->base.column = column;
+    node->body = body;
+    
+    return node;
+}
+
 ast_return* ast_create_return(ast_node* value, int line, int column) {
     ast_return* node = malloc(sizeof(ast_return));
     if (!node) return NULL;
@@ -469,6 +481,12 @@ void ast_free(ast_node* node) {
             break;
         }
         
+        case AST_LOOP: {
+            ast_loop* loop_node = (ast_loop*)node;
+            ast_free(loop_node->body);
+            break;
+        }
+        
         case AST_RETURN: {
             ast_return* ret_node = (ast_return*)node;
             ast_free(ret_node->value);
@@ -526,6 +544,7 @@ const char* ast_node_type_name(ast_node_type type) {
         case AST_COMPOUND_ASSIGNMENT: return "COMPOUND_ASSIGNMENT";
         case AST_IF: return "IF";
         case AST_WHILE: return "WHILE";
+        case AST_LOOP: return "LOOP";
         case AST_RETURN: return "RETURN";
         case AST_EXPRESSION_STMT: return "EXPRESSION_STMT";
         case AST_BLOCK: return "BLOCK";

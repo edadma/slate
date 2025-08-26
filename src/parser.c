@@ -353,6 +353,10 @@ ast_node* parse_statement(parser_t* parser) {
         return parse_while_statement(parser);
     }
     
+    if (parser_match(parser, TOKEN_LOOP)) {
+        return parse_loop_statement(parser);
+    }
+    
     if (parser_match(parser, TOKEN_RETURN)) {
         return parse_return_statement(parser);
     }
@@ -529,6 +533,28 @@ ast_node* parse_while_statement(parser_t* parser) {
     
     return (ast_node*)ast_create_while(condition, body,
                                       parser->previous.line, parser->previous.column);
+}
+
+// Parse infinite loop statement
+ast_node* parse_loop_statement(parser_t* parser) {
+    ast_node* body = NULL;
+    
+    // Parse the loop body - supports both single-line and multi-line forms
+    if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+        // Multi-line form with indented block
+        body = parse_indented_block(parser);
+    } else {
+        // Single-line form: loop <expression>
+        body = (ast_node*)ast_create_expression_stmt(parse_expression(parser),
+                                                     parser->current.line, parser->current.column);
+    }
+    
+    // Check for optional 'end loop'
+    if (parser_match(parser, TOKEN_END)) {
+        parser_consume(parser, TOKEN_LOOP, "Expected 'loop' after 'end'.");
+    }
+    
+    return (ast_node*)ast_create_loop(body, parser->previous.line, parser->previous.column);
 }
 
 // Parse return statement

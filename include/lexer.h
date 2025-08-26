@@ -22,6 +22,7 @@ typedef enum {
     TOKEN_IF,            // if
     TOKEN_ELSE,          // else
     TOKEN_WHILE,         // while
+    TOKEN_LOOP,          // loop
     TOKEN_DO,            // do
     TOKEN_RETURN,        // return
     TOKEN_THEN,          // then

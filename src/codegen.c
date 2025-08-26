@@ -358,6 +358,10 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             codegen_emit_while(codegen, (ast_while*)stmt);
             break;
             
+        case AST_LOOP:
+            codegen_emit_infinite_loop(codegen, (ast_loop*)stmt);
+            break;
+            
         case AST_RETURN:
             codegen_emit_return(codegen, (ast_return*)stmt);
             break;
@@ -723,6 +727,23 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     // Patch exit jump
     codegen_patch_jump(codegen, exit_jump);
     codegen_emit_op(codegen, OP_POP); // Pop condition
+}
+
+void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node) {
+    size_t loop_start = codegen->chunk->count;
+    
+    // Generate body (no condition needed for infinite loop)
+    codegen_emit_statement(codegen, node->body);
+    
+    // Jump back to loop start using negative offset
+    size_t current_pos = codegen->chunk->count;
+    size_t backward_distance = current_pos - loop_start + 3; // +3 for the JUMP instruction itself
+    if (backward_distance > UINT16_MAX) {
+        codegen_error(codegen, "Loop body too large");
+        return;
+    }
+    // Emit backward jump (negative offset) - this creates the infinite loop
+    codegen_emit_op_operand(codegen, OP_JUMP, (uint16_t)(-backward_distance));
 }
 
 void codegen_emit_return(codegen_t* codegen, ast_return* node) {
