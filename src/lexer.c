@@ -367,7 +367,17 @@ token_t lexer_next_token(lexer_t* lexer) {
         case ';': return make_token(lexer, TOKEN_SEMICOLON);
         case ',': return make_token(lexer, TOKEN_COMMA);
         case ':': return make_token(lexer, TOKEN_COLON);
-        case '.': return make_token(lexer, TOKEN_DOT);
+        case '.':
+            if (match(lexer, '.')) {
+                // We have ".."
+                if (match(lexer, '<')) {
+                    // We have "..<" (exclusive range)
+                    return make_token(lexer, TOKEN_RANGE_EXCLUSIVE);
+                }
+                // We have ".." (inclusive range)
+                return make_token(lexer, TOKEN_RANGE);
+            }
+            return make_token(lexer, TOKEN_DOT);
         case '+': 
             if (match(lexer, '=')) {
                 return make_token(lexer, TOKEN_PLUS_ASSIGN);
@@ -511,6 +521,8 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_INCREMENT: return "INCREMENT";
         case TOKEN_DECREMENT: return "DECREMENT";
         case TOKEN_FLOOR_DIV: return "FLOOR_DIV";
+        case TOKEN_RANGE: return "RANGE";
+        case TOKEN_RANGE_EXCLUSIVE: return "RANGE_EXCLUSIVE";
         case TOKEN_SEMICOLON: return "SEMICOLON";
         case TOKEN_COMMA: return "COMMA";
         case TOKEN_COLON: return "COLON";

@@ -229,6 +229,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_binary_op(codegen, (ast_binary_op*)expr);
             break;
             
+        case AST_RANGE:
+            codegen_emit_range(codegen, (ast_range*)expr);
+            break;
+            
         case AST_UNARY_OP:
             codegen_emit_unary_op(codegen, (ast_unary_op*)expr);
             break;
@@ -459,6 +463,20 @@ void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node) {
         case BIN_LOGICAL_RIGHT_SHIFT: codegen_emit_op(codegen, OP_LOGICAL_RIGHT_SHIFT); break;
         case BIN_FLOOR_DIV:     codegen_emit_op(codegen, OP_FLOOR_DIV); break;
     }
+}
+
+void codegen_emit_range(codegen_t* codegen, ast_range* node) {
+    // Emit debug location before building range
+    codegen_emit_debug_location(codegen, (ast_node*)node);
+    
+    // Generate start value
+    codegen_emit_expression(codegen, node->start);
+    
+    // Generate end value
+    codegen_emit_expression(codegen, node->end);
+    
+    // Build range object (operand indicates whether it's exclusive)
+    codegen_emit_op_operand(codegen, OP_BUILD_RANGE, (uint16_t)(node->exclusive ? 1 : 0));
 }
 
 // Helper function to check if an AST node represents an l-value

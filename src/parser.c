@@ -696,15 +696,30 @@ ast_node* parse_equality(parser_t* parser) {
 
 // Parse comparison
 ast_node* parse_comparison(parser_t* parser) {
-    ast_node* expr = parse_shift(parser);
+    ast_node* expr = parse_range(parser);
     
     while (parser_match(parser, TOKEN_GREATER) || parser_match(parser, TOKEN_GREATER_EQUAL) ||
            parser_match(parser, TOKEN_LESS) || parser_match(parser, TOKEN_LESS_EQUAL)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
         int op_line = parser->previous.line;
         int op_column = parser->previous.column;
-        ast_node* right = parse_shift(parser);
+        ast_node* right = parse_range(parser);
         expr = (ast_node*)ast_create_binary_op(op, expr, right, op_line, op_column);
+    }
+    
+    return expr;
+}
+
+// Parse range expressions
+ast_node* parse_range(parser_t* parser) {
+    ast_node* expr = parse_shift(parser);
+    
+    if (parser_match(parser, TOKEN_RANGE) || parser_match(parser, TOKEN_RANGE_EXCLUSIVE)) {
+        int exclusive = (parser->previous.type == TOKEN_RANGE_EXCLUSIVE);
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
+        ast_node* end = parse_shift(parser);
+        expr = (ast_node*)ast_create_range(expr, end, exclusive, op_line, op_column);
     }
     
     return expr;

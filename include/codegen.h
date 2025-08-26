@@ -70,6 +70,7 @@ void codegen_emit_null(codegen_t* codegen, ast_null* node);
 void codegen_emit_undefined(codegen_t* codegen, ast_undefined* node);
 void codegen_emit_identifier(codegen_t* codegen, ast_identifier* node);
 void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node);
+void codegen_emit_range(codegen_t* codegen, ast_range* node);
 void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node);
 void codegen_emit_array(codegen_t* codegen, ast_array* node);
 void codegen_emit_object(codegen_t* codegen, ast_object_literal* node);

@@ -63,6 +63,8 @@ typedef enum {
     TOKEN_INCREMENT,     // ++
     TOKEN_DECREMENT,     // --
     TOKEN_FLOOR_DIV,     // //
+    TOKEN_RANGE,         // .. (inclusive range)
+    TOKEN_RANGE_EXCLUSIVE, // ..< (exclusive range)
     
     // Punctuation
     TOKEN_SEMICOLON,     // ;

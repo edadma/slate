@@ -23,6 +23,9 @@ typedef enum {
     // Binary operations
     AST_BINARY_OP,
     
+    // Range expressions  
+    AST_RANGE,
+    
     // Unary operations
     AST_UNARY_OP,
     
@@ -141,6 +144,14 @@ typedef struct {
     ast_node* left;
     ast_node* right;
 } ast_binary_op;
+
+// Range expression node
+typedef struct {
+    ast_node base;
+    ast_node* start;    // Starting value
+    ast_node* end;      // Ending value
+    int exclusive;      // 1 for ..< (exclusive), 0 for .. (inclusive)
+} ast_range;
 
 // Unary operation node
 typedef struct {
@@ -267,6 +278,7 @@ ast_identifier* ast_create_identifier(const char* name, int line, int column);
 ast_array* ast_create_array(ast_node** elements, size_t count, int line, int column);
 
 ast_binary_op* ast_create_binary_op(binary_operator op, ast_node* left, ast_node* right, int line, int column);
+ast_range* ast_create_range(ast_node* start, ast_node* end, int exclusive, int line, int column);
 ast_unary_op* ast_create_unary_op(unary_operator op, ast_node* operand, int line, int column);
 
 ast_function* ast_create_function(char** parameters, size_t param_count, ast_node* body, int is_expression, int line, int column);

@@ -87,6 +87,9 @@ typedef enum
 
     // Object operations
     OP_BUILD_OBJECT, // Build object from key-value pairs (operand = n pairs)
+    
+    // Range operations  
+    OP_BUILD_RANGE, // Pop end, pop start, build range (operand = exclusive flag)
 
     // Function operations
     OP_CLOSURE, // Create closure (operand = function index)
@@ -119,10 +122,14 @@ typedef enum
     VAL_STRING,
     VAL_ARRAY,
     VAL_OBJECT,
+    VAL_RANGE,     // Range object (1..10, 1..<10)
     VAL_FUNCTION,
     VAL_CLOSURE,
     VAL_BUILTIN
 } value_type;
+
+// Forward declaration for range structure
+typedef struct range range_t;
 
 // VM value structure
 typedef struct value
@@ -137,12 +144,20 @@ typedef struct value
         ds_string string; // Using dynamic_string.h!
         da_array array; // Using dynamic_array.h!
         do_object object; // Using dynamic_object.h!
+        range_t* range; // Range object pointer
         struct function* function;
         struct closure* closure;
         void* builtin; // Built-in function pointer (cast from builtin_func_t)
     } as;
     debug_location* debug; // Debug info for error reporting (NULL when disabled)
 } value_t;
+
+// Range structure for range expressions (1..10, 1..<10)
+struct range {
+    value_t start;      // Starting value
+    value_t end;        // Ending value  
+    int exclusive;      // 1 for ..< (exclusive), 0 for .. (inclusive)
+};
 
 // Function structure
 typedef struct function
@@ -260,6 +275,7 @@ value_t make_string(const char* value);
 value_t make_string_ds(ds_string str);
 value_t make_array(da_array array);
 value_t make_object(do_object object);
+value_t make_range(value_t start, value_t end, int exclusive);
 value_t make_function(function_t* function);
 value_t make_closure(closure_t* closure);
 value_t make_builtin(void* builtin_func);
@@ -275,6 +291,7 @@ value_t make_string_with_debug(const char* value, debug_location* debug);
 value_t make_string_ds_with_debug(ds_string str, debug_location* debug);
 value_t make_array_with_debug(da_array array, debug_location* debug);
 value_t make_object_with_debug(do_object object, debug_location* debug);
+value_t make_range_with_debug(value_t start, value_t end, int exclusive, debug_location* debug);
 value_t make_function_with_debug(function_t* function, debug_location* debug);
 value_t make_closure_with_debug(closure_t* closure, debug_location* debug);
 value_t make_builtin_with_debug(void* builtin_func, debug_location* debug);

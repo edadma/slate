@@ -108,6 +108,10 @@ value_t vm_retain(value_t value) {
         value.as.object = do_retain(value.as.object);
     } else if (value.type == VAL_BIGINT) {
         value.as.bigint = db_retain(value.as.bigint);
+    } else if (value.type == VAL_RANGE) {
+        // Range objects are heap-allocated but don't have their own ref counting
+        // The start/end values inside them use retain/release
+        // The range pointer itself is just copied
     }
     return value;
 }
@@ -121,6 +125,13 @@ void vm_release(value_t value) {
         do_release(&value.as.object);
     } else if (value.type == VAL_BIGINT) {
         db_release(&value.as.bigint);
+    } else if (value.type == VAL_RANGE) {
+        // For range objects, we need to release the contained values and free the range
+        if (value.as.range) {
+            vm_release(value.as.range->start);
+            vm_release(value.as.range->end);
+            free(value.as.range);
+        }
     }
 }
 
@@ -218,6 +229,24 @@ value_t make_object(do_object object) {
     return value;
 }
 
+value_t make_range(value_t start, value_t end, int exclusive) {
+    range_t* range = malloc(sizeof(range_t));
+    if (!range) {
+        // TODO: Handle allocation failure
+        return make_null();
+    }
+    
+    range->start = vm_retain(start);
+    range->end = vm_retain(end);
+    range->exclusive = exclusive;
+    
+    value_t value;
+    value.type = VAL_RANGE;
+    value.as.range = range;
+    value.debug = NULL;
+    return value;
+}
+
 value_t make_function(function_t* function) {
     value_t value;
     value.type = VAL_FUNCTION;
@@ -299,6 +328,12 @@ value_t make_array_with_debug(da_array array, debug_location* debug) {
 
 value_t make_object_with_debug(do_object object, debug_location* debug) {
     value_t value = make_object(object);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_range_with_debug(value_t start, value_t end, int exclusive, debug_location* debug) {
+    value_t value = make_range(start, end, exclusive);
     value.debug = debug_location_copy(debug);
     return value;
 }
@@ -449,6 +484,27 @@ static ds_string value_to_string_representation(value_t value) {
         ds_release(&result);
         ds_release(&bracket);
         return temp;
+    }
+    case VAL_RANGE: {
+        if (!value.as.range) {
+            return ds_new("{null range}");
+        }
+        
+        ds_string start_str = value_to_string_representation(value.as.range->start);
+        ds_string range_op = ds_new(value.as.range->exclusive ? "..<" : "..");
+        ds_string end_str = value_to_string_representation(value.as.range->end);
+        
+        // Concatenate: start + range_op + end
+        ds_string temp1 = ds_concat(start_str, range_op);
+        ds_string result = ds_concat(temp1, end_str);
+        
+        // Clean up
+        ds_release(&start_str);
+        ds_release(&range_op);
+        ds_release(&end_str);
+        ds_release(&temp1);
+        
+        return result;
     }
     case VAL_FUNCTION:
         return ds_new("{Function}");
@@ -641,6 +697,16 @@ void print_value(value_t value) {
     case VAL_BUILTIN:
         printf("<builtin function>");
         break;
+    case VAL_RANGE: {
+        if (!value.as.range) {
+            printf("<null range>");
+        } else {
+            print_value(value.as.range->start);
+            printf(value.as.range->exclusive ? "..<" : "..");
+            print_value(value.as.range->end);
+        }
+        break;
+    }
     }
 }
 
@@ -668,6 +734,14 @@ void free_value(value_t value) {
     case VAL_OBJECT: {
         do_object temp = value.as.object;
         do_release(&temp); // DO cleanup with reference counting!
+        break;
+    }
+    case VAL_RANGE: {
+        if (value.as.range) {
+            vm_release(value.as.range->start);
+            vm_release(value.as.range->end);
+            free(value.as.range);
+        }
         break;
     }
     case VAL_FUNCTION:
@@ -858,6 +932,8 @@ const char* opcode_name(opcode op) {
         return "BUILD_ARRAY";
     case OP_BUILD_OBJECT:
         return "BUILD_OBJECT";
+    case OP_BUILD_RANGE:
+        return "BUILD_RANGE";
     case OP_CLOSURE:
         return "CLOSURE";
     case OP_CALL:
@@ -1911,6 +1987,25 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             break;
         }
 
+        case OP_BUILD_RANGE: {
+            uint16_t exclusive = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+
+            // Pop end and start values from stack
+            value_t end = vm_pop(vm);
+            value_t start = vm_pop(vm);
+
+            // Create range object  
+            value_t range_value = make_range(start, end, exclusive);
+            
+            // Clean up popped values (make_range already retained them)
+            vm_release(start);
+            vm_release(end);
+
+            vm_push(vm, range_value);
+            break;
+        }
+
         case OP_GET_INDEX: {
             value_t index = vm_pop(vm);
             value_t object = vm_pop(vm);
@@ -2536,6 +2631,7 @@ const char* value_type_name(value_type type) {
         case VAL_STRING: return "string";
         case VAL_ARRAY: return "array";
         case VAL_OBJECT: return "object";
+        case VAL_RANGE: return "range";
         case VAL_FUNCTION: return "function";
         case VAL_CLOSURE: return "closure";
         case VAL_BUILTIN: return "builtin";

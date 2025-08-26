@@ -49,6 +49,7 @@ ast_node* parse_or(parser_t* parser);
 ast_node* parse_and(parser_t* parser);
 ast_node* parse_equality(parser_t* parser);
 ast_node* parse_comparison(parser_t* parser);
+ast_node* parse_range(parser_t* parser);
 ast_node* parse_term(parser_t* parser);
 ast_node* parse_factor(parser_t* parser);
 ast_node* parse_unary(parser_t* parser);
