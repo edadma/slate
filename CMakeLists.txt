@@ -22,6 +22,7 @@ add_executable(bitty
 # Link math library for main executable
 target_link_libraries(bitty m)
 
+
 # Tests executable (using Unity framework)
 option(BUILD_TESTS "Build unit tests" ON)
 

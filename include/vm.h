@@ -163,6 +163,7 @@ typedef struct value
 
 // Range structure for range expressions (1..10, 1..<10)
 struct range {
+    int ref_count;      // Reference count for memory management
     value_t start;      // Starting value
     value_t end;        // Ending value  
     int exclusive;      // 1 for ..< (exclusive), 0 for .. (inclusive)
@@ -176,6 +177,7 @@ typedef enum {
 
 // Iterator structure for unified iteration over arrays, ranges, etc.
 struct iterator {
+    size_t ref_count;           // Reference counting for memory management
     iterator_type type;
     union {
         struct {
@@ -193,6 +195,7 @@ struct iterator {
 
 // Bound method structure (method bound to a specific receiver)
 struct bound_method {
+    int ref_count;              // Reference count for memory management
     value_t receiver;           // The object this method is bound to
     builtin_func_t method;      // The method function pointer
 };
@@ -325,6 +328,18 @@ iterator_t* create_array_iterator(da_array array);
 iterator_t* create_range_iterator(value_t start, value_t end, int exclusive);
 int iterator_has_next(iterator_t* iter);
 value_t iterator_next(iterator_t* iter);
+
+// Iterator reference counting
+iterator_t* iterator_retain(iterator_t* iter);
+void iterator_release(iterator_t* iter);
+
+// Range reference counting
+range_t* range_retain(range_t* range);
+void range_release(range_t* range);
+
+// Bound method reference counting
+bound_method_t* bound_method_retain(bound_method_t* method);
+void bound_method_release(bound_method_t* method);
 
 // Value creation functions with debug info
 value_t make_null_with_debug(debug_location* debug);

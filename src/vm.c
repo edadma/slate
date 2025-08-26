@@ -109,13 +109,11 @@ value_t vm_retain(value_t value) {
     } else if (value.type == VAL_BIGINT) {
         value.as.bigint = db_retain(value.as.bigint);
     } else if (value.type == VAL_RANGE) {
-        // Range objects are heap-allocated but don't have their own ref counting
-        // The start/end values inside them use retain/release
-        // The range pointer itself is just copied
+        value.as.range = range_retain(value.as.range);
     } else if (value.type == VAL_ITERATOR) {
-        // Iterator objects are heap-allocated but don't have their own ref counting
-        // The values inside them use retain/release
-        // The iterator pointer itself is just copied
+        value.as.iterator = iterator_retain(value.as.iterator);
+    } else if (value.type == VAL_BOUND_METHOD) {
+        value.as.bound_method = bound_method_retain(value.as.bound_method);
     }
     return value;
 }
@@ -130,23 +128,11 @@ void vm_release(value_t value) {
     } else if (value.type == VAL_BIGINT) {
         db_release(&value.as.bigint);
     } else if (value.type == VAL_RANGE) {
-        // For range objects, we need to release the contained values and free the range
-        if (value.as.range) {
-            vm_release(value.as.range->start);
-            vm_release(value.as.range->end);
-            free(value.as.range);
-        }
+        range_release(value.as.range);
     } else if (value.type == VAL_ITERATOR) {
-        // For iterator objects, we need to release the contained values and free the iterator
-        if (value.as.iterator) {
-            if (value.as.iterator->type == ITER_ARRAY) {
-                da_release(&value.as.iterator->data.array_iter.array);
-            } else if (value.as.iterator->type == ITER_RANGE) {
-                vm_release(value.as.iterator->data.range_iter.current);
-                vm_release(value.as.iterator->data.range_iter.end);
-            }
-            free(value.as.iterator);
-        }
+        iterator_release(value.as.iterator);
+    } else if (value.type == VAL_BOUND_METHOD) {
+        bound_method_release(value.as.bound_method);
     }
 }
 
@@ -251,6 +237,7 @@ value_t make_range(value_t start, value_t end, int exclusive) {
         return make_null();
     }
     
+    range->ref_count = 1;           // Initialize reference count
     range->start = vm_retain(start);
     range->end = vm_retain(end);
     range->exclusive = exclusive;
@@ -300,6 +287,7 @@ value_t make_bound_method(value_t receiver, builtin_func_t method_func) {
         return make_null(); // Handle allocation failure
     }
     
+    method->ref_count = 1;                  // Initialize reference count
     method->receiver = vm_retain(receiver);
     method->method = method_func;
     
@@ -827,30 +815,18 @@ void free_value(value_t value) {
         break;
     }
     case VAL_RANGE: {
-        if (value.as.range) {
-            vm_release(value.as.range->start);
-            vm_release(value.as.range->end);
-            free(value.as.range);
-        }
+        // Range cleanup is handled by vm_release() through reference counting
+        // Don't duplicate cleanup here
         break;
     }
     case VAL_ITERATOR: {
-        if (value.as.iterator) {
-            if (value.as.iterator->type == ITER_ARRAY) {
-                da_release(&value.as.iterator->data.array_iter.array);
-            } else if (value.as.iterator->type == ITER_RANGE) {
-                vm_release(value.as.iterator->data.range_iter.current);
-                vm_release(value.as.iterator->data.range_iter.end);
-            }
-            free(value.as.iterator);
-        }
+        // Iterator cleanup is handled by vm_release() through reference counting
+        // Don't duplicate cleanup here
         break;
     }
     case VAL_BOUND_METHOD: {
-        if (value.as.bound_method) {
-            vm_release(value.as.bound_method->receiver);
-            free(value.as.bound_method);
-        }
+        // Bound method cleanup is handled by vm_release() through reference counting
+        // Don't duplicate cleanup here
         break;
     }
     case VAL_FUNCTION:
@@ -2237,8 +2213,12 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 }
                 value_t* element = (value_t*)da_get(callable.as.array, idx);
                 vm_push(vm, *element);
-                if (args)
+                if (args) {
+                    for (int i = 0; i < arg_count; i++) {
+                        vm_release(args[i]);
+                    }
                     free(args);
+                }
             }
             // Strings: act as functions from index to character
             else if (callable.type == VAL_STRING) {
@@ -2272,8 +2252,12 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 char ch = str[idx];
                 char result[2] = {ch, '\0'};
                 vm_push(vm, make_string(result));
-                if (args)
+                if (args) {
+                    for (int i = 0; i < arg_count; i++) {
+                        vm_release(args[i]);
+                    }
                     free(args);
+                }
             }
             // Objects: act as functions from property name to value
             else if (callable.type == VAL_OBJECT) {
@@ -2302,8 +2286,12 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                     // Missing property returns undefined
                     vm_push(vm, make_undefined());
                 }
-                if (args)
+                if (args) {
+                    for (int i = 0; i < arg_count; i++) {
+                        vm_release(args[i]);
+                    }
                     free(args);
+                }
             }
             // Built-in functions
             else if (callable.type == VAL_BUILTIN) {
@@ -2319,7 +2307,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 
                 // Create new argument array with receiver as first argument
                 value_t* method_args = malloc(sizeof(value_t) * (arg_count + 1));
-                method_args[0] = bound_method->receiver; // 'this' context
+                method_args[0] = vm_retain(bound_method->receiver); // 'this' context (retain for method call)
                 for (int i = 0; i < arg_count; i++) {
                     method_args[i + 1] = args[i];
                 }
@@ -2328,6 +2316,9 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 value_t result = bound_method->method(vm, arg_count + 1, method_args);
                 vm_push(vm, result);
                 
+                // Release the retained receiver
+                vm_release(method_args[0]);
+                
                 if (args)
                     free(args);
                 free(method_args);
@@ -2335,8 +2326,12 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             // Functions: traditional function call (not implemented yet)
             else if (callable.type == VAL_FUNCTION || callable.type == VAL_CLOSURE) {
                 printf("Runtime error: Function calls not yet implemented\n");
-                if (args)
+                if (args) {
+                    for (int i = 0; i < arg_count; i++) {
+                        vm_release(args[i]);
+                    }
                     free(args);
+                }
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
@@ -2347,8 +2342,12 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 } else {
                     printf("Runtime error: Value is not callable\n");
                 }
-                if (args)
+                if (args) {
+                    for (int i = 0; i < arg_count; i++) {
+                        vm_release(args[i]);
+                    }
                     free(args);
+                }
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
@@ -2504,6 +2503,17 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                     // Invalid property returns undefined, not error
                     vm_push(vm, make_undefined());
                 }
+            } else if (object.type == VAL_ITERATOR) {
+                if (strcmp(prop_name, "hasNext") == 0) {
+                    // Return a bound method with the iterator as receiver
+                    vm_push(vm, make_bound_method(object, builtin_has_next));
+                } else if (strcmp(prop_name, "next") == 0) {
+                    // Return a bound method with the iterator as receiver
+                    vm_push(vm, make_bound_method(object, builtin_next));
+                } else {
+                    // Invalid property returns undefined, not error
+                    vm_push(vm, make_undefined());
+                }
             } else {
                 // Property access on invalid types returns undefined
                 vm_push(vm, make_undefined());
@@ -2605,6 +2615,7 @@ iterator_t* create_array_iterator(da_array array) {
     iterator_t* iter = malloc(sizeof(iterator_t));
     if (!iter) return NULL;
     
+    iter->ref_count = 1;    // Initialize reference count
     iter->type = ITER_ARRAY;
     iter->data.array_iter.array = da_retain(array);
     iter->data.array_iter.index = 0;
@@ -2616,6 +2627,7 @@ iterator_t* create_range_iterator(value_t start, value_t end, int exclusive) {
     iterator_t* iter = malloc(sizeof(iterator_t));
     if (!iter) return NULL;
     
+    iter->ref_count = 1;    // Initialize reference count
     iter->type = ITER_RANGE;
     iter->data.range_iter.current = vm_retain(start);
     iter->data.range_iter.end = vm_retain(end);
@@ -2680,6 +2692,72 @@ value_t iterator_next(iterator_t* iter) {
     }
     default:
         return make_null();
+    }
+}
+
+// Bound method reference counting functions
+bound_method_t* bound_method_retain(bound_method_t* method) {
+    if (!method) return method;
+    method->ref_count++;
+    return method;
+}
+
+void bound_method_release(bound_method_t* method) {
+    if (!method) return;
+    
+    method->ref_count--;
+    if (method->ref_count == 0) {
+        // Clean up bound method data
+        vm_release(method->receiver);
+        
+        // Free the bound method itself
+        free(method);
+    }
+}
+
+// Range reference counting functions
+range_t* range_retain(range_t* range) {
+    if (!range) return range;
+    range->ref_count++;
+    return range;
+}
+
+void range_release(range_t* range) {
+    if (!range) return;
+    
+    range->ref_count--;
+    if (range->ref_count == 0) {
+        // Clean up range data
+        vm_release(range->start);
+        vm_release(range->end);
+        
+        // Free the range itself
+        free(range);
+    }
+}
+
+// Iterator reference counting functions
+iterator_t* iterator_retain(iterator_t* iter) {
+    if (!iter) return iter;
+    iter->ref_count++;
+    return iter;
+}
+
+void iterator_release(iterator_t* iter) {
+    if (!iter) return;
+    
+    iter->ref_count--;
+    if (iter->ref_count == 0) {
+        // Clean up iterator-specific data
+        if (iter->type == ITER_ARRAY) {
+            da_release(&iter->data.array_iter.array);
+        } else if (iter->type == ITER_RANGE) {
+            vm_release(iter->data.range_iter.current);
+            vm_release(iter->data.range_iter.end);
+        }
+        
+        // Free the iterator itself
+        free(iter);
     }
 }
 
