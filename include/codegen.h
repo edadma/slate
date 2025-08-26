@@ -35,6 +35,11 @@ typedef struct {
     bytecode_chunk* chunk;
     int had_error;
     int debug_mode; // Whether to generate debug information
+    // Simple loop context (for now, only support one level)
+    size_t* break_jumps;    // Array of break jump locations to patch
+    size_t break_count;     // Number of break statements in current loop
+    size_t break_capacity;  // Capacity of break_jumps array
+    int in_loop;            // Whether we're currently inside a loop
 } codegen_t;
 
 // Debug info functions
@@ -86,6 +91,7 @@ void codegen_emit_block_expression(codegen_t* codegen, ast_block* node);
 void codegen_emit_if(codegen_t* codegen, ast_if* node);
 void codegen_emit_while(codegen_t* codegen, ast_while* node);
 void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node);
+void codegen_emit_break(codegen_t* codegen, ast_break* node);
 void codegen_emit_return(codegen_t* codegen, ast_return* node);
 
 // Utility functions
@@ -97,6 +103,10 @@ void codegen_emit_op_operand_with_debug(codegen_t* codegen, opcode op, uint16_t 
 size_t codegen_emit_jump(codegen_t* codegen, opcode op);
 void codegen_patch_jump(codegen_t* codegen, size_t offset);
 void codegen_emit_loop(codegen_t* codegen, size_t loop_start);
+
+// Loop management for break statements
+void codegen_begin_loop(codegen_t* codegen);
+void codegen_end_loop(codegen_t* codegen);
 
 // Error handling
 void codegen_error(codegen_t* codegen, const char* message);

@@ -31,6 +31,7 @@ static keyword_entry_t keywords[] = {
     {"while", TOKEN_WHILE},
     {"loop", TOKEN_LOOP},
     {"do", TOKEN_DO},
+    {"break", TOKEN_BREAK},
     {"return", TOKEN_RETURN},
     {"then", TOKEN_THEN},
     {"end", TOKEN_END},
@@ -485,6 +486,7 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_WHILE: return "WHILE";
         case TOKEN_LOOP: return "LOOP";
         case TOKEN_DO: return "DO";
+        case TOKEN_BREAK: return "BREAK";
         case TOKEN_RETURN: return "RETURN";
         case TOKEN_THEN: return "THEN";
         case TOKEN_END: return "END";
