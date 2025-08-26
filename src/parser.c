@@ -357,6 +357,7 @@ ast_node* parse_statement(parser_t* parser) {
         return parse_loop_statement(parser);
     }
     
+    
     if (parser_match(parser, TOKEN_RETURN)) {
         return parse_return_statement(parser);
     }
@@ -555,6 +556,12 @@ ast_node* parse_loop_statement(parser_t* parser) {
     }
     
     return (ast_node*)ast_create_loop(body, parser->previous.line, parser->previous.column);
+}
+
+// Parse break statement
+ast_node* parse_break_statement(parser_t* parser) {
+    // Break statements are simple - just the keyword
+    return (ast_node*)ast_create_break(parser->previous.line, parser->previous.column);
 }
 
 // Parse return statement
@@ -995,6 +1002,10 @@ ast_node* parse_primary(parser_t* parser) {
     
     if (parser_match(parser, TOKEN_IF)) {
         return parse_if_expression(parser);
+    }
+    
+    if (parser_match(parser, TOKEN_BREAK)) {
+        return parse_break_statement(parser);
     }
     
     parser_error_at_current(parser, "Expected expression.");

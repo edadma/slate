@@ -131,6 +131,10 @@ codegen_t* codegen_create(void) {
     codegen->chunk = chunk_create();
     codegen->had_error = 0;
     codegen->debug_mode = 0; // No debug info by default
+    codegen->break_jumps = NULL;
+    codegen->break_count = 0;
+    codegen->break_capacity = 0;
+    codegen->in_loop = 0;
     
     return codegen;
 }
@@ -147,6 +151,10 @@ codegen_t* codegen_create_with_debug(const char* source_code) {
     
     codegen->had_error = 0;
     codegen->debug_mode = 1; // Enable debug info
+    codegen->break_jumps = NULL;
+    codegen->break_count = 0;
+    codegen->break_capacity = 0;
+    codegen->in_loop = 0;
     
     return codegen;
 }
@@ -155,6 +163,7 @@ void codegen_destroy(codegen_t* codegen) {
     if (!codegen) return;
     
     chunk_destroy(codegen->chunk);
+    free(codegen->break_jumps);
     free(codegen);
 }
 
@@ -327,6 +336,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_block_expression(codegen, (ast_block*)expr);
             break;
             
+        case AST_BREAK:
+            codegen_emit_break(codegen, (ast_break*)expr);
+            break;
+            
         default:
             codegen_error(codegen, "Unknown expression type");
             break;
@@ -360,6 +373,10 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             
         case AST_LOOP:
             codegen_emit_infinite_loop(codegen, (ast_loop*)stmt);
+            break;
+            
+        case AST_BREAK:
+            codegen_emit_break(codegen, (ast_break*)stmt);
             break;
             
         case AST_RETURN:
@@ -704,6 +721,9 @@ void codegen_emit_block_expression(codegen_t* codegen, ast_block* node) {
 void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     size_t loop_start = codegen->chunk->count;
     
+    // Begin loop context for break statements
+    codegen_begin_loop(codegen);
+    
     // Generate condition
     codegen_emit_expression(codegen, node->condition);
     
@@ -727,10 +747,16 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     // Patch exit jump
     codegen_patch_jump(codegen, exit_jump);
     codegen_emit_op(codegen, OP_POP); // Pop condition
+    
+    // End loop context and patch break statements
+    codegen_end_loop(codegen);
 }
 
 void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node) {
     size_t loop_start = codegen->chunk->count;
+    
+    // Begin loop context for break statements
+    codegen_begin_loop(codegen);
     
     // Generate body (no condition needed for infinite loop)
     codegen_emit_statement(codegen, node->body);
@@ -744,6 +770,48 @@ void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node) {
     }
     // Emit backward jump (negative offset) - this creates the infinite loop
     codegen_emit_op_operand(codegen, OP_JUMP, (uint16_t)(-backward_distance));
+    
+    // End loop context and patch break statements
+    codegen_end_loop(codegen);
+}
+
+void codegen_emit_break(codegen_t* codegen, ast_break* node) {
+    if (!codegen->in_loop) {
+        codegen_error(codegen, "Break statement outside of loop");
+        return;
+    }
+    
+    // Emit a jump that will be patched later when the loop ends
+    size_t jump_offset = codegen_emit_jump(codegen, OP_JUMP);
+    
+    // Add to the list of break jumps to patch
+    if (codegen->break_count >= codegen->break_capacity) {
+        size_t new_capacity = codegen->break_capacity == 0 ? 8 : codegen->break_capacity * 2;
+        size_t* new_jumps = realloc(codegen->break_jumps, new_capacity * sizeof(size_t));
+        if (!new_jumps) {
+            codegen_error(codegen, "Out of memory");
+            return;
+        }
+        codegen->break_jumps = new_jumps;
+        codegen->break_capacity = new_capacity;
+    }
+    
+    codegen->break_jumps[codegen->break_count++] = jump_offset;
+}
+
+void codegen_begin_loop(codegen_t* codegen) {
+    codegen->in_loop = 1;
+    codegen->break_count = 0;
+}
+
+void codegen_end_loop(codegen_t* codegen) {
+    // Patch all break statements to jump to this location
+    for (size_t i = 0; i < codegen->break_count; i++) {
+        codegen_patch_jump(codegen, codegen->break_jumps[i]);
+    }
+    
+    codegen->in_loop = 0;
+    codegen->break_count = 0;
 }
 
 void codegen_emit_return(codegen_t* codegen, ast_return* node) {
