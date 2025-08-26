@@ -14,6 +14,8 @@
 
 // Forward declarations
 typedef struct value value_t;
+typedef struct bitty_vm bitty_vm;
+typedef value_t (*builtin_func_t)(bitty_vm* vm, int arg_count, value_t* args);
 
 // Debug location for values (NULL when debugging disabled)
 typedef struct debug_location {
@@ -94,6 +96,7 @@ typedef enum
     // Function operations
     OP_CLOSURE, // Create closure (operand = function index)
     OP_CALL, // Call function (operand = arg count)
+    OP_CALL_METHOD, // Call method with implicit receiver (operand = arg count)
     OP_RETURN, // Return from function
 
     // Control flow
@@ -123,13 +126,17 @@ typedef enum
     VAL_ARRAY,
     VAL_OBJECT,
     VAL_RANGE,     // Range object (1..10, 1..<10)
+    VAL_ITERATOR,  // Iterator object for arrays, ranges, etc.
     VAL_FUNCTION,
     VAL_CLOSURE,
-    VAL_BUILTIN
+    VAL_BUILTIN,
+    VAL_BOUND_METHOD
 } value_type;
 
-// Forward declaration for range structure
+// Forward declaration for range, iterator, and bound method structures
 typedef struct range range_t;
+typedef struct iterator iterator_t;
+typedef struct bound_method bound_method_t;
 
 // VM value structure
 typedef struct value
@@ -145,9 +152,11 @@ typedef struct value
         da_array array; // Using dynamic_array.h!
         do_object object; // Using dynamic_object.h!
         range_t* range; // Range object pointer
+        iterator_t* iterator; // Iterator object pointer
         struct function* function;
         struct closure* closure;
         void* builtin; // Built-in function pointer (cast from builtin_func_t)
+        bound_method_t* bound_method; // Bound method (method + receiver)
     } as;
     debug_location* debug; // Debug info for error reporting (NULL when disabled)
 } value_t;
@@ -157,6 +166,35 @@ struct range {
     value_t start;      // Starting value
     value_t end;        // Ending value  
     int exclusive;      // 1 for ..< (exclusive), 0 for .. (inclusive)
+};
+
+// Iterator types
+typedef enum {
+    ITER_ARRAY,     // Array iterator
+    ITER_RANGE      // Range iterator
+} iterator_type;
+
+// Iterator structure for unified iteration over arrays, ranges, etc.
+struct iterator {
+    iterator_type type;
+    union {
+        struct {
+            da_array array;     // Array being iterated
+            size_t index;       // Current index
+        } array_iter;
+        struct {
+            value_t current;    // Current value
+            value_t end;        // End value
+            int exclusive;      // Whether end is exclusive
+            int finished;       // Whether iteration is complete
+        } range_iter;
+    } data;
+};
+
+// Bound method structure (method bound to a specific receiver)
+struct bound_method {
+    value_t receiver;           // The object this method is bound to
+    builtin_func_t method;      // The method function pointer
 };
 
 // Function structure
@@ -276,9 +314,17 @@ value_t make_string_ds(ds_string str);
 value_t make_array(da_array array);
 value_t make_object(do_object object);
 value_t make_range(value_t start, value_t end, int exclusive);
+value_t make_iterator(iterator_t* iterator);
 value_t make_function(function_t* function);
 value_t make_closure(closure_t* closure);
 value_t make_builtin(void* builtin_func);
+value_t make_bound_method(value_t receiver, builtin_func_t method);
+
+// Iterator creation helpers
+iterator_t* create_array_iterator(da_array array);
+iterator_t* create_range_iterator(value_t start, value_t end, int exclusive);
+int iterator_has_next(iterator_t* iter);
+value_t iterator_next(iterator_t* iter);
 
 // Value creation functions with debug info
 value_t make_null_with_debug(debug_location* debug);
@@ -292,9 +338,11 @@ value_t make_string_ds_with_debug(ds_string str, debug_location* debug);
 value_t make_array_with_debug(da_array array, debug_location* debug);
 value_t make_object_with_debug(do_object object, debug_location* debug);
 value_t make_range_with_debug(value_t start, value_t end, int exclusive, debug_location* debug);
+value_t make_iterator_with_debug(iterator_t* iterator, debug_location* debug);
 value_t make_function_with_debug(function_t* function, debug_location* debug);
 value_t make_closure_with_debug(closure_t* closure, debug_location* debug);
 value_t make_builtin_with_debug(void* builtin_func, debug_location* debug);
+value_t make_bound_method_with_debug(value_t receiver, builtin_func_t method, debug_location* debug);
 
 // Debug location management
 debug_location* debug_location_create(int line, int column, const char* source_text);

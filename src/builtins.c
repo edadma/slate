@@ -58,6 +58,11 @@ void builtins_init(bitty_vm* vm) {
     register_builtin(vm, "parse_int", builtin_parse_int, 1, 1);
     register_builtin(vm, "parse_number", builtin_parse_number, 1, 1);
     register_builtin(vm, "args", builtin_args, 0, 0);
+    
+    // Iterator functions
+    register_builtin(vm, "iterator", builtin_iterator, 1, 1);
+    register_builtin(vm, "hasNext", builtin_has_next, 1, 1);
+    register_builtin(vm, "next", builtin_next, 1, 1);
 }
 
 // Built-in function implementations
@@ -119,6 +124,18 @@ value_t builtin_type(bitty_vm* vm, int arg_count, value_t* args) {
         break;
     case VAL_CLOSURE:
         type_name = "closure";
+        break;
+    case VAL_BUILTIN:
+        type_name = "builtin";
+        break;
+    case VAL_RANGE:
+        type_name = "range";
+        break;
+    case VAL_ITERATOR:
+        type_name = "iterator";
+        break;
+    case VAL_BOUND_METHOD:
+        type_name = "bound_method";
         break;
     default:
         type_name = "unknown";
@@ -529,4 +546,70 @@ value_t builtin_args(bitty_vm* vm, int arg_count, value_t* args) {
     }
     
     return make_array(arg_array);
+}
+
+// iterator(collection) - Create iterator for arrays and ranges
+value_t builtin_iterator(bitty_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("iterator() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t collection = args[0];
+    iterator_t* iter = NULL;
+    
+    switch (collection.type) {
+    case VAL_ARRAY:
+        iter = create_array_iterator(collection.as.array);
+        break;
+    case VAL_RANGE:
+        if (collection.as.range) {
+            iter = create_range_iterator(
+                collection.as.range->start,
+                collection.as.range->end,
+                collection.as.range->exclusive
+            );
+        }
+        break;
+    default:
+        runtime_error("iterator() can only be called on arrays and ranges, not %s", value_type_name(collection.type));
+    }
+    
+    if (!iter) {
+        runtime_error("Failed to create iterator");
+    }
+    
+    return make_iterator(iter);
+}
+
+// hasNext(iterator) - Check if iterator has more elements
+value_t builtin_has_next(bitty_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("hasNext() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t iter_val = args[0];
+    if (iter_val.type != VAL_ITERATOR) {
+        runtime_error("hasNext() requires an iterator argument, not %s", value_type_name(iter_val.type));
+    }
+    
+    int has_next = iterator_has_next(iter_val.as.iterator);
+    return make_boolean(has_next);
+}
+
+// next(iterator) - Get next element from iterator
+value_t builtin_next(bitty_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("next() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t iter_val = args[0];
+    if (iter_val.type != VAL_ITERATOR) {
+        runtime_error("next() requires an iterator argument, not %s", value_type_name(iter_val.type));
+    }
+    
+    if (!iterator_has_next(iter_val.as.iterator)) {
+        runtime_error("Iterator has no more elements");
+    }
+    
+    return iterator_next(iter_val.as.iterator);
 }

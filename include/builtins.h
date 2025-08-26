@@ -42,6 +42,11 @@ value_t builtin_parse_int(bitty_vm* vm, int arg_count, value_t* args);
 value_t builtin_parse_number(bitty_vm* vm, int arg_count, value_t* args);
 value_t builtin_args(bitty_vm* vm, int arg_count, value_t* args);
 
+// Iterator functions
+value_t builtin_iterator(bitty_vm* vm, int arg_count, value_t* args);
+value_t builtin_has_next(bitty_vm* vm, int arg_count, value_t* args);
+value_t builtin_next(bitty_vm* vm, int arg_count, value_t* args);
+
 // Runtime error handling
 void runtime_error(const char* message, ...);
 

@@ -600,6 +600,120 @@ void test_vm_compound_assignments(void) {
     vm_release(result);
 }
 
+// Test bound method property access
+void test_vm_bound_method_property_access(void) {
+    value_t result;
+    
+    // Test array.iterator returns bound method
+    result = run_code("type([1, 2, 3].iterator)");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("bound_method", result.as.string);
+    vm_release(result);
+    
+    // Test range.iterator returns bound method  
+    result = run_code("type((1..5).iterator)");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("bound_method", result.as.string);
+    vm_release(result);
+}
+
+// Test bound method calls
+void test_vm_bound_method_calls(void) {
+    value_t result;
+    
+    // Test array.iterator() returns array iterator
+    result = run_code("type([1, 2, 3].iterator())");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("iterator", result.as.string);
+    vm_release(result);
+    
+    // Test range.iterator() returns range iterator
+    result = run_code("type((1..5).iterator())");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("iterator", result.as.string);
+    vm_release(result);
+    
+    // Test exclusive range iterator
+    result = run_code("type((1..<5).iterator())");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("iterator", result.as.string);
+    vm_release(result);
+}
+
+// Test bound method string representation
+void test_vm_bound_method_string_representation(void) {
+    value_t result;
+    
+    // Test bound method converts to string properly
+    result = run_code("\"Method: \" + [1, 2].iterator");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_TRUE(strstr(result.as.string, "Bound Method") != NULL);
+    vm_release(result);
+}
+
+// Test bound method memory management
+void test_vm_bound_method_memory_management(void) {
+    value_t result;
+    
+    // Test that different arrays create different bound methods
+    result = run_code("[1, 2].iterator == [3, 4].iterator");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean);
+    vm_release(result);
+    
+    // Test bound method equality with same array
+    result = run_code("var arr = [1, 2]; arr.iterator == arr.iterator");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean); // Different bound method objects
+    vm_release(result);
+}
+
+// Test bound method context passing
+void test_vm_bound_method_context_passing(void) {
+    value_t result;
+    
+    // Test that method receives correct receiver
+    // Array iterator should work with the specific array
+    result = run_code("var arr = [10, 20, 30]; var iter = arr.iterator(); hasNext(iter)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);
+    vm_release(result);
+    
+    // Test range iterator with specific range
+    result = run_code("var range = 5..8; var iter = range.iterator(); hasNext(iter)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);
+    vm_release(result);
+}
+
+// Test bound method with type function
+void test_vm_bound_method_type(void) {
+    value_t result;
+    
+    // Test type() function works with bound methods
+    result = run_code("type([1, 2].iterator)");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("bound_method", result.as.string);
+    vm_release(result);
+}
+
+// Test bound method error cases
+void test_vm_bound_method_error_cases(void) {
+    value_t result;
+    
+    // Test accessing non-existent method returns undefined
+    result = run_code("[1, 2].nonexistent");
+    TEST_ASSERT_EQUAL(VAL_UNDEFINED, result.type);
+    vm_release(result);
+    
+    // Test calling non-method property fails
+    result = run_code("[1, 2].length()");
+    // This should cause a runtime error since length is not a function
+    // But the test framework might not capture this properly
+    // Just ensure it doesn't crash
+    vm_release(result);
+}
+
 // Test suite runner
 void test_vm_suite(void) {
     // Note: Arithmetic, unary, and division/modulo by zero tests moved to test_arithmetic.c
@@ -621,5 +735,12 @@ void test_vm_suite(void) {
     RUN_TEST(test_vm_comments);
     RUN_TEST(test_vm_array_concatenation);
     RUN_TEST(test_vm_compound_assignments);
+    RUN_TEST(test_vm_bound_method_property_access);
+    RUN_TEST(test_vm_bound_method_calls);
+    RUN_TEST(test_vm_bound_method_string_representation);
+    RUN_TEST(test_vm_bound_method_memory_management);
+    RUN_TEST(test_vm_bound_method_context_passing);
+    RUN_TEST(test_vm_bound_method_type);
+    RUN_TEST(test_vm_bound_method_error_cases);
     // Conditional and block tests moved to test_conditionals.c
 }

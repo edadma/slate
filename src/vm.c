@@ -112,6 +112,10 @@ value_t vm_retain(value_t value) {
         // Range objects are heap-allocated but don't have their own ref counting
         // The start/end values inside them use retain/release
         // The range pointer itself is just copied
+    } else if (value.type == VAL_ITERATOR) {
+        // Iterator objects are heap-allocated but don't have their own ref counting
+        // The values inside them use retain/release
+        // The iterator pointer itself is just copied
     }
     return value;
 }
@@ -131,6 +135,17 @@ void vm_release(value_t value) {
             vm_release(value.as.range->start);
             vm_release(value.as.range->end);
             free(value.as.range);
+        }
+    } else if (value.type == VAL_ITERATOR) {
+        // For iterator objects, we need to release the contained values and free the iterator
+        if (value.as.iterator) {
+            if (value.as.iterator->type == ITER_ARRAY) {
+                da_release(&value.as.iterator->data.array_iter.array);
+            } else if (value.as.iterator->type == ITER_RANGE) {
+                vm_release(value.as.iterator->data.range_iter.current);
+                vm_release(value.as.iterator->data.range_iter.end);
+            }
+            free(value.as.iterator);
         }
     }
 }
@@ -247,6 +262,14 @@ value_t make_range(value_t start, value_t end, int exclusive) {
     return value;
 }
 
+value_t make_iterator(iterator_t* iterator) {
+    value_t value;
+    value.type = VAL_ITERATOR;
+    value.as.iterator = iterator;
+    value.debug = NULL;
+    return value;
+}
+
 value_t make_function(function_t* function) {
     value_t value;
     value.type = VAL_FUNCTION;
@@ -267,6 +290,22 @@ value_t make_builtin(void* builtin_func) {
     value_t value;
     value.type = VAL_BUILTIN;
     value.as.builtin = builtin_func;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_bound_method(value_t receiver, builtin_func_t method_func) {
+    bound_method_t* method = malloc(sizeof(bound_method_t));
+    if (!method) {
+        return make_null(); // Handle allocation failure
+    }
+    
+    method->receiver = vm_retain(receiver);
+    method->method = method_func;
+    
+    value_t value;
+    value.type = VAL_BOUND_METHOD;
+    value.as.bound_method = method;
     value.debug = NULL;
     return value;
 }
@@ -338,6 +377,12 @@ value_t make_range_with_debug(value_t start, value_t end, int exclusive, debug_l
     return value;
 }
 
+value_t make_iterator_with_debug(iterator_t* iterator, debug_location* debug) {
+    value_t value = make_iterator(iterator);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
 value_t make_function_with_debug(function_t* function, debug_location* debug) {
     value_t value = make_function(function);
     value.debug = debug_location_copy(debug);
@@ -352,6 +397,12 @@ value_t make_closure_with_debug(closure_t* closure, debug_location* debug) {
 
 value_t make_builtin_with_debug(void* builtin_func, debug_location* debug) {
     value_t value = make_builtin(builtin_func);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_bound_method_with_debug(value_t receiver, builtin_func_t method_func, debug_location* debug) {
+    value_t value = make_bound_method(receiver, method_func);
     value.debug = debug_location_copy(debug);
     return value;
 }
@@ -505,6 +556,25 @@ static ds_string value_to_string_representation(value_t value) {
         ds_release(&temp1);
         
         return result;
+    }
+    case VAL_ITERATOR: {
+        if (!value.as.iterator) {
+            return ds_new("{null iterator}");
+        }
+        
+        if (value.as.iterator->type == ITER_ARRAY) {
+            return ds_new("{Array Iterator}");
+        } else if (value.as.iterator->type == ITER_RANGE) {
+            return ds_new("{Range Iterator}");
+        } else {
+            return ds_new("{Unknown Iterator}");
+        }
+    }
+    case VAL_BOUND_METHOD: {
+        if (!value.as.bound_method) {
+            return ds_new("{null bound method}");
+        }
+        return ds_new("{Bound Method}");
     }
     case VAL_FUNCTION:
         return ds_new("{Function}");
@@ -707,6 +777,26 @@ void print_value(value_t value) {
         }
         break;
     }
+    case VAL_ITERATOR: {
+        if (!value.as.iterator) {
+            printf("<null iterator>");
+        } else if (value.as.iterator->type == ITER_ARRAY) {
+            printf("<array iterator>");
+        } else if (value.as.iterator->type == ITER_RANGE) {
+            printf("<range iterator>");
+        } else {
+            printf("<unknown iterator>");
+        }
+        break;
+    }
+    case VAL_BOUND_METHOD: {
+        if (!value.as.bound_method) {
+            printf("<null bound method>");
+        } else {
+            printf("<bound method>");
+        }
+        break;
+    }
     }
 }
 
@@ -741,6 +831,25 @@ void free_value(value_t value) {
             vm_release(value.as.range->start);
             vm_release(value.as.range->end);
             free(value.as.range);
+        }
+        break;
+    }
+    case VAL_ITERATOR: {
+        if (value.as.iterator) {
+            if (value.as.iterator->type == ITER_ARRAY) {
+                da_release(&value.as.iterator->data.array_iter.array);
+            } else if (value.as.iterator->type == ITER_RANGE) {
+                vm_release(value.as.iterator->data.range_iter.current);
+                vm_release(value.as.iterator->data.range_iter.end);
+            }
+            free(value.as.iterator);
+        }
+        break;
+    }
+    case VAL_BOUND_METHOD: {
+        if (value.as.bound_method) {
+            vm_release(value.as.bound_method->receiver);
+            free(value.as.bound_method);
         }
         break;
     }
@@ -2204,6 +2313,25 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 if (args)
                     free(args);
             }
+            // Bound methods
+            else if (callable.type == VAL_BOUND_METHOD) {
+                bound_method_t* bound_method = callable.as.bound_method;
+                
+                // Create new argument array with receiver as first argument
+                value_t* method_args = malloc(sizeof(value_t) * (arg_count + 1));
+                method_args[0] = bound_method->receiver; // 'this' context
+                for (int i = 0; i < arg_count; i++) {
+                    method_args[i + 1] = args[i];
+                }
+                
+                // Call the method with receiver as first argument
+                value_t result = bound_method->method(vm, arg_count + 1, method_args);
+                vm_push(vm, result);
+                
+                if (args)
+                    free(args);
+                free(method_args);
+            }
             // Functions: traditional function call (not implemented yet)
             else if (callable.type == VAL_FUNCTION || callable.type == VAL_CLOSURE) {
                 printf("Runtime error: Function calls not yet implemented\n");
@@ -2345,6 +2473,9 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             if (object.type == VAL_ARRAY) {
                 if (strcmp(prop_name, "length") == 0) {
                     vm_push(vm, make_int32((int32_t)da_length(object.as.array)));
+                } else if (strcmp(prop_name, "iterator") == 0) {
+                    // Return a bound method with the array as receiver
+                    vm_push(vm, make_bound_method(object, builtin_iterator));
                 } else {
                     // Invalid property returns undefined, not error
                     vm_push(vm, make_undefined());
@@ -2363,6 +2494,14 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                     vm_push(vm, *prop_value);
                 } else {
                     // Missing property returns undefined
+                    vm_push(vm, make_undefined());
+                }
+            } else if (object.type == VAL_RANGE) {
+                if (strcmp(prop_name, "iterator") == 0) {
+                    // Return a bound method with the range as receiver
+                    vm_push(vm, make_bound_method(object, builtin_iterator));
+                } else {
+                    // Invalid property returns undefined, not error
                     vm_push(vm, make_undefined());
                 }
             } else {
@@ -2459,6 +2598,89 @@ vm_result vm_interpret(bitty_vm* vm, const char* source) {
     (void)source;
     printf("vm_interpret not yet implemented\n");
     return VM_COMPILE_ERROR;
+}
+
+// Iterator creation and management functions
+iterator_t* create_array_iterator(da_array array) {
+    iterator_t* iter = malloc(sizeof(iterator_t));
+    if (!iter) return NULL;
+    
+    iter->type = ITER_ARRAY;
+    iter->data.array_iter.array = da_retain(array);
+    iter->data.array_iter.index = 0;
+    
+    return iter;
+}
+
+iterator_t* create_range_iterator(value_t start, value_t end, int exclusive) {
+    iterator_t* iter = malloc(sizeof(iterator_t));
+    if (!iter) return NULL;
+    
+    iter->type = ITER_RANGE;
+    iter->data.range_iter.current = vm_retain(start);
+    iter->data.range_iter.end = vm_retain(end);
+    iter->data.range_iter.exclusive = exclusive;
+    iter->data.range_iter.finished = 0;
+    
+    return iter;
+}
+
+int iterator_has_next(iterator_t* iter) {
+    if (!iter) return 0;
+    
+    switch (iter->type) {
+    case ITER_ARRAY:
+        return iter->data.array_iter.index < da_length(iter->data.array_iter.array);
+    case ITER_RANGE: {
+        if (iter->data.range_iter.finished) return 0;
+        
+        // For now, only support integer ranges
+        if (iter->data.range_iter.current.type != VAL_INT32 || 
+            iter->data.range_iter.end.type != VAL_INT32) {
+            return 0;
+        }
+        
+        int32_t current = iter->data.range_iter.current.as.int32;
+        int32_t end = iter->data.range_iter.end.as.int32;
+        
+        if (iter->data.range_iter.exclusive) {
+            return current < end;
+        } else {
+            return current <= end;
+        }
+    }
+    default:
+        return 0;
+    }
+}
+
+value_t iterator_next(iterator_t* iter) {
+    if (!iter || !iterator_has_next(iter)) {
+        return make_null();
+    }
+    
+    switch (iter->type) {
+    case ITER_ARRAY: {
+        value_t* element = (value_t*)da_get(iter->data.array_iter.array, iter->data.array_iter.index);
+        iter->data.array_iter.index++;
+        return element ? vm_retain(*element) : make_null();
+    }
+    case ITER_RANGE: {
+        // Return current value and increment
+        value_t current = vm_retain(iter->data.range_iter.current);
+        
+        // Increment current (for now, only support integers)
+        if (iter->data.range_iter.current.type == VAL_INT32) {
+            iter->data.range_iter.current.as.int32++;
+        } else {
+            iter->data.range_iter.finished = 1;
+        }
+        
+        return current;
+    }
+    default:
+        return make_null();
+    }
 }
 
 // Debug location management
@@ -2632,9 +2854,11 @@ const char* value_type_name(value_type type) {
         case VAL_ARRAY: return "array";
         case VAL_OBJECT: return "object";
         case VAL_RANGE: return "range";
+        case VAL_ITERATOR: return "iterator";
         case VAL_FUNCTION: return "function";
         case VAL_CLOSURE: return "closure";
         case VAL_BUILTIN: return "builtin";
+        case VAL_BOUND_METHOD: return "bound_method";
         default: return "unknown";
     }
 }
