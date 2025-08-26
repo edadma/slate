@@ -1,4 +1,4 @@
-# Bitty Programming Language
+# Slate Programming Language
 
 A toy programming language implementation with a complete compilation pipeline from source code to bytecode execution on a stack-based virtual machine.
 
@@ -28,16 +28,16 @@ cmake --build build
 
 ```bash
 # Interactive REPL
-./build/bitty
+./build/slate
 
 # Execute a file
-./build/bitty script.bitty
+./build/slate script.slate
 
 # Run built-in tests
-./build/bitty --test
+./build/slate --test
 
 # Enable debug output
-./build/bitty --debug
+./build/slate --debug
 ```
 
 ## Running Tests
@@ -45,13 +45,13 @@ cmake --build build
 ```bash
 cmake -B build -DBUILD_TESTS=ON
 cmake --build build
-./build/bitty_tests
+./build/slate_tests
 ```
 
 ## Project Structure
 
 ```
-bitty/
+slate/
 ├── include/        # Header files
 ├── src/            # Source files
 ├── tests/          # Unit tests (Unity framework)

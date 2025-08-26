@@ -23,7 +23,7 @@ void runtime_error(const char* message, ...) {
 }
 
 // Register a built-in function in the VM's global namespace
-void register_builtin(bitty_vm* vm, const char* name, builtin_func_t func, int min_args, int max_args) {
+void register_builtin(slate_vm* vm, const char* name, builtin_func_t func, int min_args, int max_args) {
     // Create a built-in function value
     value_t builtin_val = make_builtin((void*)func);
     
@@ -33,7 +33,7 @@ void register_builtin(bitty_vm* vm, const char* name, builtin_func_t func, int m
 
 
 // Initialize all built-in functions
-void builtins_init(bitty_vm* vm) {
+void builtins_init(slate_vm* vm) {
     // Initialize random seed once
     if (!random_initialized) {
         srand((unsigned int)time(NULL));
@@ -68,7 +68,7 @@ void builtins_init(bitty_vm* vm) {
 // Built-in function implementations
 
 // print(value) - Print any value to console
-value_t builtin_print(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_print(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("print() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -83,7 +83,7 @@ value_t builtin_print(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // type(value) - Get type name as string
-value_t builtin_type(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_type(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("type() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -146,7 +146,7 @@ value_t builtin_type(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // abs(number) - Absolute value
-value_t builtin_abs(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_abs(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("abs() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -158,13 +158,13 @@ value_t builtin_abs(bitty_vm* vm, int arg_count, value_t* args) {
         int32_t val = arg.as.int32;
         if (val == INT32_MIN) {
             // abs(INT32_MIN) overflows to BigInt
-            db_bigint big = db_from_int64(-(int64_t)INT32_MIN);
+            di_int big = di_from_int64(-(int64_t)INT32_MIN);
             return make_bigint(big);
         } else {
             return make_int32(val < 0 ? -val : val);
         }
     } else if (arg.type == VAL_BIGINT) {
-        db_bigint result = db_abs(arg.as.bigint);
+        di_int result = di_abs(arg.as.bigint);
         return make_bigint(result);
     } else if (arg.type == VAL_NUMBER) {
         return make_number(fabs(arg.as.number));
@@ -174,7 +174,7 @@ value_t builtin_abs(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // sqrt(number) - Square root
-value_t builtin_sqrt(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_sqrt(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("sqrt() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -186,7 +186,7 @@ value_t builtin_sqrt(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg.type == VAL_INT32) {
         val = (double)arg.as.int32;
     } else if (arg.type == VAL_BIGINT) {
-        val = db_to_double(arg.as.bigint);
+        val = di_to_double(arg.as.bigint);
     } else if (arg.type == VAL_NUMBER) {
         val = arg.as.number;
     } else {
@@ -201,7 +201,7 @@ value_t builtin_sqrt(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // floor(number) - Floor function
-value_t builtin_floor(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_floor(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("floor() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -229,7 +229,7 @@ value_t builtin_floor(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // ceil(number) - Ceiling function
-value_t builtin_ceil(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_ceil(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("ceil() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -257,7 +257,7 @@ value_t builtin_ceil(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // round(number) - Round to nearest integer
-value_t builtin_round(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_round(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("round() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -285,7 +285,7 @@ value_t builtin_round(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // min(a, b) - Minimum of two values
-value_t builtin_min(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_min(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
         runtime_error("min() takes exactly 2 arguments (%d given)", arg_count);
     }
@@ -301,10 +301,10 @@ value_t builtin_min(bitty_vm* vm, int arg_count, value_t* args) {
     
     // Convert both to double for comparison
     double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                   (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                   (a.type == VAL_BIGINT) ? di_to_double(a.as.bigint) :
                    a.as.number;
     double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                   (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                   (b.type == VAL_BIGINT) ? di_to_double(b.as.bigint) :
                    b.as.number;
     
     // Return the smaller value with its original type
@@ -312,7 +312,7 @@ value_t builtin_min(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // max(a, b) - Maximum of two values
-value_t builtin_max(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_max(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
         runtime_error("max() takes exactly 2 arguments (%d given)", arg_count);
     }
@@ -328,10 +328,10 @@ value_t builtin_max(bitty_vm* vm, int arg_count, value_t* args) {
     
     // Convert both to double for comparison
     double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                   (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
+                   (a.type == VAL_BIGINT) ? di_to_double(a.as.bigint) :
                    a.as.number;
     double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                   (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
+                   (b.type == VAL_BIGINT) ? di_to_double(b.as.bigint) :
                    b.as.number;
     
     // Return the larger value with its original type
@@ -339,7 +339,7 @@ value_t builtin_max(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // random() - Random number 0.0 to 1.0
-value_t builtin_random(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_random(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 0) {
         runtime_error("random() takes no arguments (%d given)", arg_count);
     }
@@ -348,7 +348,7 @@ value_t builtin_random(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // sin(number) - Sine function (radians)
-value_t builtin_sin(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_sin(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("sin() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -360,7 +360,7 @@ value_t builtin_sin(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg.type == VAL_INT32) {
         val = (double)arg.as.int32;
     } else if (arg.type == VAL_BIGINT) {
-        val = db_to_double(arg.as.bigint);
+        val = di_to_double(arg.as.bigint);
     } else if (arg.type == VAL_NUMBER) {
         val = arg.as.number;
     } else {
@@ -371,7 +371,7 @@ value_t builtin_sin(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // cos(number) - Cosine function (radians)
-value_t builtin_cos(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_cos(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("cos() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -383,7 +383,7 @@ value_t builtin_cos(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg.type == VAL_INT32) {
         val = (double)arg.as.int32;
     } else if (arg.type == VAL_BIGINT) {
-        val = db_to_double(arg.as.bigint);
+        val = di_to_double(arg.as.bigint);
     } else if (arg.type == VAL_NUMBER) {
         val = arg.as.number;
     } else {
@@ -394,7 +394,7 @@ value_t builtin_cos(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // tan(number) - Tangent function (radians)
-value_t builtin_tan(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_tan(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("tan() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -406,7 +406,7 @@ value_t builtin_tan(bitty_vm* vm, int arg_count, value_t* args) {
     if (arg.type == VAL_INT32) {
         val = (double)arg.as.int32;
     } else if (arg.type == VAL_BIGINT) {
-        val = db_to_double(arg.as.bigint);
+        val = di_to_double(arg.as.bigint);
     } else if (arg.type == VAL_NUMBER) {
         val = arg.as.number;
     } else {
@@ -417,7 +417,7 @@ value_t builtin_tan(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // input(prompt) - Read user input with optional prompt
-value_t builtin_input(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_input(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count > 1) {
         runtime_error("input() takes 0 or 1 arguments (%d given)", arg_count);
     }
@@ -457,7 +457,7 @@ value_t builtin_input(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // parse_int(string) - Convert string to integer
-value_t builtin_parse_int(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_parse_int(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("parse_int() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -483,13 +483,13 @@ value_t builtin_parse_int(bitty_vm* vm, int arg_count, value_t* args) {
         return make_int32((int32_t)val);
     } else {
         // Use BigInt for large numbers
-        db_bigint big = db_from_int64(val);
+        di_int big = di_from_int64(val);
         return make_bigint(big);
     }
 }
 
 // parse_number(string) - Convert string to number (int or float)
-value_t builtin_parse_number(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_parse_number(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("parse_number() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -525,14 +525,14 @@ value_t builtin_parse_number(bitty_vm* vm, int arg_count, value_t* args) {
             return make_int32((int32_t)val);
         } else {
             // Use BigInt for large numbers
-            db_bigint big = db_from_int64(val);
+            di_int big = di_from_int64(val);
             return make_bigint(big);
         }
     }
 }
 
 // args() - Get command line arguments as array
-value_t builtin_args(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_args(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 0) {
         runtime_error("args() takes no arguments (%d given)", arg_count);
     }
@@ -549,7 +549,7 @@ value_t builtin_args(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // iterator(collection) - Create iterator for arrays and ranges
-value_t builtin_iterator(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_iterator(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("iterator() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -582,7 +582,7 @@ value_t builtin_iterator(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // hasNext(iterator) - Check if iterator has more elements
-value_t builtin_has_next(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_has_next(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("hasNext() takes exactly 1 argument (%d given)", arg_count);
     }
@@ -597,7 +597,7 @@ value_t builtin_has_next(bitty_vm* vm, int arg_count, value_t* args) {
 }
 
 // next(iterator) - Get next element from iterator
-value_t builtin_next(bitty_vm* vm, int arg_count, value_t* args) {
+value_t builtin_next(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("next() takes exactly 1 argument (%d given)", arg_count);
     }

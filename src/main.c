@@ -32,16 +32,16 @@ static void print_ast(ast_node* node) {
 }
 
 // Forward declaration
-static void interpret_with_vm(const char* source, bitty_vm* vm);
-static void interpret_with_vm_mode(const char* source, bitty_vm* vm, int show_undefined);
+static void interpret_with_vm(const char* source, slate_vm* vm);
+static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_undefined);
 
 static void interpret(const char* source) { interpret_with_vm(source, NULL); }
 
-static void interpret_with_vm(const char* source, bitty_vm* vm) {
+static void interpret_with_vm(const char* source, slate_vm* vm) {
     interpret_with_vm_mode(source, vm, 1); // REPL mode - show undefined
 }
 
-static void interpret_with_vm_mode(const char* source, bitty_vm* vm, int show_undefined) {
+static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_undefined) {
     // Only show "Interpreting:" for file mode, not REPL (REPL handles this itself)
     if (debug_mode && !vm) {
         printf("Interpreting: %s\n", source);
@@ -92,7 +92,7 @@ static void interpret_with_vm_mode(const char* source, bitty_vm* vm, int show_un
         printf("=== EXECUTION ===\n");
     }
     
-    bitty_vm* vm_to_use = vm ? vm : vm_create();
+    slate_vm* vm_to_use = vm ? vm : vm_create();
     vm_result result = vm_execute(vm_to_use, function);
 
     if (result == VM_OK) {
@@ -161,11 +161,11 @@ static void repl_with_args(int argc, char** argv) {
     char accumulated_input[4096] = "";
     int in_continuation = 0;
 
-    printf("Bitty v0.1.0 - A tiny programming language\n");
+    printf("Slate v0.1.0 - A tiny programming language\n");
     printf("Type 'exit' to quit. Empty line cancels multi-line input.\n\n");
 
     // Create persistent VM for the REPL session with command line arguments
-    bitty_vm* vm = vm_create_with_args(argc, argv);
+    slate_vm* vm = vm_create_with_args(argc, argv);
     if (!vm) {
         printf("Failed to create VM\n");
         return;
@@ -424,7 +424,7 @@ int main(int argc, char* argv[]) {
         char* source = read_stdin();
         if (source) {
             // Create a shared VM to maintain state and show results
-            bitty_vm* vm = vm_create_with_args(script_argc, script_argv);
+            slate_vm* vm = vm_create_with_args(script_argc, script_argv);
             
             // Split by lines and interpret each one
             char* line = strtok(source, "\n");
@@ -441,14 +441,14 @@ int main(int argc, char* argv[]) {
         }
     } else if (script_content) {
         // Execute script content directly with result display
-        bitty_vm* vm = vm_create_with_args(script_argc, script_argv);
+        slate_vm* vm = vm_create_with_args(script_argc, script_argv);
         interpret_with_vm_mode(script_content, vm, 0); // Hide undefined results
         vm_destroy(vm);
     } else if (script_file) {
         // Run file with script arguments
         char* source = read_file(script_file);
         if (source) {
-            bitty_vm* vm = vm_create_with_args(script_argc, script_argv);
+            slate_vm* vm = vm_create_with_args(script_argc, script_argv);
             interpret_with_vm_mode(source, vm, 0); // Hide undefined results
             vm_destroy(vm);
             free(source);

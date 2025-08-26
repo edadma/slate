@@ -10,12 +10,12 @@
 // Include dynamic library headers directly
 #include "/home/ed/CLionProjects/dynamic_array.h/dynamic_array.h"
 #include "/home/ed/CLionProjects/dynamic_object.h/dynamic_object.h"
-#include "/home/ed/CLionProjects/dynamic_bigint.h/dynamic_bigint.h"
+#include "/home/ed/CLionProjects/dynamic_int.h/dynamic_int.h"
 
 // Forward declarations
 typedef struct value value_t;
-typedef struct bitty_vm bitty_vm;
-typedef value_t (*builtin_func_t)(bitty_vm* vm, int arg_count, value_t* args);
+typedef struct slate_vm slate_vm;
+typedef value_t (*builtin_func_t)(slate_vm* vm, int arg_count, value_t* args);
 
 // Debug location for values (NULL when debugging disabled)
 typedef struct debug_location {
@@ -146,7 +146,7 @@ typedef struct value
     {
         int boolean;
         int32_t int32;    // 32-bit integer (direct storage)
-        db_bigint bigint; // Arbitrary precision integer (ref-counted)
+        di_int bigint; // Arbitrary precision integer (ref-counted)
         double number;    // Floating point
         ds_string string; // Using dynamic_string.h!
         da_array array; // Using dynamic_array.h!
@@ -231,7 +231,7 @@ typedef struct call_frame
 } call_frame;
 
 // VM execution state
-typedef struct bitty_vm
+typedef struct slate_vm
 {
     // Bytecode execution
     uint8_t* bytecode; // Current bytecode being executed
@@ -268,7 +268,7 @@ typedef struct bitty_vm
     
     // Memory management
     size_t bytes_allocated; // For GC later
-} bitty_vm;
+} slate_vm;
 
 // Instruction structure for encoding
 typedef struct instruction
@@ -278,10 +278,10 @@ typedef struct instruction
 } instruction;
 
 // VM lifecycle functions
-bitty_vm* vm_create(void);
-bitty_vm* vm_create_with_args(int argc, char** argv);
-void vm_destroy(bitty_vm* vm);
-void vm_reset(bitty_vm* vm);
+slate_vm* vm_create(void);
+slate_vm* vm_create_with_args(int argc, char** argv);
+void vm_destroy(slate_vm* vm);
+void vm_reset(slate_vm* vm);
 
 // Bytecode execution
 typedef enum
@@ -293,24 +293,24 @@ typedef enum
     VM_STACK_UNDERFLOW
 } vm_result;
 
-vm_result vm_execute(bitty_vm* vm, function_t* function);
-vm_result vm_interpret(bitty_vm* vm, const char* source);
+vm_result vm_execute(slate_vm* vm, function_t* function);
+vm_result vm_interpret(slate_vm* vm, const char* source);
 
 // Value memory management
 value_t vm_retain(value_t value);
 void vm_release(value_t value);
 
 // Stack operations
-void vm_push(bitty_vm* vm, value_t value);
-value_t vm_pop(bitty_vm* vm);
-value_t vm_peek(bitty_vm* vm, int distance);
+void vm_push(slate_vm* vm, value_t value);
+value_t vm_pop(slate_vm* vm);
+value_t vm_peek(slate_vm* vm, int distance);
 
 // Value creation functions
 value_t make_null(void);
 value_t make_undefined(void);
 value_t make_boolean(int value);
 value_t make_int32(int32_t value);
-value_t make_bigint(db_bigint big);
+value_t make_bigint(di_int big);
 value_t make_number(double value);
 value_t make_string(const char* value);
 value_t make_string_ds(ds_string str);
@@ -346,7 +346,7 @@ value_t make_null_with_debug(debug_location* debug);
 value_t make_undefined_with_debug(debug_location* debug);
 value_t make_boolean_with_debug(int value, debug_location* debug);
 value_t make_int32_with_debug(int32_t value, debug_location* debug);
-value_t make_bigint_with_debug(db_bigint big, debug_location* debug);
+value_t make_bigint_with_debug(di_int big, debug_location* debug);
 value_t make_number_with_debug(double value, debug_location* debug);
 value_t make_string_with_debug(const char* value, debug_location* debug);
 value_t make_string_ds_with_debug(ds_string str, debug_location* debug);
@@ -372,8 +372,8 @@ void print_for_builtin(value_t value);
 void free_value(value_t value);
 
 // Constant pool management
-size_t vm_add_constant(bitty_vm* vm, value_t value);
-value_t vm_get_constant(bitty_vm* vm, size_t index);
+size_t vm_add_constant(slate_vm* vm, value_t value);
+value_t vm_get_constant(slate_vm* vm, size_t index);
 
 // Note: Object and array operations now use dynamic_object.h and dynamic_array.h
 // No separate functions needed - we'll use the library APIs directly
@@ -389,8 +389,8 @@ const char* opcode_name(opcode op);
 
 // Debug utilities
 void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset);
-void vm_runtime_error_with_debug(bitty_vm* vm, const char* message);
-void vm_runtime_error_with_values(bitty_vm* vm, const char* format, const value_t* a, const value_t* b, debug_location* location);
+void vm_runtime_error_with_debug(slate_vm* vm, const char* message);
+void vm_runtime_error_with_values(slate_vm* vm, const char* format, const value_t* a, const value_t* b, debug_location* location);
 const char* value_type_name(value_type type);
 
 #endif // BITTY_VM_H

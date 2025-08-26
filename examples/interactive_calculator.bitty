@@ -1,7 +1,7 @@
 \ Interactive Calculator with User Input
 \ Demonstrates input(), parse_number(), and mathematical operations
 
-print("=== Interactive Bitty Calculator ===")
+print("=== Interactive Slate Calculator ===")
 print("Enter mathematical expressions or type 'quit' to exit")
 print("")
 
@@ -23,7 +23,7 @@ while running do
         \ Skip empty input
         print("")
     else
-        \ Try to evaluate the expression as Bitty code
+        \ Try to evaluate the expression as Slate code
         print("Evaluating: " + user_input)
         
         \ For now, we'll show a simple number parsing example

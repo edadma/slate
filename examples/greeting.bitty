@@ -1,7 +1,7 @@
 \ Greeting program that uses command line arguments
-\ Usage: bitty -f greeting.bitty <name> [age]
+\ Usage: slate -f greeting.slate <name> [age]
 
-print("=== Bitty Greeting Program ===")
+print("=== Slate Greeting Program ===")
 
 var arguments = args()
 
@@ -19,4 +19,4 @@ else if arguments.length == 2 then
 else
     print("Too many arguments!")
     
-print("Usage: bitty -f greeting.bitty <name> [age]")
+print("Usage: slate -f greeting.slate <name> [age]")

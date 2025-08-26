@@ -1,10 +1,10 @@
 #include "vm.h"
-#include "builtins.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "builtins.h"
 #include "codegen.h" // For debug_info functions
 
 #define STACK_MAX 256
@@ -12,8 +12,8 @@
 #define CONSTANTS_MAX 256
 
 // VM lifecycle functions
-bitty_vm* vm_create(void) {
-    bitty_vm* vm = malloc(sizeof(bitty_vm));
+slate_vm* vm_create(void) {
+    slate_vm* vm = malloc(sizeof(slate_vm));
     if (!vm)
         return NULL;
 
@@ -36,16 +36,16 @@ bitty_vm* vm_create(void) {
         vm_destroy(vm);
         return NULL;
     }
-    
+
     // Initialize built-in functions
     builtins_init(vm);
-    
+
     // Initialize result register to undefined
     vm->result = make_undefined();
-    
+
     // Initialize debug location
     vm->current_debug = NULL;
-    
+
     // Initialize command line arguments (empty by default)
     vm->argc = 0;
     vm->argv = NULL;
@@ -54,8 +54,8 @@ bitty_vm* vm_create(void) {
     return vm;
 }
 
-bitty_vm* vm_create_with_args(int argc, char** argv) {
-    bitty_vm* vm = vm_create();
+slate_vm* vm_create_with_args(int argc, char** argv) {
+    slate_vm* vm = vm_create();
     if (vm) {
         vm->argc = argc;
         vm->argv = argv;
@@ -63,7 +63,7 @@ bitty_vm* vm_create_with_args(int argc, char** argv) {
     return vm;
 }
 
-void vm_destroy(bitty_vm* vm) {
+void vm_destroy(slate_vm* vm) {
     if (!vm)
         return;
 
@@ -76,17 +76,17 @@ void vm_destroy(bitty_vm* vm) {
     free(vm->frames);
     free(vm->constants);
     do_release(&vm->globals);
-    
+
     // Release result register
     free_value(vm->result);
-    
+
     // Clean up debug location
     debug_location_free(vm->current_debug);
-    
+
     free(vm);
 }
 
-void vm_reset(bitty_vm* vm) {
+void vm_reset(slate_vm* vm) {
     if (!vm)
         return;
 
@@ -103,11 +103,11 @@ value_t vm_retain(value_t value) {
     if (value.type == VAL_STRING) {
         value.as.string = ds_retain(value.as.string);
     } else if (value.type == VAL_ARRAY) {
-        value.as.array = da_retain(value.as.array);  
+        value.as.array = da_retain(value.as.array);
     } else if (value.type == VAL_OBJECT) {
         value.as.object = do_retain(value.as.object);
     } else if (value.type == VAL_BIGINT) {
-        value.as.bigint = db_retain(value.as.bigint);
+        value.as.bigint = di_retain(value.as.bigint);
     } else if (value.type == VAL_RANGE) {
         value.as.range = range_retain(value.as.range);
     } else if (value.type == VAL_ITERATOR) {
@@ -126,7 +126,7 @@ void vm_release(value_t value) {
     } else if (value.type == VAL_OBJECT) {
         do_release(&value.as.object);
     } else if (value.type == VAL_BIGINT) {
-        db_release(&value.as.bigint);
+        di_release(&value.as.bigint);
     } else if (value.type == VAL_RANGE) {
         range_release(value.as.range);
     } else if (value.type == VAL_ITERATOR) {
@@ -137,19 +137,19 @@ void vm_release(value_t value) {
 }
 
 // Stack operations
-void vm_push(bitty_vm* vm, value_t value) {
+void vm_push(slate_vm* vm, value_t value) {
     assert(vm->stack_top - vm->stack < vm->stack_capacity);
     *vm->stack_top = vm_retain(value);
     vm->stack_top++;
 }
 
-value_t vm_pop(bitty_vm* vm) {
+value_t vm_pop(slate_vm* vm) {
     assert(vm->stack_top > vm->stack);
     vm->stack_top--;
     return *vm->stack_top;
 }
 
-value_t vm_peek(bitty_vm* vm, int distance) { return vm->stack_top[-1 - distance]; }
+value_t vm_peek(slate_vm* vm, int distance) { return vm->stack_top[-1 - distance]; }
 
 // Value creation functions
 value_t make_null(void) {
@@ -182,7 +182,7 @@ value_t make_int32(int32_t val) {
     return value;
 }
 
-value_t make_bigint(db_bigint big) {
+value_t make_bigint(di_int big) {
     value_t value;
     value.type = VAL_BIGINT;
     value.as.bigint = big;
@@ -236,12 +236,12 @@ value_t make_range(value_t start, value_t end, int exclusive) {
         // TODO: Handle allocation failure
         return make_null();
     }
-    
-    range->ref_count = 1;           // Initialize reference count
+
+    range->ref_count = 1; // Initialize reference count
     range->start = vm_retain(start);
     range->end = vm_retain(end);
     range->exclusive = exclusive;
-    
+
     value_t value;
     value.type = VAL_RANGE;
     value.as.range = range;
@@ -286,11 +286,11 @@ value_t make_bound_method(value_t receiver, builtin_func_t method_func) {
     if (!method) {
         return make_null(); // Handle allocation failure
     }
-    
-    method->ref_count = 1;                  // Initialize reference count
+
+    method->ref_count = 1; // Initialize reference count
     method->receiver = vm_retain(receiver);
     method->method = method_func;
-    
+
     value_t value;
     value.type = VAL_BOUND_METHOD;
     value.as.bound_method = method;
@@ -323,7 +323,7 @@ value_t make_int32_with_debug(int32_t val, debug_location* debug) {
     return value;
 }
 
-value_t make_bigint_with_debug(db_bigint big, debug_location* debug) {
+value_t make_bigint_with_debug(di_int big, debug_location* debug) {
     value_t value = make_bigint(big);
     value.debug = debug_location_copy(debug);
     return value;
@@ -409,7 +409,7 @@ struct object_string_context {
 static void object_property_to_string_callback(const char* key, void* data, size_t size, void* ctx) {
     struct object_string_context* context = (struct object_string_context*)ctx;
     ds_string* result_ptr = context->result_ptr;
-    
+
     // Add comma separator for subsequent properties
     if (context->count > 0) {
         ds_string comma = ds_new(", ");
@@ -418,7 +418,7 @@ static void object_property_to_string_callback(const char* key, void* data, size
         ds_release(&comma);
         *result_ptr = temp;
     }
-    
+
     // Add key: value
     ds_string key_str = ds_new(key);
     ds_string colon = ds_new(": ");
@@ -428,7 +428,7 @@ static void object_property_to_string_callback(const char* key, void* data, size
     ds_release(&key_str);
     ds_release(&colon);
     ds_release(&temp1);
-    
+
     // Convert value to string (assuming it's a value_t)
     if (size == sizeof(value_t)) {
         value_t* val = (value_t*)data;
@@ -444,7 +444,7 @@ static void object_property_to_string_callback(const char* key, void* data, size
         ds_release(&unknown);
         *result_ptr = temp3;
     }
-    
+
     context->count++;
 }
 
@@ -459,7 +459,7 @@ static ds_string value_to_string_representation(value_t value) {
         return ds_new(buffer);
     }
     case VAL_BIGINT: {
-        char* str = db_to_string(value.as.bigint, 10);
+        char* str = di_to_string(value.as.bigint, 10);
         if (str) {
             ds_string result = ds_new(str);
             free(str);
@@ -513,8 +513,8 @@ static ds_string value_to_string_representation(value_t value) {
         ds_string result = ds_new("{");
         if (value.as.object) {
             // Use a context structure to track iteration state
-            struct object_string_context context = { &result, 0 };
-            
+            struct object_string_context context = {&result, 0};
+
             // Iterate through properties using do_foreach_property
             do_foreach_property(value.as.object, object_property_to_string_callback, &context);
         }
@@ -528,28 +528,28 @@ static ds_string value_to_string_representation(value_t value) {
         if (!value.as.range) {
             return ds_new("{null range}");
         }
-        
+
         ds_string start_str = value_to_string_representation(value.as.range->start);
         ds_string range_op = ds_new(value.as.range->exclusive ? "..<" : "..");
         ds_string end_str = value_to_string_representation(value.as.range->end);
-        
+
         // Concatenate: start + range_op + end
         ds_string temp1 = ds_concat(start_str, range_op);
         ds_string result = ds_concat(temp1, end_str);
-        
+
         // Clean up
         ds_release(&start_str);
         ds_release(&range_op);
         ds_release(&end_str);
         ds_release(&temp1);
-        
+
         return result;
     }
     case VAL_ITERATOR: {
         if (!value.as.iterator) {
             return ds_new("{null iterator}");
         }
-        
+
         if (value.as.iterator->type == ITER_ARRAY) {
             return ds_new("{Array Iterator}");
         } else if (value.as.iterator->type == ITER_RANGE) {
@@ -625,7 +625,7 @@ int is_falsy(value_t value) {
     case VAL_INT32:
         return value.as.int32 == 0;
     case VAL_BIGINT:
-        return db_is_zero(value.as.bigint);
+        return di_is_zero(value.as.bigint);
     case VAL_NUMBER:
         return value.as.number == 0.0;
     case VAL_STRING:
@@ -643,21 +643,21 @@ int values_equal(value_t a, value_t b) {
         if (a.type == VAL_INT32 && b.type == VAL_INT32) {
             return a.as.int32 == b.as.int32;
         } else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
-            return db_equal(a.as.bigint, b.as.bigint);
+            return di_eq(a.as.bigint, b.as.bigint);
         } else if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
             return a.as.number == b.as.number;
         }
         // Cross-type comparisons - convert to common type
         // For now, convert to double for simplicity
-        double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                       (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                       a.as.number;
-        double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                       (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                       b.as.number;
+        double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+            : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                             : a.as.number;
+        double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+            : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                             : b.as.number;
         return a_val == b_val;
     }
-    
+
     if (a.type != b.type)
         return 0;
 
@@ -704,7 +704,7 @@ void print_value(value_t value) {
         printf("%d", value.as.int32);
         break;
     case VAL_BIGINT: {
-        char* str = db_to_string(value.as.bigint, 10);
+        char* str = di_to_string(value.as.bigint, 10);
         if (str) {
             printf("%s", str);
             free(str);
@@ -791,7 +791,7 @@ void print_value(value_t value) {
 void free_value(value_t value) {
     // Clean up debug info first
     debug_location_free(value.debug);
-    
+
     switch (value.type) {
     case VAL_NULL:
     case VAL_UNDEFINED:
@@ -845,13 +845,13 @@ void free_value(value_t value) {
 }
 
 // Constant pool management
-size_t vm_add_constant(bitty_vm* vm, value_t value) {
+size_t vm_add_constant(slate_vm* vm, value_t value) {
     assert(vm->constant_count < vm->constant_capacity);
     vm->constants[vm->constant_count] = value;
     return vm->constant_count++;
 }
 
-value_t vm_get_constant(bitty_vm* vm, size_t index) {
+value_t vm_get_constant(slate_vm* vm, size_t index) {
     assert(index < vm->constant_count);
     return vm->constants[index];
 }
@@ -1045,7 +1045,7 @@ const char* opcode_name(opcode op) {
 }
 
 // Basic VM execution (stub for now)
-vm_result vm_execute(bitty_vm* vm, function_t* function) {
+vm_result vm_execute(slate_vm* vm, function_t* function) {
     if (!vm || !function)
         return VM_RUNTIME_ERROR;
 
@@ -1068,14 +1068,14 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
     // Basic execution loop (simplified)
     for (;;) {
-        vm->current_instruction = vm->ip;  // Store instruction start for error reporting
+        vm->current_instruction = vm->ip; // Store instruction start for error reporting
         opcode instruction = (opcode)*vm->ip++;
 
         switch (instruction) {
         case OP_PUSH_CONSTANT: {
             uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2; // Skip the operand bytes
-            
+
             // Create value with current debug info
             value_t val = function->constants[constant];
             if (vm->current_debug) {
@@ -1112,7 +1112,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             vm_push(vm, value); // vm_push will handle the retain
             break;
         }
-        
+
         case OP_SET_RESULT: {
             // Pop value from stack and store in result register
             // Release old result value first
@@ -1144,7 +1144,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             else if (a.type == VAL_ARRAY && b.type == VAL_ARRAY) {
                 // Create new array for concatenation result
                 da_array result_array = da_new(sizeof(value_t));
-                
+
                 // Add all elements from left array
                 size_t a_len = da_length(a.as.array);
                 for (size_t i = 0; i < a_len; i++) {
@@ -1152,71 +1152,70 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                     value_t retained_elem = vm_retain(*elem);
                     da_push(result_array, &retained_elem);
                 }
-                
-                // Add all elements from right array  
+
+                // Add all elements from right array
                 size_t b_len = da_length(b.as.array);
                 for (size_t i = 0; i < b_len; i++) {
                     value_t* elem = (value_t*)da_get(b.as.array, i);
                     value_t retained_elem = vm_retain(*elem);
                     da_push(result_array, &retained_elem);
                 }
-                
+
                 vm_push(vm, make_array_with_debug(result_array, a.debug));
             }
             // Numeric addition - handle all numeric type combinations
             else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
                      (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                
+
                 // int32 + int32 with overflow detection
                 if (a.type == VAL_INT32 && b.type == VAL_INT32) {
                     int32_t result;
-                    if (db_add_overflow_int32(a.as.int32, b.as.int32, &result)) {
+                    if (di_add_overflow_int32(a.as.int32, b.as.int32, &result)) {
                         vm_push(vm, make_int32_with_debug(result, a.debug));
                     } else {
                         // Overflow - promote to BigInt
                         int64_t big_result = (int64_t)a.as.int32 + (int64_t)b.as.int32;
-                        db_bigint big = db_from_int64(big_result);
+                        di_int big = di_from_int64(big_result);
                         vm_push(vm, make_bigint_with_debug(big, a.debug));
                     }
                 }
                 // BigInt + BigInt
                 else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
-                    db_bigint result = db_add(a.as.bigint, b.as.bigint);
+                    di_int result = di_add(a.as.bigint, b.as.bigint);
                     vm_push(vm, make_bigint_with_debug(result, a.debug));
                 }
                 // int32 + BigInt
                 else if (a.type == VAL_INT32 && b.type == VAL_BIGINT) {
-                    db_bigint result = db_add_int32(b.as.bigint, a.as.int32);
+                    di_int result = di_add_i32(b.as.bigint, a.as.int32);
                     vm_push(vm, make_bigint_with_debug(result, a.debug));
                 }
                 // BigInt + int32
                 else if (a.type == VAL_BIGINT && b.type == VAL_INT32) {
-                    db_bigint result = db_add_int32(a.as.bigint, b.as.int32);
+                    di_int result = di_add_i32(a.as.bigint, b.as.int32);
                     vm_push(vm, make_bigint_with_debug(result, a.debug));
                 }
                 // Mixed with floating point - convert to double
                 else {
-                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                                   (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                                   a.as.number;
-                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                                   (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                                   b.as.number;
+                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                        : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                                         : a.as.number;
+                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                        : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                                         : b.as.number;
                     vm_push(vm, make_number_with_debug(a_val + b_val, a.debug));
                 }
-            }
-            else {
+            } else {
                 // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                
+
                 if (a.type != VAL_NUMBER) {
                     // Left operand is the first non-numeric
                     error_debug = a.debug;
                 } else {
-                    // Right operand must be non-numeric  
+                    // Right operand must be non-numeric
                     error_debug = b.debug;
                 }
-                
+
                 vm_runtime_error_with_values(vm, "Cannot add %s and %s", &a, &b, error_debug);
                 vm_release(a);
                 vm_release(b);
@@ -1233,46 +1232,46 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_SUBTRACT: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Handle all numeric type combinations
             if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
                 (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                
+
                 // int32 - int32 with overflow detection
                 if (a.type == VAL_INT32 && b.type == VAL_INT32) {
                     int32_t result;
-                    if (db_subtract_overflow_int32(a.as.int32, b.as.int32, &result)) {
+                    if (di_subtract_overflow_int32(a.as.int32, b.as.int32, &result)) {
                         vm_push(vm, make_int32_with_debug(result, a.debug));
                     } else {
                         // Overflow - promote to BigInt
                         int64_t big_result = (int64_t)a.as.int32 - (int64_t)b.as.int32;
-                        db_bigint big = db_from_int64(big_result);
+                        di_int big = di_from_int64(big_result);
                         vm_push(vm, make_bigint_with_debug(big, a.debug));
                     }
                 }
                 // Mixed with floating point - convert to double
                 else {
-                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                                   (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                                   a.as.number;
-                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                                   (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                                   b.as.number;
+                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                        : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                                         : a.as.number;
+                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                        : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                                         : b.as.number;
                     vm_push(vm, make_number_with_debug(a_val - b_val, a.debug));
                 }
             } else {
                 // For subtraction, determine which operand is problematic
                 debug_location* error_debug = NULL;
-                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) && 
+                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) &&
                     (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                    error_debug = a.debug;  // Left operand is problematic
-                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) && 
-                          (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
-                    error_debug = b.debug;  // Right operand is problematic
+                    error_debug = a.debug; // Left operand is problematic
+                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                           (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
+                    error_debug = b.debug; // Right operand is problematic
                 } else {
-                    error_debug = a.debug;  // Both problematic, use left
+                    error_debug = a.debug; // Both problematic, use left
                 }
-                
+
                 vm_runtime_error_with_values(vm, "Cannot subtract %s and %s", &a, &b, error_debug);
                 vm_release(a);
                 vm_release(b);
@@ -1288,62 +1287,61 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_MULTIPLY: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Handle all numeric type combinations
             if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
                 (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                
+
                 // int32 * int32 with overflow detection
                 if (a.type == VAL_INT32 && b.type == VAL_INT32) {
                     int32_t result;
-                    if (db_multiply_overflow_int32(a.as.int32, b.as.int32, &result)) {
+                    if (di_multiply_overflow_int32(a.as.int32, b.as.int32, &result)) {
                         vm_push(vm, make_int32_with_debug(result, a.debug));
                     } else {
                         // Overflow - promote to BigInt
                         int64_t big_result = (int64_t)a.as.int32 * (int64_t)b.as.int32;
-                        db_bigint big = db_from_int64(big_result);
+                        di_int big = di_from_int64(big_result);
                         vm_push(vm, make_bigint_with_debug(big, a.debug));
                     }
                 }
                 // BigInt * BigInt
                 else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
-                    db_bigint result = db_multiply(a.as.bigint, b.as.bigint);
+                    di_int result = di_mul(a.as.bigint, b.as.bigint);
                     vm_push(vm, make_bigint_with_debug(result, a.debug));
                 }
                 // int32 * BigInt
                 else if (a.type == VAL_INT32 && b.type == VAL_BIGINT) {
-                    db_bigint result = db_multiply_int32(b.as.bigint, a.as.int32);
+                    di_int result = di_mul_i32(b.as.bigint, a.as.int32);
                     vm_push(vm, make_bigint_with_debug(result, a.debug));
                 }
                 // BigInt * int32
                 else if (a.type == VAL_BIGINT && b.type == VAL_INT32) {
-                    db_bigint result = db_multiply_int32(a.as.bigint, b.as.int32);
+                    di_int result = di_mul_i32(a.as.bigint, b.as.int32);
                     vm_push(vm, make_bigint_with_debug(result, a.debug));
                 }
                 // Mixed with floating point - convert to double
                 else {
-                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                                   (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                                   a.as.number;
-                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                                   (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                                   b.as.number;
+                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                        : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                                         : a.as.number;
+                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                        : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                                         : b.as.number;
                     vm_push(vm, make_number_with_debug(a_val * b_val, a.debug));
                 }
-            }
-            else {
+            } else {
                 // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) && 
+                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) &&
                     (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                    error_debug = a.debug;  // Left operand is problematic
-                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) && 
-                          (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
-                    error_debug = b.debug;  // Right operand is problematic
+                    error_debug = a.debug; // Left operand is problematic
+                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                           (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
+                    error_debug = b.debug; // Right operand is problematic
                 } else {
-                    error_debug = a.debug;  // Both problematic, use left
+                    error_debug = a.debug; // Both problematic, use left
                 }
-                
+
                 vm_runtime_error_with_values(vm, "Cannot multiply %s and %s", &a, &b, error_debug);
                 vm_release(a);
                 vm_release(b);
@@ -1359,17 +1357,20 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_DIVIDE: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Handle all numeric type combinations
             if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
                 (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                
+
                 // Check for division by zero
                 bool is_zero = false;
-                if (b.type == VAL_INT32 && b.as.int32 == 0) is_zero = true;
-                else if (b.type == VAL_BIGINT && db_is_zero(b.as.bigint)) is_zero = true;
-                else if (b.type == VAL_NUMBER && b.as.number == 0) is_zero = true;
-                
+                if (b.type == VAL_INT32 && b.as.int32 == 0)
+                    is_zero = true;
+                else if (b.type == VAL_BIGINT && di_is_zero(b.as.bigint))
+                    is_zero = true;
+                else if (b.type == VAL_NUMBER && b.as.number == 0)
+                    is_zero = true;
+
                 if (is_zero) {
                     vm_runtime_error_with_values(vm, "Division by zero", &a, &b, b.debug);
                     vm_release(a);
@@ -1378,30 +1379,29 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                     closure_destroy(closure);
                     return VM_RUNTIME_ERROR;
                 }
-                
+
                 // Division always produces floating point result for simplicity
                 // (matches Python 3 behavior: 5 / 2 = 2.5)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                               a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                               b.as.number;
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                                     : a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                                     : b.as.number;
                 vm_push(vm, make_number_with_debug(a_val / b_val, a.debug));
-            }
-            else {
+            } else {
                 // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) && 
+                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) &&
                     (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                    error_debug = a.debug;  // Left operand is problematic
-                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) && 
-                          (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
-                    error_debug = b.debug;  // Right operand is problematic
+                    error_debug = a.debug; // Left operand is problematic
+                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                           (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
+                    error_debug = b.debug; // Right operand is problematic
                 } else {
-                    error_debug = a.debug;  // Both problematic, use left
+                    error_debug = a.debug; // Both problematic, use left
                 }
-                
+
                 vm_runtime_error_with_values(vm, "Cannot divide %s and %s", &a, &b, error_debug);
                 vm_release(a);
                 vm_release(b);
@@ -1417,17 +1417,20 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_MOD: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Handle all numeric type combinations
             if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
                 (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                
+
                 // Check for modulo by zero
                 bool is_zero = false;
-                if (b.type == VAL_INT32 && b.as.int32 == 0) is_zero = true;
-                else if (b.type == VAL_BIGINT && db_is_zero(b.as.bigint)) is_zero = true;
-                else if (b.type == VAL_NUMBER && b.as.number == 0) is_zero = true;
-                
+                if (b.type == VAL_INT32 && b.as.int32 == 0)
+                    is_zero = true;
+                else if (b.type == VAL_BIGINT && di_is_zero(b.as.bigint))
+                    is_zero = true;
+                else if (b.type == VAL_NUMBER && b.as.number == 0)
+                    is_zero = true;
+
                 if (is_zero) {
                     vm_runtime_error_with_values(vm, "Modulo by zero", &a, &b, b.debug);
                     vm_release(a);
@@ -1436,7 +1439,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                     closure_destroy(closure);
                     return VM_RUNTIME_ERROR;
                 }
-                
+
                 // int32 % int32
                 if (a.type == VAL_INT32 && b.type == VAL_INT32) {
                     // No overflow possible with modulo
@@ -1444,47 +1447,46 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 }
                 // BigInt % BigInt
                 else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
-                    db_bigint result = db_mod(a.as.bigint, b.as.bigint);
+                    di_int result = di_mod(a.as.bigint, b.as.bigint);
                     vm_push(vm, make_bigint_with_debug(result, a.debug));
                 }
                 // int32 % BigInt
                 else if (a.type == VAL_INT32 && b.type == VAL_BIGINT) {
-                    db_bigint a_big = db_from_int32(a.as.int32);
-                    db_bigint result = db_mod(a_big, b.as.bigint);
-                    db_release(&a_big);
+                    di_int a_big = di_from_int32(a.as.int32);
+                    di_int result = di_mod(a_big, b.as.bigint);
+                    di_release(&a_big);
                     vm_push(vm, make_bigint_with_debug(result, a.debug));
                 }
                 // BigInt % int32
                 else if (a.type == VAL_BIGINT && b.type == VAL_INT32) {
-                    db_bigint b_big = db_from_int32(b.as.int32);
-                    db_bigint result = db_mod(a.as.bigint, b_big);
-                    db_release(&b_big);
+                    di_int b_big = di_from_int32(b.as.int32);
+                    di_int result = di_mod(a.as.bigint, b_big);
+                    di_release(&b_big);
                     vm_push(vm, make_bigint_with_debug(result, a.debug));
                 }
                 // Mixed with floating point - use fmod
                 else {
-                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                                   (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                                   a.as.number;
-                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                                   (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                                   b.as.number;
+                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                        : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                                         : a.as.number;
+                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                        : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                                         : b.as.number;
                     vm_push(vm, make_number_with_debug(fmod(a_val, b_val), a.debug));
                 }
-            }
-            else {
+            } else {
                 // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) && 
+                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) &&
                     (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                    error_debug = a.debug;  // Left operand is problematic
-                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) && 
-                          (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
-                    error_debug = b.debug;  // Right operand is problematic
+                    error_debug = a.debug; // Left operand is problematic
+                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                           (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
+                    error_debug = b.debug; // Right operand is problematic
                 } else {
-                    error_debug = a.debug;  // Both problematic, use left
+                    error_debug = a.debug; // Both problematic, use left
                 }
-                
+
                 vm_runtime_error_with_values(vm, "Cannot compute modulo of %s and %s", &a, &b, error_debug);
                 vm_release(a);
                 vm_release(b);
@@ -1500,33 +1502,33 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_POWER: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Handle all numeric type combinations for power operations
             if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
                 (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                
+
                 // Convert to double for power calculation (always returns float)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                               a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                               b.as.number;
-                               
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                                     : a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                                     : b.as.number;
+
                 vm_push(vm, make_number_with_debug(pow(a_val, b_val), a.debug));
             } else {
                 // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) && 
+                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) &&
                     (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                    error_debug = a.debug;  // Left operand is problematic
-                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) && 
-                          (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
-                    error_debug = b.debug;  // Right operand is problematic
+                    error_debug = a.debug; // Left operand is problematic
+                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
+                           (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
+                    error_debug = b.debug; // Right operand is problematic
                 } else {
-                    error_debug = a.debug;  // Both problematic, use left
+                    error_debug = a.debug; // Both problematic, use left
                 }
-                
+
                 vm_runtime_error_with_values(vm, "Cannot compute power of %s and %s", &a, &b, error_debug);
                 vm_release(a);
                 vm_release(b);
@@ -1545,13 +1547,13 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 // Check for int32 overflow on negation
                 if (a.as.int32 == INT32_MIN) {
                     // INT32_MIN negation overflows - promote to BigInt
-                    db_bigint big = db_from_int64(-((int64_t)INT32_MIN));
+                    di_int big = di_from_int64(-((int64_t)INT32_MIN));
                     vm_push(vm, make_bigint_with_debug(big, a.debug));
                 } else {
                     vm_push(vm, make_int32_with_debug(-a.as.int32, a.debug));
                 }
             } else if (a.type == VAL_BIGINT) {
-                db_bigint negated = db_negate(a.as.bigint);
+                di_int negated = di_negate(a.as.bigint);
                 vm_push(vm, make_bigint_with_debug(negated, a.debug));
             } else if (a.type == VAL_NUMBER) {
                 vm_push(vm, make_number_with_debug(-a.as.number, a.debug));
@@ -1597,19 +1599,19 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_LESS: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Handle all numeric type combinations for comparison
             if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
                 (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                
+
                 // Convert both to double for comparison (simple but works)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                               a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                               b.as.number;
-                               
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                                     : a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                                     : b.as.number;
+
                 vm_push(vm, make_boolean(a_val < b_val));
             } else {
                 vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
@@ -1627,19 +1629,19 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_LESS_EQUAL: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Handle all numeric type combinations for comparison
             if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
                 (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                
+
                 // Convert both to double for comparison (simple but works)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                               a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                               b.as.number;
-                               
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                                     : a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                                     : b.as.number;
+
                 vm_push(vm, make_boolean(a_val <= b_val));
             } else {
                 vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
@@ -1657,19 +1659,19 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_GREATER: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Handle all numeric type combinations for comparison
             if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
                 (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                
+
                 // Convert both to double for comparison (simple but works)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                               a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                               b.as.number;
-                               
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                                     : a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                                     : b.as.number;
+
                 vm_push(vm, make_boolean(a_val > b_val));
             } else {
                 vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
@@ -1687,19 +1689,19 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_GREATER_EQUAL: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Handle all numeric type combinations for comparison
             if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
                 (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
-                
+
                 // Convert both to double for comparison (simple but works)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 :
-                               (a.type == VAL_BIGINT) ? db_to_double(a.as.bigint) :
-                               a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 :
-                               (b.type == VAL_BIGINT) ? db_to_double(b.as.bigint) :
-                               b.as.number;
-                               
+                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
+                                                     : a.as.number;
+                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
+                                                     : b.as.number;
+
                 vm_push(vm, make_boolean(a_val >= b_val));
             } else {
                 vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
@@ -1717,7 +1719,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_AND: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Logical AND: if a is falsy, return a, otherwise return b
             if (is_falsy(a)) {
                 vm_push(vm, a);
@@ -1732,7 +1734,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_OR: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             // Logical OR: if a is truthy, return a, otherwise return b
             if (is_falsy(a)) {
                 vm_push(vm, b);
@@ -1747,7 +1749,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_BITWISE_AND: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             if (a.type == VAL_INT32 && b.type == VAL_INT32) {
                 vm_push(vm, make_int32_with_debug(a.as.int32 & b.as.int32, a.debug));
             } else {
@@ -1766,7 +1768,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_BITWISE_OR: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             if (a.type == VAL_INT32 && b.type == VAL_INT32) {
                 vm_push(vm, make_int32_with_debug(a.as.int32 | b.as.int32, a.debug));
             } else {
@@ -1785,7 +1787,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_BITWISE_XOR: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             if (a.type == VAL_INT32 && b.type == VAL_INT32) {
                 vm_push(vm, make_int32_with_debug(a.as.int32 ^ b.as.int32, a.debug));
             } else {
@@ -1803,7 +1805,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
         case OP_BITWISE_NOT: {
             value_t a = vm_pop(vm);
-            
+
             if (a.type == VAL_INT32) {
                 vm_push(vm, make_int32_with_debug(~a.as.int32, a.debug));
             } else {
@@ -1820,7 +1822,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_LEFT_SHIFT: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             if (a.type == VAL_INT32 && b.type == VAL_INT32) {
                 vm_push(vm, make_int32_with_debug(a.as.int32 << b.as.int32, a.debug));
             } else {
@@ -1839,7 +1841,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_RIGHT_SHIFT: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             if (a.type == VAL_INT32 && b.type == VAL_INT32) {
                 // Arithmetic right shift (sign-extending)
                 vm_push(vm, make_int32_with_debug(a.as.int32 >> b.as.int32, a.debug));
@@ -1859,7 +1861,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_LOGICAL_RIGHT_SHIFT: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
+
             if (a.type == VAL_INT32 && b.type == VAL_INT32) {
                 // Logical right shift (zero-filling)
                 // Cast to unsigned to ensure zero-fill behavior
@@ -1882,14 +1884,13 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_FLOOR_DIV: {
             value_t b = vm_pop(vm);
             value_t a = vm_pop(vm);
-            
-            if ((a.type == VAL_INT32 || a.type == VAL_NUMBER) && 
-                (b.type == VAL_INT32 || b.type == VAL_NUMBER)) {
-                
+
+            if ((a.type == VAL_INT32 || a.type == VAL_NUMBER) && (b.type == VAL_INT32 || b.type == VAL_NUMBER)) {
+
                 // Convert to doubles for division
                 double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 : a.as.number;
                 double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 : b.as.number;
-                
+
                 if (b_val == 0) {
                     vm_runtime_error_with_values(vm, "Division by zero", &a, &b, NULL);
                     vm_release(a);
@@ -1898,10 +1899,10 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                     closure_destroy(closure);
                     return VM_RUNTIME_ERROR;
                 }
-                
+
                 // Floor division - truncate towards negative infinity
                 double result = floor(a_val / b_val);
-                
+
                 // If result fits in int32, return as int32
                 if (result >= INT32_MIN && result <= INT32_MAX) {
                     vm_push(vm, make_int32_with_debug((int32_t)result, a.debug));
@@ -1923,20 +1924,20 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
         case OP_INCREMENT: {
             value_t a = vm_pop(vm);
-            
+
             if (a.type == VAL_INT32) {
                 // Check for overflow
                 if (a.as.int32 == INT32_MAX) {
                     // Overflow - promote to BigInt
-                    db_bigint big = db_from_int64((int64_t)a.as.int32 + 1);
+                    di_int big = di_from_int64((int64_t)a.as.int32 + 1);
                     vm_push(vm, make_bigint_with_debug(big, a.debug));
                 } else {
                     vm_push(vm, make_int32_with_debug(a.as.int32 + 1, a.debug));
                 }
             } else if (a.type == VAL_BIGINT) {
-                db_bigint one = db_from_int64(1);
-                db_bigint result = db_add(a.as.bigint, one);
-                db_release(&one);
+                di_int one = di_from_int64(1);
+                di_int result = di_add(a.as.bigint, one);
+                di_release(&one);
                 vm_push(vm, make_bigint_with_debug(result, a.debug));
             } else if (a.type == VAL_NUMBER) {
                 vm_push(vm, make_number_with_debug(a.as.number + 1, a.debug));
@@ -1953,20 +1954,20 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
 
         case OP_DECREMENT: {
             value_t a = vm_pop(vm);
-            
+
             if (a.type == VAL_INT32) {
                 // Check for underflow
                 if (a.as.int32 == INT32_MIN) {
                     // Underflow - promote to BigInt
-                    db_bigint big = db_from_int64((int64_t)a.as.int32 - 1);
+                    di_int big = di_from_int64((int64_t)a.as.int32 - 1);
                     vm_push(vm, make_bigint_with_debug(big, a.debug));
                 } else {
                     vm_push(vm, make_int32_with_debug(a.as.int32 - 1, a.debug));
                 }
             } else if (a.type == VAL_BIGINT) {
-                db_bigint one = db_from_int64(1);
-                db_bigint result = db_subtract(a.as.bigint, one);
-                db_release(&one);
+                di_int one = di_from_int64(1);
+                di_int result = di_sub(a.as.bigint, one);
+                di_release(&one);
                 vm_push(vm, make_bigint_with_debug(result, a.debug));
             } else if (a.type == VAL_NUMBER) {
                 vm_push(vm, make_number_with_debug(a.as.number - 1, a.debug));
@@ -2018,7 +2019,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             vm->ip += 2;
 
             // Create new dynamic object
-            do_object object = do_create(NULL);  // NULL release function for now
+            do_object object = do_create(NULL); // NULL release function for now
             if (!object) {
                 vm_runtime_error_with_debug(vm, "Failed to create object");
                 vm->frame_count--;
@@ -2030,7 +2031,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             for (int i = 0; i < pair_count; i++) {
                 value_t value = vm_pop(vm);
                 value_t key = vm_pop(vm);
-                
+
                 // Check if trying to store undefined (not a first-class value)
                 if (value.type == VAL_UNDEFINED) {
                     vm_runtime_error_with_debug(vm, "Cannot store 'undefined' in object - it is not a value");
@@ -2080,9 +2081,9 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             value_t end = vm_pop(vm);
             value_t start = vm_pop(vm);
 
-            // Create range object  
+            // Create range object
             value_t range_value = make_range(start, end, exclusive);
-            
+
             // Clean up popped values (make_range already retained them)
             vm_release(start);
             vm_release(end);
@@ -2304,21 +2305,21 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             // Bound methods
             else if (callable.type == VAL_BOUND_METHOD) {
                 bound_method_t* bound_method = callable.as.bound_method;
-                
+
                 // Create new argument array with receiver as first argument
                 value_t* method_args = malloc(sizeof(value_t) * (arg_count + 1));
                 method_args[0] = vm_retain(bound_method->receiver); // 'this' context (retain for method call)
                 for (int i = 0; i < arg_count; i++) {
                     method_args[i + 1] = args[i];
                 }
-                
+
                 // Call the method with receiver as first argument
                 value_t result = bound_method->method(vm, arg_count + 1, method_args);
                 vm_push(vm, result);
-                
+
                 // Release the retained receiver
                 vm_release(method_args[0]);
-                
+
                 if (args)
                     free(args);
                 free(method_args);
@@ -2358,13 +2359,13 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
         case OP_DEFINE_GLOBAL: {
             // Pop the value to store and the variable name constant
             value_t value = vm_pop(vm);
-            
+
             // Note: We allow undefined for variable declarations (var x;)
             // The restriction on undefined only applies to explicit assignments
-            
+
             uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
-            
+
             value_t name_val = function->constants[name_constant];
             if (name_val.type != VAL_STRING) {
                 printf("Runtime error: Global variable name must be a string\n");
@@ -2372,7 +2373,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
-            
+
             // Store in globals object - we need to store a copy of the value
             value_t* stored_value = malloc(sizeof(value_t));
             if (!stored_value) {
@@ -2382,17 +2383,17 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 return VM_RUNTIME_ERROR;
             }
             *stored_value = value;
-            
+
             // ds_string can be used directly as char* - no ds_cstr needed
             // do_set needs key, data pointer, and size
             do_set(vm->globals, name_val.as.string, stored_value, sizeof(value_t));
             break;
         }
-        
+
         case OP_GET_GLOBAL: {
             uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
-            
+
             value_t name_val = function->constants[name_constant];
             if (name_val.type != VAL_STRING) {
                 printf("Runtime error: Global variable name must be a string\n");
@@ -2400,14 +2401,16 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
-            
+
             value_t* stored_value = (value_t*)do_get(vm->globals, name_val.as.string);
             if (stored_value) {
                 vm_push(vm, *stored_value);
             } else {
                 // Create formatted message with dynamic content
                 char error_msg[256];
-                snprintf(error_msg, sizeof(error_msg), "Undefined variable '%s' (if this is a function call, the function doesn't exist)", name_val.as.string);
+                snprintf(error_msg, sizeof(error_msg),
+                         "Undefined variable '%s' (if this is a function call, the function doesn't exist)",
+                         name_val.as.string);
                 vm_runtime_error_with_debug(vm, error_msg);
                 vm->frame_count--;
                 closure_destroy(closure);
@@ -2415,11 +2418,11 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             }
             break;
         }
-        
+
         case OP_SET_GLOBAL: {
             // Pop the value to store and get the variable name constant
             value_t value = vm_pop(vm);
-            
+
             // Check if trying to assign undefined (not a first-class value)
             if (value.type == VAL_UNDEFINED) {
                 vm_runtime_error_with_debug(vm, "Cannot assign 'undefined' - it is not a value");
@@ -2427,10 +2430,10 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
-            
+
             uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
-            
+
             value_t name_val = function->constants[name_constant];
             if (name_val.type != VAL_STRING) {
                 printf("Runtime error: Global variable name must be a string\n");
@@ -2438,13 +2441,13 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
-            
+
             // Check if variable exists
             value_t* stored_value = (value_t*)do_get(vm->globals, name_val.as.string);
             if (stored_value) {
                 // Release the old value first (proper reference counting)
                 vm_release(*stored_value);
-                
+
                 // Update with new value (already popped from stack, so we own it)
                 *stored_value = value;
             } else {
@@ -2520,11 +2523,11 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             }
             break;
         }
-        
+
         case OP_JUMP: {
             uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
-            
+
             // Handle both forward and backward jumps
             if (offset > 32767) { // If > 2^15-1, treat as negative (backward jump)
                 int16_t backward_offset = (int16_t)offset;
@@ -2534,53 +2537,49 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
             }
             break;
         }
-        
+
         case OP_JUMP_IF_FALSE: {
             uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
-            
+
             value_t condition = vm_peek(vm, 0);
             if (is_falsy(condition)) {
                 vm->ip += offset;
             }
             break;
         }
-        
+
         case OP_JUMP_IF_TRUE: {
             uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
-            
+
             value_t condition = vm_peek(vm, 0);
             if (!is_falsy(condition)) {
                 vm->ip += offset;
             }
             break;
         }
-        
+
         case OP_SET_DEBUG_LOCATION: {
             uint16_t constant_index = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
-            
+
             // Read line and column bytes
             int line = *vm->ip++;
             int column = *vm->ip++;
-            
+
             // Get the source text from the constant
             value_t source_value = function->constants[constant_index];
             if (source_value.type == VAL_STRING) {
                 // Clean up previous debug location
                 debug_location_free(vm->current_debug);
-                
+
                 // Create new debug location
-                vm->current_debug = debug_location_create(
-                    line,
-                    column,
-                    source_value.as.string
-                );
+                vm->current_debug = debug_location_create(line, column, source_value.as.string);
             }
             break;
         }
-        
+
         case OP_CLEAR_DEBUG_LOCATION: {
             debug_location_free(vm->current_debug);
             vm->current_debug = NULL;
@@ -2601,7 +2600,7 @@ vm_result vm_execute(bitty_vm* vm, function_t* function) {
     }
 }
 
-vm_result vm_interpret(bitty_vm* vm, const char* source) {
+vm_result vm_interpret(slate_vm* vm, const char* source) {
     // This would compile source to bytecode and execute
     // For now, just a stub
     (void)vm;
@@ -2613,48 +2612,51 @@ vm_result vm_interpret(bitty_vm* vm, const char* source) {
 // Iterator creation and management functions
 iterator_t* create_array_iterator(da_array array) {
     iterator_t* iter = malloc(sizeof(iterator_t));
-    if (!iter) return NULL;
-    
-    iter->ref_count = 1;    // Initialize reference count
+    if (!iter)
+        return NULL;
+
+    iter->ref_count = 1; // Initialize reference count
     iter->type = ITER_ARRAY;
     iter->data.array_iter.array = da_retain(array);
     iter->data.array_iter.index = 0;
-    
+
     return iter;
 }
 
 iterator_t* create_range_iterator(value_t start, value_t end, int exclusive) {
     iterator_t* iter = malloc(sizeof(iterator_t));
-    if (!iter) return NULL;
-    
-    iter->ref_count = 1;    // Initialize reference count
+    if (!iter)
+        return NULL;
+
+    iter->ref_count = 1; // Initialize reference count
     iter->type = ITER_RANGE;
     iter->data.range_iter.current = vm_retain(start);
     iter->data.range_iter.end = vm_retain(end);
     iter->data.range_iter.exclusive = exclusive;
     iter->data.range_iter.finished = 0;
-    
+
     return iter;
 }
 
 int iterator_has_next(iterator_t* iter) {
-    if (!iter) return 0;
-    
+    if (!iter)
+        return 0;
+
     switch (iter->type) {
     case ITER_ARRAY:
         return iter->data.array_iter.index < da_length(iter->data.array_iter.array);
     case ITER_RANGE: {
-        if (iter->data.range_iter.finished) return 0;
-        
+        if (iter->data.range_iter.finished)
+            return 0;
+
         // For now, only support integer ranges
-        if (iter->data.range_iter.current.type != VAL_INT32 || 
-            iter->data.range_iter.end.type != VAL_INT32) {
+        if (iter->data.range_iter.current.type != VAL_INT32 || iter->data.range_iter.end.type != VAL_INT32) {
             return 0;
         }
-        
+
         int32_t current = iter->data.range_iter.current.as.int32;
         int32_t end = iter->data.range_iter.end.as.int32;
-        
+
         if (iter->data.range_iter.exclusive) {
             return current < end;
         } else {
@@ -2670,7 +2672,7 @@ value_t iterator_next(iterator_t* iter) {
     if (!iter || !iterator_has_next(iter)) {
         return make_null();
     }
-    
+
     switch (iter->type) {
     case ITER_ARRAY: {
         value_t* element = (value_t*)da_get(iter->data.array_iter.array, iter->data.array_iter.index);
@@ -2680,14 +2682,14 @@ value_t iterator_next(iterator_t* iter) {
     case ITER_RANGE: {
         // Return current value and increment
         value_t current = vm_retain(iter->data.range_iter.current);
-        
+
         // Increment current (for now, only support integers)
         if (iter->data.range_iter.current.type == VAL_INT32) {
             iter->data.range_iter.current.as.int32++;
         } else {
             iter->data.range_iter.finished = 1;
         }
-        
+
         return current;
     }
     default:
@@ -2697,19 +2699,21 @@ value_t iterator_next(iterator_t* iter) {
 
 // Bound method reference counting functions
 bound_method_t* bound_method_retain(bound_method_t* method) {
-    if (!method) return method;
+    if (!method)
+        return method;
     method->ref_count++;
     return method;
 }
 
 void bound_method_release(bound_method_t* method) {
-    if (!method) return;
-    
+    if (!method)
+        return;
+
     method->ref_count--;
     if (method->ref_count == 0) {
         // Clean up bound method data
         vm_release(method->receiver);
-        
+
         // Free the bound method itself
         free(method);
     }
@@ -2717,20 +2721,22 @@ void bound_method_release(bound_method_t* method) {
 
 // Range reference counting functions
 range_t* range_retain(range_t* range) {
-    if (!range) return range;
+    if (!range)
+        return range;
     range->ref_count++;
     return range;
 }
 
 void range_release(range_t* range) {
-    if (!range) return;
-    
+    if (!range)
+        return;
+
     range->ref_count--;
     if (range->ref_count == 0) {
         // Clean up range data
         vm_release(range->start);
         vm_release(range->end);
-        
+
         // Free the range itself
         free(range);
     }
@@ -2738,14 +2744,16 @@ void range_release(range_t* range) {
 
 // Iterator reference counting functions
 iterator_t* iterator_retain(iterator_t* iter) {
-    if (!iter) return iter;
+    if (!iter)
+        return iter;
     iter->ref_count++;
     return iter;
 }
 
 void iterator_release(iterator_t* iter) {
-    if (!iter) return;
-    
+    if (!iter)
+        return;
+
     iter->ref_count--;
     if (iter->ref_count == 0) {
         // Clean up iterator-specific data
@@ -2755,7 +2763,7 @@ void iterator_release(iterator_t* iter) {
             vm_release(iter->data.range_iter.current);
             vm_release(iter->data.range_iter.end);
         }
-        
+
         // Free the iterator itself
         free(iter);
     }
@@ -2764,17 +2772,19 @@ void iterator_release(iterator_t* iter) {
 // Debug location management
 debug_location* debug_location_create(int line, int column, const char* source_text) {
     debug_location* debug = malloc(sizeof(debug_location));
-    if (!debug) return NULL;
-    
+    if (!debug)
+        return NULL;
+
     debug->line = line;
     debug->column = column;
-    debug->source_text = source_text;  // Not owned, just a reference
+    debug->source_text = source_text; // Not owned, just a reference
     return debug;
 }
 
 debug_location* debug_location_copy(const debug_location* debug) {
-    if (!debug) return NULL;
-    
+    if (!debug)
+        return NULL;
+
     return debug_location_create(debug->line, debug->column, debug->source_text);
 }
 
@@ -2838,7 +2848,7 @@ void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset) {
 }
 
 // Print enhanced runtime error with instruction location
-void vm_runtime_error_with_debug(bitty_vm* vm, const char* message) {
+void vm_runtime_error_with_debug(slate_vm* vm, const char* message) {
     if (vm->frame_count == 0) {
         printf("Runtime error: %s\n", message);
         return;
@@ -2850,7 +2860,7 @@ void vm_runtime_error_with_debug(bitty_vm* vm, const char* message) {
 
     // Use the stored current instruction pointer
     size_t instruction_offset = vm->current_instruction - vm->bytecode;
-    
+
     // Show the instruction that failed
     opcode failed_op = (opcode)*vm->current_instruction;
     printf("Runtime error: %s\n", message);
@@ -2859,7 +2869,7 @@ void vm_runtime_error_with_debug(bitty_vm* vm, const char* message) {
     // If we have debug info with source code, try to show it
     if (function->debug) {
         debug_info* debug = (debug_info*)function->debug;
-        
+
         if (debug->count > 0 && debug->source_code) {
             // Find the debug info for this instruction
             debug_info_entry* entry = NULL;
@@ -2892,23 +2902,27 @@ void vm_runtime_error_with_debug(bitty_vm* vm, const char* message) {
 }
 
 // Enhanced error reporting using value debug information
-void vm_runtime_error_with_values(bitty_vm* vm, const char* format, const value_t* a, const value_t* b, debug_location* location) {
+void vm_runtime_error_with_values(slate_vm* vm, const char* format, const value_t* a, const value_t* b,
+                                  debug_location* location) {
     // Print basic error message with value types
     printf("Runtime error: ");
     printf(format, value_type_name(a->type), b ? value_type_name(b->type) : "");
     printf("\n");
-    
+
     // Use the best debug location available (preference order: location param, a->debug, b->debug, current_debug)
     debug_location* debug_to_use = location;
-    if (!debug_to_use && a) debug_to_use = a->debug;
-    if (!debug_to_use && b) debug_to_use = b->debug;
-    if (!debug_to_use) debug_to_use = vm->current_debug;
-    
+    if (!debug_to_use && a)
+        debug_to_use = a->debug;
+    if (!debug_to_use && b)
+        debug_to_use = b->debug;
+    if (!debug_to_use)
+        debug_to_use = vm->current_debug;
+
     // If we have debug info, show source location
     if (debug_to_use && debug_to_use->source_text) {
         printf("    at line %d, column %d:\n", debug_to_use->line, debug_to_use->column);
         printf("    %s\n", debug_to_use->source_text);
-        
+
         // Print caret pointing to the column
         printf("    ");
         int caret_pos = debug_to_use->column > 0 ? debug_to_use->column - 1 : 0;
@@ -2922,21 +2936,37 @@ void vm_runtime_error_with_values(bitty_vm* vm, const char* format, const value_
 // Helper function to get value type name for error messages
 const char* value_type_name(value_type type) {
     switch (type) {
-        case VAL_NULL: return "null";
-        case VAL_UNDEFINED: return "undefined";
-        case VAL_BOOLEAN: return "boolean";
-        case VAL_INT32: return "int32";
-        case VAL_BIGINT: return "bigint";
-        case VAL_NUMBER: return "number";
-        case VAL_STRING: return "string";
-        case VAL_ARRAY: return "array";
-        case VAL_OBJECT: return "object";
-        case VAL_RANGE: return "range";
-        case VAL_ITERATOR: return "iterator";
-        case VAL_FUNCTION: return "function";
-        case VAL_CLOSURE: return "closure";
-        case VAL_BUILTIN: return "builtin";
-        case VAL_BOUND_METHOD: return "bound_method";
-        default: return "unknown";
+    case VAL_NULL:
+        return "null";
+    case VAL_UNDEFINED:
+        return "undefined";
+    case VAL_BOOLEAN:
+        return "boolean";
+    case VAL_INT32:
+        return "int32";
+    case VAL_BIGINT:
+        return "bigint";
+    case VAL_NUMBER:
+        return "number";
+    case VAL_STRING:
+        return "string";
+    case VAL_ARRAY:
+        return "array";
+    case VAL_OBJECT:
+        return "object";
+    case VAL_RANGE:
+        return "range";
+    case VAL_ITERATOR:
+        return "iterator";
+    case VAL_FUNCTION:
+        return "function";
+    case VAL_CLOSURE:
+        return "closure";
+    case VAL_BUILTIN:
+        return "builtin";
+    case VAL_BOUND_METHOD:
+        return "bound_method";
+    default:
+        return "unknown";
     }
 }

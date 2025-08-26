@@ -1,4 +1,4 @@
-# Bitty Programming Language - Design Document
+# Slate Programming Language - Design Document
 
 A tiny, functional programming language with closures, prototype-based objects, and JavaScript-like syntax. Built as an educational project to demonstrate AST construction, syntax-directed translation, and VM-based execution.
 
@@ -16,7 +16,7 @@ A tiny, functional programming language with closures, prototype-based objects, 
 
 ## Language Overview
 
-**Bitty** is designed to demonstrate modern language implementation concepts:
+**Slate** is designed to demonstrate modern language implementation concepts:
 
 - **Functional features**: Closures, implicit returns, arrow functions
 - **Object-oriented features**: Prototype-based objects with dynamic properties
@@ -132,7 +132,7 @@ if (greeting == "Hello") {
 
 ### Undefined Value
 
-Bitty includes a special `undefined` value with unique behavior:
+Slate includes a special `undefined` value with unique behavior:
 
 ```javascript
 // undefined returned by missing operations
@@ -689,7 +689,7 @@ void codegen_function(ast_node_t* func_node, bytecode_builder_t* builder) {
 
 ### Value-Centric Debug Information
 
-Bitty implements an advanced **value-centric error reporting system** that provides exceptional Developer Experience (DX) by pointing directly to problematic values rather than just operator locations.
+Slate implements an advanced **value-centric error reporting system** that provides exceptional Developer Experience (DX) by pointing directly to problematic values rather than just operator locations.
 
 #### Architecture
 
@@ -875,20 +875,20 @@ var doubled = map(numbers, (x) -> x * 2);
 2. **Built-in functions** - `print`, array operations
 3. **Error handling** - Runtime error reporting
 4. **REPL** - Interactive mode
-5. **File execution** - Run `.bitty` files
+5. **File execution** - Run `.slate` files
 
 ### Testing Strategy
 
 Each phase includes comprehensive tests:
 - **Unit tests** - Individual components (lexer, parser, codegen)
 - **Integration tests** - End-to-end compilation and execution
-- **Language tests** - `.bitty` programs that should work correctly
+- **Language tests** - `.slate` programs that should work correctly
 - **Error tests** - Invalid programs should fail gracefully
 
 ## File Structure
 
 ```
-bitty/
+slate/
 ├── src/
 │   ├── main.c           # REPL and file execution
 │   ├── lexer.c/.h       # Tokenization
@@ -901,13 +901,13 @@ bitty/
 ├── tests/
 │   ├── unit/            # Unit tests for each component
 │   ├── integration/     # End-to-end tests  
-│   └── examples/        # Sample .bitty programs
+│   └── examples/        # Sample .slate programs
 ├── examples/
-│   ├── hello.bitty
-│   ├── fibonacci.bitty
-│   ├── closures.bitty
-│   └── objects.bitty
+│   ├── hello.slate
+│   ├── fibonacci.slate
+│   ├── closures.slate
+│   └── objects.slate
 └── README.md
 ```
 
-This design provides a complete roadmap for building **Bitty** - a small but feature-complete functional programming language that demonstrates modern compiler implementation techniques while being educational and fun to build!
+This design provides a complete roadmap for building **Slate** - a small but feature-complete functional programming language that demonstrates modern compiler implementation techniques while being educational and fun to build!

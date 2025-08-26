@@ -23,7 +23,7 @@ static value_t execute_expression(const char* source) {
     TEST_ASSERT_FALSE(codegen->had_error);
     TEST_ASSERT_NOT_NULL(function);
     
-    bitty_vm* vm = vm_create();
+    slate_vm* vm = vm_create();
     vm_result result = vm_execute(vm, function);
     TEST_ASSERT_EQUAL(VM_OK, result);
     
@@ -32,7 +32,7 @@ static value_t execute_expression(const char* source) {
     
     // If it's a BigInt, we need to retain it properly
     if (ret_value.type == VAL_BIGINT) {
-        ret_value.as.bigint = db_retain(ret_value.as.bigint);
+        ret_value.as.bigint = di_retain(ret_value.as.bigint);
     }
     
     // Cleanup (function already destroyed by VM during OP_HALT)
@@ -57,86 +57,86 @@ void test_int32_overflow_detection() {
     int32_t result;
     
     // Addition overflow
-    TEST_ASSERT_TRUE(db_add_overflow_int32(1000, 2000, &result));
+    TEST_ASSERT_TRUE(di_add_overflow_int32(1000, 2000, &result));
     TEST_ASSERT_EQUAL_INT32(3000, result);
     
     // Addition overflow - should fail
-    TEST_ASSERT_FALSE(db_add_overflow_int32(INT32_MAX, 1, &result));
-    TEST_ASSERT_FALSE(db_add_overflow_int32(INT32_MIN, -1, &result));
+    TEST_ASSERT_FALSE(di_add_overflow_int32(INT32_MAX, 1, &result));
+    TEST_ASSERT_FALSE(di_add_overflow_int32(INT32_MIN, -1, &result));
     
     // Multiplication overflow
-    TEST_ASSERT_TRUE(db_multiply_overflow_int32(1000, 2000, &result));
+    TEST_ASSERT_TRUE(di_multiply_overflow_int32(1000, 2000, &result));
     TEST_ASSERT_EQUAL_INT32(2000000, result);
     
     // Multiplication overflow - should fail
-    TEST_ASSERT_FALSE(db_multiply_overflow_int32(INT32_MAX, 2, &result));
-    TEST_ASSERT_FALSE(db_multiply_overflow_int32(100000, 100000, &result));
+    TEST_ASSERT_FALSE(di_multiply_overflow_int32(INT32_MAX, 2, &result));
+    TEST_ASSERT_FALSE(di_multiply_overflow_int32(100000, 100000, &result));
     
     // Subtraction overflow  
-    TEST_ASSERT_TRUE(db_subtract_overflow_int32(1000, 500, &result));
+    TEST_ASSERT_TRUE(di_subtract_overflow_int32(1000, 500, &result));
     TEST_ASSERT_EQUAL_INT32(500, result);
     
     // Subtraction overflow - should fail
-    TEST_ASSERT_FALSE(db_subtract_overflow_int32(INT32_MIN, 1, &result));
+    TEST_ASSERT_FALSE(di_subtract_overflow_int32(INT32_MIN, 1, &result));
 }
 
 void test_bigint_creation() {
     // Test creating BigInt from int32
-    db_bigint big = db_from_int32(42);
+    di_int big = di_from_int32(42);
     TEST_ASSERT_NOT_NULL(big);
     
     int32_t result;
-    TEST_ASSERT_TRUE(db_to_int32(big, &result));
+    TEST_ASSERT_TRUE(di_to_int32(big, &result));
     TEST_ASSERT_EQUAL_INT32(42, result);
     
-    db_release(&big);
+    di_release(&big);
     TEST_ASSERT_NULL(big);
     
     // Test creating BigInt from large number
-    big = db_from_int64(5000000000LL);  // Larger than int32
+    big = di_from_int64(5000000000LL);  // Larger than int32
     TEST_ASSERT_NOT_NULL(big);
     
     int32_t small_result;
-    TEST_ASSERT_FALSE(db_to_int32(big, &small_result));  // Should fail
+    TEST_ASSERT_FALSE(di_to_int32(big, &small_result));  // Should fail
     
     int64_t large_result;
-    TEST_ASSERT_TRUE(db_to_int64(big, &large_result));
+    TEST_ASSERT_TRUE(di_to_int64(big, &large_result));
     TEST_ASSERT_EQUAL_INT64(5000000000LL, large_result);
     
-    db_release(&big);
+    di_release(&big);
 }
 
 void test_bigint_arithmetic() {
     // Test BigInt addition
-    db_bigint a = db_from_int32(1000);
-    db_bigint b = db_from_int32(2000);
-    db_bigint sum = db_add(a, b);
+    di_int a = di_from_int32(1000);
+    di_int b = di_from_int32(2000);
+    di_int sum = di_add(a, b);
     
     TEST_ASSERT_NOT_NULL(sum);
     
     int32_t result;
-    TEST_ASSERT_TRUE(db_to_int32(sum, &result));
+    TEST_ASSERT_TRUE(di_to_int32(sum, &result));
     TEST_ASSERT_EQUAL_INT32(3000, result);
     
-    db_release(&a);
-    db_release(&b);
-    db_release(&sum);
+    di_release(&a);
+    di_release(&b);
+    di_release(&sum);
 }
 
 void test_bigint_reference_counting() {
     // Test reference counting works properly
-    db_bigint big = db_from_int32(42);
-    TEST_ASSERT_EQUAL_size_t(1, db_ref_count(big));
+    di_int big = di_from_int32(42);
+    TEST_ASSERT_EQUAL_size_t(1, di_ref_count(big));
     
-    db_bigint retained = db_retain(big);
-    TEST_ASSERT_EQUAL_size_t(2, db_ref_count(big));
-    TEST_ASSERT_EQUAL_size_t(2, db_ref_count(retained));
+    di_int retained = di_retain(big);
+    TEST_ASSERT_EQUAL_size_t(2, di_ref_count(big));
+    TEST_ASSERT_EQUAL_size_t(2, di_ref_count(retained));
     
-    db_release(&retained);
+    di_release(&retained);
     TEST_ASSERT_NULL(retained);
-    TEST_ASSERT_EQUAL_size_t(1, db_ref_count(big));
+    TEST_ASSERT_EQUAL_size_t(1, di_ref_count(big));
     
-    db_release(&big);
+    di_release(&big);
     TEST_ASSERT_NULL(big);
 }
 
@@ -147,7 +147,7 @@ void test_vm_integer_value_creation() {
     TEST_ASSERT_EQUAL_INT32(42, int_val.as.int32);
     
     // Test BigInt value creation
-    db_bigint big = db_from_int32(100);
+    di_int big = di_from_int32(100);
     value_t bigint_val = make_bigint(big);
     TEST_ASSERT_EQUAL(VAL_BIGINT, bigint_val.type);
     TEST_ASSERT_EQUAL_PTR(big, bigint_val.as.bigint);
@@ -155,7 +155,7 @@ void test_vm_integer_value_creation() {
     // Test memory management
     value_t retained = vm_retain(bigint_val);
     TEST_ASSERT_EQUAL(VAL_BIGINT, retained.type);
-    TEST_ASSERT_EQUAL_size_t(2, db_ref_count(retained.as.bigint));
+    TEST_ASSERT_EQUAL_size_t(2, di_ref_count(retained.as.bigint));
     
     vm_release(retained);
     vm_release(bigint_val);
@@ -170,8 +170,8 @@ void test_integer_truthiness() {
     TEST_ASSERT_FALSE(is_falsy(nonzero_int));
     
     // Test BigInt truthiness
-    db_bigint zero_big = db_from_int32(0);
-    db_bigint nonzero_big = db_from_int32(100);
+    di_int zero_big = di_from_int32(0);
+    di_int nonzero_big = di_from_int32(100);
     
     value_t zero_bigint = make_bigint(zero_big);
     value_t nonzero_bigint = make_bigint(nonzero_big);

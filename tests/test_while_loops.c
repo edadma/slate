@@ -23,7 +23,7 @@ static value_t run_while_test(const char* source) {
     codegen_t* codegen = codegen_create();
     function_t* function = codegen_compile(codegen, program);
 
-    bitty_vm* vm = vm_create();
+    slate_vm* vm = vm_create();
     vm_result result = vm_execute(vm, function);
 
     value_t return_value = make_null();

@@ -1,7 +1,7 @@
 \ A simple calculator demonstration
-\ Shows off Bitty's arithmetic operators and built-in math functions
+\ Shows off Slate's arithmetic operators and built-in math functions
 
-print("=== Bitty Calculator ===")
+print("=== Slate Calculator ===")
 
 \ Basic arithmetic
 var a = 15

@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-// Token types for the Bitty language
+// Token types for the Slate language
 typedef enum {
     // Literals
     TOKEN_INTEGER,       // 123 (no decimal point)

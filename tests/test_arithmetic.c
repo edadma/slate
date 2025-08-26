@@ -24,14 +24,14 @@ static value_t execute_expression(const char* source) {
     TEST_ASSERT_FALSE(codegen->had_error);
     TEST_ASSERT_NOT_NULL(function);
 
-    bitty_vm* vm = vm_create();
+    slate_vm* vm = vm_create();
     vm_result result = vm_execute(vm, function);
     TEST_ASSERT_EQUAL(VM_OK, result);
 
     // Copy the result (simple copy for int32, retain for reference-counted types)
     value_t ret_value = vm->result;
     if (ret_value.type == VAL_BIGINT) {
-        ret_value.as.bigint = db_retain(ret_value.as.bigint);
+        ret_value.as.bigint = di_retain(ret_value.as.bigint);
     }
 
     // Cleanup (function already destroyed by VM during OP_HALT)
@@ -60,7 +60,7 @@ static value_t execute_expression_allow_errors(const char* source) {
     codegen_t* codegen = codegen_create();
     function_t* function = codegen_compile(codegen, program);
 
-    bitty_vm* vm = vm_create();
+    slate_vm* vm = vm_create();
     vm_result result = vm_execute(vm, function);
 
     value_t return_value = make_null();
@@ -263,7 +263,7 @@ void test_floor_division() {
 // Test increment and decrement operators
 void test_increment_decrement() {
     // Skip this test - increment/decrement operators require variables (l-values)
-    // which are not yet implemented in Bitty. In C, ++5 and --10 are invalid syntax.
+    // which are not yet implemented in Slate. In C, ++5 and --10 are invalid syntax.
     // Once variables are implemented, this test should be updated to use proper l-values.
     TEST_PASS_MESSAGE("Increment/decrement test skipped - requires variable implementation");
 }

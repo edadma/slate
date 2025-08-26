@@ -10,7 +10,7 @@ var person = {
 }
 
 var book = {
-    title: "The Bitty Guide", 
+    title: "The Slate Guide",
     author: "Anonymous",
     pages: 150,
     published: true
