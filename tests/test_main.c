@@ -13,6 +13,7 @@ void test_arithmetic_suite(void);
 void test_logical_suite(void);
 void test_break_statements_suite(void);
 void test_continue_statements_suite(void);
+void test_nested_loops_suite(void);
 
 void setUp(void) {
     // Setup code that runs before each test
@@ -38,6 +39,7 @@ int main(void) {
     test_logical_suite();
     test_break_statements_suite();
     test_continue_statements_suite();
+    test_nested_loops_suite();
 
     return UNITY_END();
 }

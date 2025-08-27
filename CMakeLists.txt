@@ -57,6 +57,7 @@ if (BUILD_TESTS)
             tests/test_logical.c
             tests/test_break_statements.c
             tests/test_continue_statements.c
+            tests/test_nested_loops.c
             src/lexer.c
             src/parser.c
             src/ast.c

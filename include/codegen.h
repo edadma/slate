@@ -30,20 +30,23 @@ typedef struct {
     debug_info* debug; // Optional debug information (NULL if disabled)
 } bytecode_chunk;
 
+// Individual loop context for nested loop support
+typedef struct {
+    size_t loop_start;          // Position for continue jumps
+    size_t* break_jumps;        // Break jumps for this loop level
+    size_t break_count;
+    size_t break_capacity;
+} loop_context_t;
+
 // Code generator state
 typedef struct {
     bytecode_chunk* chunk;
     int had_error;
     int debug_mode; // Whether to generate debug information
-    // Simple loop context (for now, only support one level)
-    size_t* break_jumps;    // Array of break jump locations to patch
-    size_t break_count;     // Number of break statements in current loop
-    size_t break_capacity;  // Capacity of break_jumps array
-    size_t* continue_jumps; // Array of continue jump locations to patch
-    size_t continue_count;  // Number of continue statements in current loop
-    size_t continue_capacity; // Capacity of continue_jumps array
-    size_t loop_start;      // Position to jump to for continue
-    int in_loop;            // Whether we're currently inside a loop
+    // Stack-based loop context for nested loops
+    loop_context_t* loop_contexts;  // Array of loop contexts (stack)
+    size_t loop_depth;             // Current nesting depth (0 = no loops) 
+    size_t loop_capacity;          // Capacity of loop_contexts array
 } codegen_t;
 
 // Debug info functions
@@ -109,9 +112,10 @@ size_t codegen_emit_jump(codegen_t* codegen, opcode op);
 void codegen_patch_jump(codegen_t* codegen, size_t offset);
 void codegen_emit_loop(codegen_t* codegen, size_t loop_start);
 
-// Loop management for break and continue statements
-void codegen_begin_loop(codegen_t* codegen, size_t loop_start);
-void codegen_end_loop(codegen_t* codegen);
+// Loop management for break and continue statements (nested support)
+void codegen_push_loop(codegen_t* codegen, size_t loop_start);
+void codegen_pop_loop(codegen_t* codegen);
+loop_context_t* codegen_current_loop(codegen_t* codegen);
 
 // Error handling
 void codegen_error(codegen_t* codegen, const char* message);

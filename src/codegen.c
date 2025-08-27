@@ -131,14 +131,9 @@ codegen_t* codegen_create(void) {
     codegen->chunk = chunk_create();
     codegen->had_error = 0;
     codegen->debug_mode = 0; // No debug info by default
-    codegen->break_jumps = NULL;
-    codegen->break_count = 0;
-    codegen->break_capacity = 0;
-    codegen->continue_jumps = NULL;
-    codegen->continue_count = 0;
-    codegen->continue_capacity = 0;
-    codegen->loop_start = 0;
-    codegen->in_loop = 0;
+    codegen->loop_contexts = NULL;
+    codegen->loop_depth = 0;
+    codegen->loop_capacity = 0;
     
     return codegen;
 }
@@ -155,14 +150,9 @@ codegen_t* codegen_create_with_debug(const char* source_code) {
     
     codegen->had_error = 0;
     codegen->debug_mode = 1; // Enable debug info
-    codegen->break_jumps = NULL;
-    codegen->break_count = 0;
-    codegen->break_capacity = 0;
-    codegen->continue_jumps = NULL;
-    codegen->continue_count = 0;
-    codegen->continue_capacity = 0;
-    codegen->loop_start = 0;
-    codegen->in_loop = 0;
+    codegen->loop_contexts = NULL;
+    codegen->loop_depth = 0;
+    codegen->loop_capacity = 0;
     
     return codegen;
 }
@@ -171,8 +161,13 @@ void codegen_destroy(codegen_t* codegen) {
     if (!codegen) return;
     
     chunk_destroy(codegen->chunk);
-    free(codegen->break_jumps);
-    free(codegen->continue_jumps);
+    
+    // Clean up loop contexts
+    for (size_t i = 0; i < codegen->loop_depth; i++) {
+        free(codegen->loop_contexts[i].break_jumps);
+    }
+    free(codegen->loop_contexts);
+    
     free(codegen);
 }
 
@@ -739,7 +734,7 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     size_t loop_start = codegen->chunk->count;
     
     // Begin loop context for break and continue statements
-    codegen_begin_loop(codegen, loop_start);
+    codegen_push_loop(codegen, loop_start);
     
     // Generate condition
     codegen_emit_expression(codegen, node->condition);
@@ -766,14 +761,14 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     codegen_emit_op(codegen, OP_POP); // Pop condition
     
     // End loop context and patch break statements
-    codegen_end_loop(codegen);
+    codegen_pop_loop(codegen);
 }
 
 void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node) {
     size_t loop_start = codegen->chunk->count;
     
     // Begin loop context for break and continue statements
-    codegen_begin_loop(codegen, loop_start);
+    codegen_push_loop(codegen, loop_start);
     
     // Generate body (no condition needed for infinite loop)
     codegen_emit_statement(codegen, node->body);
@@ -789,11 +784,12 @@ void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node) {
     codegen_emit_op_operand(codegen, OP_JUMP, (uint16_t)(-backward_distance));
     
     // End loop context and patch break statements
-    codegen_end_loop(codegen);
+    codegen_pop_loop(codegen);
 }
 
 void codegen_emit_break(codegen_t* codegen, ast_break* node) {
-    if (!codegen->in_loop) {
+    loop_context_t* loop = codegen_current_loop(codegen);
+    if (!loop) {
         codegen_error(codegen, "Break statement outside of loop");
         return;
     }
@@ -801,30 +797,31 @@ void codegen_emit_break(codegen_t* codegen, ast_break* node) {
     // Emit a jump that will be patched later when the loop ends
     size_t jump_offset = codegen_emit_jump(codegen, OP_JUMP);
     
-    // Add to the list of break jumps to patch
-    if (codegen->break_count >= codegen->break_capacity) {
-        size_t new_capacity = codegen->break_capacity == 0 ? 8 : codegen->break_capacity * 2;
-        size_t* new_jumps = realloc(codegen->break_jumps, new_capacity * sizeof(size_t));
+    // Add to the current loop's list of break jumps to patch
+    if (loop->break_count >= loop->break_capacity) {
+        size_t new_capacity = loop->break_capacity == 0 ? 8 : loop->break_capacity * 2;
+        size_t* new_jumps = realloc(loop->break_jumps, new_capacity * sizeof(size_t));
         if (!new_jumps) {
             codegen_error(codegen, "Out of memory");
             return;
         }
-        codegen->break_jumps = new_jumps;
-        codegen->break_capacity = new_capacity;
+        loop->break_jumps = new_jumps;
+        loop->break_capacity = new_capacity;
     }
     
-    codegen->break_jumps[codegen->break_count++] = jump_offset;
+    loop->break_jumps[loop->break_count++] = jump_offset;
 }
 
 void codegen_emit_continue(codegen_t* codegen, ast_continue* node) {
-    if (!codegen->in_loop) {
+    loop_context_t* loop = codegen_current_loop(codegen);
+    if (!loop) {
         codegen_error(codegen, "Continue statement outside of loop");
         return;
     }
     
     // Calculate jump distance back to loop start
     size_t current_pos = codegen->chunk->count;
-    size_t backward_distance = current_pos - codegen->loop_start + 3; // +3 for the JUMP instruction itself
+    size_t backward_distance = current_pos - loop->loop_start + 3; // +3 for the JUMP instruction itself
     
     if (backward_distance > UINT16_MAX) {
         codegen_error(codegen, "Loop body too large for continue");
@@ -835,22 +832,55 @@ void codegen_emit_continue(codegen_t* codegen, ast_continue* node) {
     codegen_emit_op_operand(codegen, OP_JUMP, (uint16_t)(-backward_distance));
 }
 
-void codegen_begin_loop(codegen_t* codegen, size_t loop_start) {
-    codegen->in_loop = 1;
-    codegen->loop_start = loop_start;
-    codegen->break_count = 0;
-    codegen->continue_count = 0;
+// Get the current (innermost) loop context
+loop_context_t* codegen_current_loop(codegen_t* codegen) {
+    if (codegen->loop_depth == 0) return NULL;
+    return &codegen->loop_contexts[codegen->loop_depth - 1];
 }
 
-void codegen_end_loop(codegen_t* codegen) {
-    // Patch all break statements to jump to this location
-    for (size_t i = 0; i < codegen->break_count; i++) {
-        codegen_patch_jump(codegen, codegen->break_jumps[i]);
+// Push a new loop context onto the stack
+void codegen_push_loop(codegen_t* codegen, size_t loop_start) {
+    // Grow stack if needed
+    if (codegen->loop_depth >= codegen->loop_capacity) {
+        size_t new_capacity = codegen->loop_capacity == 0 ? 4 : codegen->loop_capacity * 2;
+        loop_context_t* new_contexts = realloc(codegen->loop_contexts, 
+                                              new_capacity * sizeof(loop_context_t));
+        if (!new_contexts) {
+            codegen_error(codegen, "Out of memory for loop context");
+            return;
+        }
+        codegen->loop_contexts = new_contexts;
+        codegen->loop_capacity = new_capacity;
     }
     
-    codegen->in_loop = 0;
-    codegen->break_count = 0;
-    codegen->continue_count = 0;
+    // Initialize new loop context
+    loop_context_t* loop = &codegen->loop_contexts[codegen->loop_depth];
+    loop->loop_start = loop_start;
+    loop->break_jumps = NULL;
+    loop->break_count = 0;
+    loop->break_capacity = 0;
+    
+    codegen->loop_depth++;
+}
+
+// Pop the current loop context from the stack and patch break statements
+void codegen_pop_loop(codegen_t* codegen) {
+    if (codegen->loop_depth == 0) {
+        codegen_error(codegen, "Internal error: popping loop context when no loops active");
+        return;
+    }
+    
+    loop_context_t* loop = &codegen->loop_contexts[codegen->loop_depth - 1];
+    
+    // Patch all break statements to jump to current location
+    for (size_t i = 0; i < loop->break_count; i++) {
+        codegen_patch_jump(codegen, loop->break_jumps[i]);
+    }
+    
+    // Clean up this loop context
+    free(loop->break_jumps);
+    
+    codegen->loop_depth--;
 }
 
 void codegen_emit_return(codegen_t* codegen, ast_return* node) {
