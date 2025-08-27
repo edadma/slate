@@ -331,6 +331,97 @@ void test_object_with_string_values(void) {
     vm_release(str_result);
 }
 
+// ==================
+// BUFFER UNIT TESTS
+// ==================
+
+// Test buffer creation from string
+void test_buffer_creation_from_string(void) {
+    value_t result = interpret_expression("buffer(\"Hello\")");
+    TEST_ASSERT_EQUAL(VAL_BUFFER, result.type);
+    TEST_ASSERT_NOT_NULL(result.as.buffer);
+    TEST_ASSERT_EQUAL(5, db_size(result.as.buffer));
+    vm_release(result);
+}
+
+// Test buffer creation from array
+void test_buffer_creation_from_array(void) {
+    value_t result = interpret_expression("buffer([72, 101, 108, 108, 111])");
+    TEST_ASSERT_EQUAL(VAL_BUFFER, result.type);
+    TEST_ASSERT_NOT_NULL(result.as.buffer);
+    TEST_ASSERT_EQUAL(5, db_size(result.as.buffer));
+    // Check if it represents "Hello"
+    TEST_ASSERT_EQUAL(72, ((uint8_t*)result.as.buffer)[0]); // 'H'
+    TEST_ASSERT_EQUAL(101, ((uint8_t*)result.as.buffer)[1]); // 'e'
+    vm_release(result);
+}
+
+// Test buffer from hex string
+void test_buffer_from_hex(void) {
+    value_t result = interpret_expression("buffer_from_hex(\"48656c6c6f\")");
+    TEST_ASSERT_EQUAL(VAL_BUFFER, result.type);
+    TEST_ASSERT_NOT_NULL(result.as.buffer);
+    TEST_ASSERT_EQUAL(5, db_size(result.as.buffer));
+    // Should represent "Hello"
+    TEST_ASSERT_EQUAL(0, memcmp(result.as.buffer, "Hello", 5));
+    vm_release(result);
+}
+
+// Test buffer to hex conversion
+void test_buffer_to_hex(void) {
+    value_t result = interpret_expression("buffer_to_hex(buffer(\"Hello\"))");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("48656c6c6f", result.as.string);
+    vm_release(result);
+}
+
+// Test buffer slicing
+void test_buffer_slice(void) {
+    value_t result = interpret_expression("buffer_to_hex(buffer_slice(buffer(\"Hello\"), 1, 3))");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("656c6c", result.as.string); // "ell" in hex
+    vm_release(result);
+}
+
+// Test buffer concatenation
+void test_buffer_concat(void) {
+    value_t result = interpret_expression("buffer_to_hex(buffer_concat(buffer(\"Hello\"), buffer(\" World\")))");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("48656c6c6f20576f726c64", result.as.string); // "Hello World" in hex
+    vm_release(result);
+}
+
+// Test buffer type checking
+void test_buffer_type_checking(void) {
+    value_t result = interpret_expression("type(buffer(\"test\"))");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("buffer", result.as.string);
+    vm_release(result);
+}
+
+// Test buffer reader basic functionality
+void test_buffer_reader_basic(void) {
+    value_t result = interpret_expression("reader_read_uint8(buffer_reader(buffer(\"H\")))");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(72, result.as.int32); // ASCII 'H'
+    vm_release(result);
+}
+
+// Test buffer reader positioning
+void test_buffer_reader_positioning(void) {
+    // Test remaining bytes
+    value_t result = interpret_expression("reader_remaining(buffer_reader(buffer(\"Hello\")))");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(5, result.as.int32);
+    vm_release(result);
+    
+    // Test position
+    result = interpret_expression("reader_position(buffer_reader(buffer(\"Hello\")))");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.int32);
+    vm_release(result);
+}
+
 // Test suite function
 void test_builtins_suite(void) {
     RUN_TEST(test_builtin_print);
@@ -371,4 +462,15 @@ void test_builtins_suite(void) {
     RUN_TEST(test_string_concat_with_empty_object);
     RUN_TEST(test_array_with_strings);
     RUN_TEST(test_object_with_string_values);
+    
+    // Buffer tests
+    RUN_TEST(test_buffer_creation_from_string);
+    RUN_TEST(test_buffer_creation_from_array);
+    RUN_TEST(test_buffer_from_hex);
+    RUN_TEST(test_buffer_to_hex);
+    RUN_TEST(test_buffer_slice);
+    RUN_TEST(test_buffer_concat);
+    RUN_TEST(test_buffer_type_checking);
+    RUN_TEST(test_buffer_reader_basic);
+    RUN_TEST(test_buffer_reader_positioning);
 }

@@ -63,6 +63,33 @@ void builtins_init(slate_vm* vm) {
     register_builtin(vm, "iterator", builtin_iterator, 1, 1);
     register_builtin(vm, "hasNext", builtin_has_next, 1, 1);
     register_builtin(vm, "next", builtin_next, 1, 1);
+    
+    // Buffer functions
+    register_builtin(vm, "buffer", builtin_buffer, 1, 1);
+    register_builtin(vm, "buffer_from_hex", builtin_buffer_from_hex, 1, 1);
+    register_builtin(vm, "buffer_slice", builtin_buffer_slice, 3, 3);
+    register_builtin(vm, "buffer_concat", builtin_buffer_concat, 2, 2);
+    register_builtin(vm, "buffer_to_hex", builtin_buffer_to_hex, 1, 1);
+    
+    // Buffer builder functions
+    register_builtin(vm, "buffer_builder", builtin_buffer_builder, 1, 1);
+    register_builtin(vm, "builder_append_uint8", builtin_builder_append_uint8, 2, 2);
+    register_builtin(vm, "builder_append_uint16_le", builtin_builder_append_uint16_le, 2, 2);
+    register_builtin(vm, "builder_append_uint32_le", builtin_builder_append_uint32_le, 2, 2);
+    register_builtin(vm, "builder_append_cstring", builtin_builder_append_cstring, 2, 2);
+    register_builtin(vm, "builder_finish", builtin_builder_finish, 1, 1);
+    
+    // Buffer reader functions
+    register_builtin(vm, "buffer_reader", builtin_buffer_reader, 1, 1);
+    register_builtin(vm, "reader_read_uint8", builtin_reader_read_uint8, 1, 1);
+    register_builtin(vm, "reader_read_uint16_le", builtin_reader_read_uint16_le, 1, 1);
+    register_builtin(vm, "reader_read_uint32_le", builtin_reader_read_uint32_le, 1, 1);
+    register_builtin(vm, "reader_position", builtin_reader_position, 1, 1);
+    register_builtin(vm, "reader_remaining", builtin_reader_remaining, 1, 1);
+    
+    // I/O functions
+    register_builtin(vm, "read_file", builtin_read_file, 1, 1);
+    register_builtin(vm, "write_file", builtin_write_file, 2, 2);
 }
 
 // Built-in function implementations
@@ -133,6 +160,15 @@ value_t builtin_type(slate_vm* vm, int arg_count, value_t* args) {
         break;
     case VAL_ITERATOR:
         type_name = "iterator";
+        break;
+    case VAL_BUFFER:
+        type_name = "buffer";
+        break;
+    case VAL_BUFFER_BUILDER:
+        type_name = "buffer_builder";
+        break;
+    case VAL_BUFFER_READER:
+        type_name = "buffer_reader";
         break;
     case VAL_BOUND_METHOD:
         type_name = "bound_method";
@@ -612,4 +648,510 @@ value_t builtin_next(slate_vm* vm, int arg_count, value_t* args) {
     }
     
     return iterator_next(iter_val.as.iterator);
+}
+
+// ========================
+// BUFFER BUILTIN FUNCTIONS
+// ========================
+
+// buffer(data) - Create buffer from string or array
+value_t builtin_buffer(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("buffer() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t data = args[0];
+    db_buffer buf;
+    
+    if (data.type == VAL_STRING) {
+        // Create buffer from string
+        const char* str = data.as.string;
+        size_t len = str ? strlen(str) : 0;
+        buf = db_new_with_data(str, len);
+    } else if (data.type == VAL_ARRAY) {
+        // Create buffer from array of numbers
+        da_array arr = data.as.array;
+        size_t len = da_length(arr);
+        
+        // Convert array elements to bytes
+        uint8_t* bytes = malloc(len);
+        if (!bytes) {
+            runtime_error("Failed to allocate memory for buffer");
+        }
+        
+        for (size_t i = 0; i < len; i++) {
+            value_t* elem = (value_t*)da_get(arr, i);
+            if (!elem) {
+                free(bytes);
+                runtime_error("Invalid array element at index %zu", i);
+            }
+            if (elem->type == VAL_INT32) {
+                if (elem->as.int32 < 0 || elem->as.int32 > 255) {
+                    free(bytes);
+                    runtime_error("Array element %d at index %zu is not a valid byte (0-255)", elem->as.int32, i);
+                }
+                bytes[i] = (uint8_t)elem->as.int32;
+            } else {
+                free(bytes);
+                runtime_error("Array element at index %zu must be an integer, not %s", i, value_type_name(elem->type));
+            }
+        }
+        
+        buf = db_new_with_data(bytes, len);
+        free(bytes);
+    } else {
+        runtime_error("buffer() requires a string or array argument, not %s", value_type_name(data.type));
+    }
+    
+    return make_buffer(buf);
+}
+
+// buffer_from_hex(hex_string) - Create buffer from hex string
+value_t builtin_buffer_from_hex(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("buffer_from_hex() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t hex_val = args[0];
+    if (hex_val.type != VAL_STRING) {
+        runtime_error("buffer_from_hex() requires a string argument, not %s", value_type_name(hex_val.type));
+    }
+    
+    const char* hex_str = hex_val.as.string;
+    if (!hex_str) {
+        runtime_error("buffer_from_hex() requires a non-null string");
+    }
+    
+    size_t len = strlen(hex_str);
+    db_buffer buf = db_from_hex(hex_str, len);
+    
+    if (!buf) {
+        runtime_error("Invalid hex string");
+    }
+    
+    return make_buffer(buf);
+}
+
+// buffer_slice(buffer, offset, length) - Create buffer slice
+value_t builtin_buffer_slice(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 3) {
+        runtime_error("buffer_slice() takes exactly 3 arguments (%d given)", arg_count);
+    }
+    
+    value_t buf_val = args[0];
+    value_t offset_val = args[1];
+    value_t length_val = args[2];
+    
+    if (buf_val.type != VAL_BUFFER) {
+        runtime_error("buffer_slice() requires a buffer as first argument, not %s", value_type_name(buf_val.type));
+    }
+    if (offset_val.type != VAL_INT32) {
+        runtime_error("buffer_slice() requires an integer offset, not %s", value_type_name(offset_val.type));
+    }
+    if (length_val.type != VAL_INT32) {
+        runtime_error("buffer_slice() requires an integer length, not %s", value_type_name(length_val.type));
+    }
+    
+    db_buffer buf = buf_val.as.buffer;
+    int32_t offset = offset_val.as.int32;
+    int32_t length = length_val.as.int32;
+    
+    if (offset < 0 || length < 0) {
+        runtime_error("buffer_slice() offset and length must be non-negative");
+    }
+    
+    db_buffer slice = db_slice(buf, (size_t)offset, (size_t)length);
+    if (!slice) {
+        runtime_error("Invalid buffer slice bounds");
+    }
+    
+    return make_buffer(slice);
+}
+
+// buffer_concat(buf1, buf2) - Concatenate two buffers
+value_t builtin_buffer_concat(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("buffer_concat() takes exactly 2 arguments (%d given)", arg_count);
+    }
+    
+    value_t buf1_val = args[0];
+    value_t buf2_val = args[1];
+    
+    if (buf1_val.type != VAL_BUFFER) {
+        runtime_error("buffer_concat() requires buffer as first argument, not %s", value_type_name(buf1_val.type));
+    }
+    if (buf2_val.type != VAL_BUFFER) {
+        runtime_error("buffer_concat() requires buffer as second argument, not %s", value_type_name(buf2_val.type));
+    }
+    
+    db_buffer result = db_concat(buf1_val.as.buffer, buf2_val.as.buffer);
+    return make_buffer(result);
+}
+
+// buffer_to_hex(buffer) - Convert buffer to hex string
+value_t builtin_buffer_to_hex(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("buffer_to_hex() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t buf_val = args[0];
+    if (buf_val.type != VAL_BUFFER) {
+        runtime_error("buffer_to_hex() requires a buffer argument, not %s", value_type_name(buf_val.type));
+    }
+    
+    db_buffer hex_buf = db_to_hex(buf_val.as.buffer, false); // lowercase
+    
+    // Create null-terminated string from hex buffer
+    size_t hex_len = db_size(hex_buf);
+    char* null_term_hex = malloc(hex_len + 1);
+    if (!null_term_hex) {
+        db_release(&hex_buf);
+        runtime_error("Failed to allocate memory for hex string");
+    }
+    
+    memcpy(null_term_hex, hex_buf, hex_len);
+    null_term_hex[hex_len] = '\0';
+    
+    ds_string hex_str = ds_new(null_term_hex);
+    
+    free(null_term_hex);
+    db_release(&hex_buf);
+    
+    return make_string_ds(hex_str);
+}
+
+// =============================
+// BUFFER BUILDER BUILTIN FUNCTIONS
+// =============================
+
+// buffer_builder(capacity) - Create buffer builder
+value_t builtin_buffer_builder(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("buffer_builder() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t capacity_val = args[0];
+    if (capacity_val.type != VAL_INT32) {
+        runtime_error("buffer_builder() requires an integer capacity, not %s", value_type_name(capacity_val.type));
+    }
+    
+    int32_t capacity = capacity_val.as.int32;
+    if (capacity < 0) {
+        runtime_error("buffer_builder() capacity must be non-negative");
+    }
+    
+    // Allocate db_builder on heap since we store pointer in value
+    db_builder* builder = malloc(sizeof(db_builder));
+    if (!builder) {
+        runtime_error("Failed to allocate memory for buffer builder");
+    }
+    
+    *builder = db_builder_new((size_t)capacity);
+    return make_buffer_builder(builder);
+}
+
+// builder_append_uint8(builder, value) - Append uint8 to builder
+value_t builtin_builder_append_uint8(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("builder_append_uint8() takes exactly 2 arguments (%d given)", arg_count);
+    }
+    
+    value_t builder_val = args[0];
+    value_t value_val = args[1];
+    
+    if (builder_val.type != VAL_BUFFER_BUILDER) {
+        runtime_error("builder_append_uint8() requires a buffer builder, not %s", value_type_name(builder_val.type));
+    }
+    if (value_val.type != VAL_INT32) {
+        runtime_error("builder_append_uint8() requires an integer value, not %s", value_type_name(value_val.type));
+    }
+    
+    int32_t value = value_val.as.int32;
+    if (value < 0 || value > 255) {
+        runtime_error("builder_append_uint8() value must be 0-255, got %d", value);
+    }
+    
+    db_builder* builder = builder_val.as.builder;
+    if (db_builder_append_uint8(builder, (uint8_t)value) != 0) {
+        runtime_error("Failed to append to buffer builder");
+    }
+    
+    return make_null();
+}
+
+// builder_append_uint16_le(builder, value) - Append uint16 in little-endian
+value_t builtin_builder_append_uint16_le(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("builder_append_uint16_le() takes exactly 2 arguments (%d given)", arg_count);
+    }
+    
+    value_t builder_val = args[0];
+    value_t value_val = args[1];
+    
+    if (builder_val.type != VAL_BUFFER_BUILDER) {
+        runtime_error("builder_append_uint16_le() requires a buffer builder, not %s", value_type_name(builder_val.type));
+    }
+    if (value_val.type != VAL_INT32) {
+        runtime_error("builder_append_uint16_le() requires an integer value, not %s", value_type_name(value_val.type));
+    }
+    
+    int32_t value = value_val.as.int32;
+    if (value < 0 || value > 65535) {
+        runtime_error("builder_append_uint16_le() value must be 0-65535, got %d", value);
+    }
+    
+    db_builder* builder = builder_val.as.builder;
+    if (db_builder_append_uint16_le(builder, (uint16_t)value) != 0) {
+        runtime_error("Failed to append to buffer builder");
+    }
+    
+    return make_null();
+}
+
+// builder_append_uint32_le(builder, value) - Append uint32 in little-endian
+value_t builtin_builder_append_uint32_le(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("builder_append_uint32_le() takes exactly 2 arguments (%d given)", arg_count);
+    }
+    
+    value_t builder_val = args[0];
+    value_t value_val = args[1];
+    
+    if (builder_val.type != VAL_BUFFER_BUILDER) {
+        runtime_error("builder_append_uint32_le() requires a buffer builder, not %s", value_type_name(builder_val.type));
+    }
+    if (value_val.type != VAL_INT32) {
+        runtime_error("builder_append_uint32_le() requires an integer value, not %s", value_type_name(value_val.type));
+    }
+    
+    int32_t value = value_val.as.int32;
+    if (value < 0) {
+        runtime_error("builder_append_uint32_le() value must be non-negative, got %d", value);
+    }
+    
+    db_builder* builder = builder_val.as.builder;
+    if (db_builder_append_uint32_le(builder, (uint32_t)value) != 0) {
+        runtime_error("Failed to append to buffer builder");
+    }
+    
+    return make_null();
+}
+
+// builder_append_cstring(builder, string) - Append string to builder
+value_t builtin_builder_append_cstring(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("builder_append_cstring() takes exactly 2 arguments (%d given)", arg_count);
+    }
+    
+    value_t builder_val = args[0];
+    value_t string_val = args[1];
+    
+    if (builder_val.type != VAL_BUFFER_BUILDER) {
+        runtime_error("builder_append_cstring() requires a buffer builder, not %s", value_type_name(builder_val.type));
+    }
+    if (string_val.type != VAL_STRING) {
+        runtime_error("builder_append_cstring() requires a string value, not %s", value_type_name(string_val.type));
+    }
+    
+    const char* str = string_val.as.string;
+    if (!str) {
+        runtime_error("builder_append_cstring() requires a non-null string");
+    }
+    
+    db_builder* builder = builder_val.as.builder;
+    if (db_builder_append_cstring(builder, str) != 0) {
+        runtime_error("Failed to append string to buffer builder");
+    }
+    
+    return make_null();
+}
+
+// builder_finish(builder) - Finish building and get buffer
+value_t builtin_builder_finish(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("builder_finish() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t builder_val = args[0];
+    if (builder_val.type != VAL_BUFFER_BUILDER) {
+        runtime_error("builder_finish() requires a buffer builder, not %s", value_type_name(builder_val.type));
+    }
+    
+    db_builder* builder = builder_val.as.builder;
+    db_buffer result = db_builder_finish(builder);
+    
+    // After finish, the builder is invalidated, so we should not access it again
+    // The VM will clean up the heap allocation when the value is freed
+    
+    return make_buffer(result);
+}
+
+// ============================
+// BUFFER READER BUILTIN FUNCTIONS
+// ============================
+
+// buffer_reader(buffer) - Create buffer reader
+value_t builtin_buffer_reader(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("buffer_reader() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t buffer_val = args[0];
+    if (buffer_val.type != VAL_BUFFER) {
+        runtime_error("buffer_reader() requires a buffer argument, not %s", value_type_name(buffer_val.type));
+    }
+    
+    db_reader reader = db_reader_new(buffer_val.as.buffer);
+    return make_buffer_reader(reader);
+}
+
+// reader_read_uint8(reader) - Read uint8 from reader
+value_t builtin_reader_read_uint8(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("reader_read_uint8() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t reader_val = args[0];
+    if (reader_val.type != VAL_BUFFER_READER) {
+        runtime_error("reader_read_uint8() requires a buffer reader, not %s", value_type_name(reader_val.type));
+    }
+    
+    db_reader reader = reader_val.as.reader;
+    if (!db_reader_can_read(reader, 1)) {
+        runtime_error("Cannot read uint8: not enough data remaining");
+    }
+    
+    uint8_t value = db_read_uint8(reader);
+    return make_int32((int32_t)value);
+}
+
+// reader_read_uint16_le(reader) - Read uint16 in little-endian from reader
+value_t builtin_reader_read_uint16_le(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("reader_read_uint16_le() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t reader_val = args[0];
+    if (reader_val.type != VAL_BUFFER_READER) {
+        runtime_error("reader_read_uint16_le() requires a buffer reader, not %s", value_type_name(reader_val.type));
+    }
+    
+    db_reader reader = reader_val.as.reader;
+    if (!db_reader_can_read(reader, 2)) {
+        runtime_error("Cannot read uint16: not enough data remaining");
+    }
+    
+    uint16_t value = db_read_uint16_le(reader);
+    return make_int32((int32_t)value);
+}
+
+// reader_read_uint32_le(reader) - Read uint32 in little-endian from reader
+value_t builtin_reader_read_uint32_le(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("reader_read_uint32_le() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t reader_val = args[0];
+    if (reader_val.type != VAL_BUFFER_READER) {
+        runtime_error("reader_read_uint32_le() requires a buffer reader, not %s", value_type_name(reader_val.type));
+    }
+    
+    db_reader reader = reader_val.as.reader;
+    if (!db_reader_can_read(reader, 4)) {
+        runtime_error("Cannot read uint32: not enough data remaining");
+    }
+    
+    uint32_t value = db_read_uint32_le(reader);
+    
+    // Check if value fits in int32_t range
+    if (value <= INT32_MAX) {
+        return make_int32((int32_t)value);
+    } else {
+        // Convert to bigint for large values
+        di_int big = di_from_uint32(value);
+        return make_bigint(big);
+    }
+}
+
+// reader_position(reader) - Get reader position
+value_t builtin_reader_position(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("reader_position() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t reader_val = args[0];
+    if (reader_val.type != VAL_BUFFER_READER) {
+        runtime_error("reader_position() requires a buffer reader, not %s", value_type_name(reader_val.type));
+    }
+    
+    size_t pos = db_reader_position(reader_val.as.reader);
+    return make_int32((int32_t)pos);
+}
+
+// reader_remaining(reader) - Get remaining bytes in reader
+value_t builtin_reader_remaining(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("reader_remaining() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t reader_val = args[0];
+    if (reader_val.type != VAL_BUFFER_READER) {
+        runtime_error("reader_remaining() requires a buffer reader, not %s", value_type_name(reader_val.type));
+    }
+    
+    size_t remaining = db_reader_remaining(reader_val.as.reader);
+    return make_int32((int32_t)remaining);
+}
+
+// ===================
+// I/O BUILTIN FUNCTIONS
+// ===================
+
+// read_file(filename) - Read file into buffer
+value_t builtin_read_file(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("read_file() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t filename_val = args[0];
+    if (filename_val.type != VAL_STRING) {
+        runtime_error("read_file() requires a string filename, not %s", value_type_name(filename_val.type));
+    }
+    
+    const char* filename = filename_val.as.string;
+    if (!filename) {
+        runtime_error("read_file() requires a non-null filename");
+    }
+    
+    db_buffer buf = db_read_file(filename);
+    if (!buf) {
+        runtime_error("Failed to read file: %s", filename);
+    }
+    
+    return make_buffer(buf);
+}
+
+// write_file(buffer, filename) - Write buffer to file
+value_t builtin_write_file(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("write_file() takes exactly 2 arguments (%d given)", arg_count);
+    }
+    
+    value_t buffer_val = args[0];
+    value_t filename_val = args[1];
+    
+    if (buffer_val.type != VAL_BUFFER) {
+        runtime_error("write_file() requires a buffer as first argument, not %s", value_type_name(buffer_val.type));
+    }
+    if (filename_val.type != VAL_STRING) {
+        runtime_error("write_file() requires a string filename, not %s", value_type_name(filename_val.type));
+    }
+    
+    const char* filename = filename_val.as.string;
+    if (!filename) {
+        runtime_error("write_file() requires a non-null filename");
+    }
+    
+    bool success = db_write_file(buffer_val.as.buffer, filename);
+    return make_boolean(success);
 }

@@ -11,6 +11,8 @@
 #include "/home/ed/CLionProjects/dynamic_array.h/dynamic_array.h"
 #include "/home/ed/CLionProjects/dynamic_object.h/dynamic_object.h"
 #include "/home/ed/CLionProjects/dynamic_int.h/dynamic_int.h"
+#define DB_IMPLEMENTATION
+#include "/home/ed/CLionProjects/dynamic_buffer.h/dynamic_buffer.h"
 
 // Forward declarations
 typedef struct value value_t;
@@ -127,6 +129,9 @@ typedef enum
     VAL_OBJECT,
     VAL_RANGE,     // Range object (1..10, 1..<10)
     VAL_ITERATOR,  // Iterator object for arrays, ranges, etc.
+    VAL_BUFFER,    // Byte buffer for binary data
+    VAL_BUFFER_BUILDER, // Buffer builder for constructing buffers
+    VAL_BUFFER_READER,  // Buffer reader for parsing buffers
     VAL_FUNCTION,
     VAL_CLOSURE,
     VAL_BUILTIN,
@@ -153,6 +158,9 @@ typedef struct value
         do_object object; // Using dynamic_object.h!
         range_t* range; // Range object pointer
         iterator_t* iterator; // Iterator object pointer
+        db_buffer buffer; // Buffer data (using dynamic_buffer.h!)
+        db_builder* builder; // Buffer builder pointer (heap allocated)
+        db_reader reader; // Buffer reader handle (opaque pointer)
         struct function* function;
         struct closure* closure;
         void* builtin; // Built-in function pointer (cast from builtin_func_t)
@@ -318,6 +326,9 @@ value_t make_array(da_array array);
 value_t make_object(do_object object);
 value_t make_range(value_t start, value_t end, int exclusive);
 value_t make_iterator(iterator_t* iterator);
+value_t make_buffer(db_buffer buffer);
+value_t make_buffer_builder(db_builder* builder);
+value_t make_buffer_reader(db_reader reader);
 value_t make_function(function_t* function);
 value_t make_closure(closure_t* closure);
 value_t make_builtin(void* builtin_func);
@@ -354,6 +365,9 @@ value_t make_array_with_debug(da_array array, debug_location* debug);
 value_t make_object_with_debug(do_object object, debug_location* debug);
 value_t make_range_with_debug(value_t start, value_t end, int exclusive, debug_location* debug);
 value_t make_iterator_with_debug(iterator_t* iterator, debug_location* debug);
+value_t make_buffer_with_debug(db_buffer buffer, debug_location* debug);
+value_t make_buffer_builder_with_debug(db_builder* builder, debug_location* debug);
+value_t make_buffer_reader_with_debug(db_reader reader, debug_location* debug);
 value_t make_function_with_debug(function_t* function, debug_location* debug);
 value_t make_closure_with_debug(closure_t* closure, debug_location* debug);
 value_t make_builtin_with_debug(void* builtin_func, debug_location* debug);

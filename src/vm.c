@@ -114,7 +114,11 @@ value_t vm_retain(value_t value) {
         value.as.iterator = iterator_retain(value.as.iterator);
     } else if (value.type == VAL_BOUND_METHOD) {
         value.as.bound_method = bound_method_retain(value.as.bound_method);
+    } else if (value.type == VAL_BUFFER) {
+        value.as.buffer = db_retain(value.as.buffer);
     }
+    // Note: VAL_BUFFER_BUILDER and VAL_BUFFER_READER don't need retain/release
+    // as they are managed at the builtin function level
     return value;
 }
 
@@ -133,6 +137,19 @@ void vm_release(value_t value) {
         iterator_release(value.as.iterator);
     } else if (value.type == VAL_BOUND_METHOD) {
         bound_method_release(value.as.bound_method);
+    } else if (value.type == VAL_BUFFER) {
+        db_release(&value.as.buffer);
+    } else if (value.type == VAL_BUFFER_BUILDER) {
+        // Builder cleanup - free the heap allocated db_builder struct
+        if (value.as.builder) {
+            // If the builder hasn't been finished, we need to clean up its internal buffer
+            // If it has been finished, db_builder_finish() already transferred ownership
+            // The db_builder struct itself is always safe to free
+            free(value.as.builder);
+        }
+    } else if (value.type == VAL_BUFFER_READER) {
+        // Reader cleanup - free the opaque db_reader handle
+        db_reader_free(&value.as.reader);
     }
 }
 
@@ -298,6 +315,30 @@ value_t make_bound_method(value_t receiver, builtin_func_t method_func) {
     return value;
 }
 
+value_t make_buffer(db_buffer buffer) {
+    value_t value;
+    value.type = VAL_BUFFER;
+    value.as.buffer = buffer;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_buffer_builder(db_builder* builder) {
+    value_t value;
+    value.type = VAL_BUFFER_BUILDER;
+    value.as.builder = builder;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_buffer_reader(db_reader reader) {
+    value_t value;
+    value.type = VAL_BUFFER_READER;
+    value.as.reader = reader;
+    value.debug = NULL;
+    return value;
+}
+
 // Value creation functions with debug info
 value_t make_null_with_debug(debug_location* debug) {
     value_t value = make_null();
@@ -391,6 +432,24 @@ value_t make_builtin_with_debug(void* builtin_func, debug_location* debug) {
 
 value_t make_bound_method_with_debug(value_t receiver, builtin_func_t method_func, debug_location* debug) {
     value_t value = make_bound_method(receiver, method_func);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_buffer_with_debug(db_buffer buffer, debug_location* debug) {
+    value_t value = make_buffer(buffer);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_buffer_builder_with_debug(db_builder* builder, debug_location* debug) {
+    value_t value = make_buffer_builder(builder);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_buffer_reader_with_debug(db_reader reader, debug_location* debug) {
+    value_t value = make_buffer_reader(reader);
     value.debug = debug_location_copy(debug);
     return value;
 }
@@ -630,6 +689,12 @@ int is_falsy(value_t value) {
         return value.as.number == 0.0;
     case VAL_STRING:
         return value.as.string == NULL || strlen(value.as.string) == 0;
+    case VAL_BUFFER:
+        return value.as.buffer == NULL || db_size(value.as.buffer) == 0;
+    case VAL_BUFFER_BUILDER:
+        return value.as.builder == NULL;
+    case VAL_BUFFER_READER:
+        return value.as.reader == NULL;
     default:
         return 0;
     }
@@ -678,6 +743,14 @@ int values_equal(value_t a, value_t b) {
         return a.as.array == b.as.array;
     case VAL_OBJECT:
         return a.as.object == b.as.object;
+    case VAL_BUFFER:
+        if (a.as.buffer == b.as.buffer) return 1; // Same buffer reference
+        if (a.as.buffer == NULL || b.as.buffer == NULL) return 0;
+        return db_equals(a.as.buffer, b.as.buffer);
+    case VAL_BUFFER_BUILDER:
+        return a.as.builder == b.as.builder;
+    case VAL_BUFFER_READER:
+        return a.as.reader == b.as.reader;
     case VAL_FUNCTION:
         return a.as.function == b.as.function;
     case VAL_CLOSURE:
@@ -777,6 +850,30 @@ void print_value(value_t value) {
         }
         break;
     }
+    case VAL_BUFFER: {
+        if (!value.as.buffer) {
+            printf("<null buffer>");
+        } else {
+            printf("<buffer size=%zu>", db_size(value.as.buffer));
+        }
+        break;
+    }
+    case VAL_BUFFER_BUILDER: {
+        if (!value.as.builder) {
+            printf("<null buffer builder>");
+        } else {
+            printf("<buffer builder>");
+        }
+        break;
+    }
+    case VAL_BUFFER_READER: {
+        if (!value.as.reader) {
+            printf("<null buffer reader>");
+        } else {
+            printf("<buffer reader pos=%zu>", db_reader_position(value.as.reader));
+        }
+        break;
+    }
     case VAL_BOUND_METHOD: {
         if (!value.as.bound_method) {
             printf("<null bound method>");
@@ -796,9 +893,15 @@ void free_value(value_t value) {
     case VAL_NULL:
     case VAL_UNDEFINED:
     case VAL_BOOLEAN:
+    case VAL_INT32:
     case VAL_NUMBER:
         // No cleanup needed for these types
         break;
+    case VAL_BIGINT: {
+        di_int temp = value.as.bigint;
+        di_release(&temp); // DI cleanup with reference counting!
+        break;
+    }
     case VAL_STRING: {
         ds_string temp = value.as.string;
         ds_release(&temp); // DS cleanup with reference counting!
@@ -822,6 +925,24 @@ void free_value(value_t value) {
     case VAL_ITERATOR: {
         // Iterator cleanup is handled by vm_release() through reference counting
         // Don't duplicate cleanup here
+        break;
+    }
+    case VAL_BUFFER: {
+        db_buffer temp = value.as.buffer;
+        db_release(&temp); // DB cleanup with reference counting!
+        break;
+    }
+    case VAL_BUFFER_BUILDER: {
+        // Builder cleanup - free the heap allocated db_builder struct
+        if (value.as.builder) {
+            free(value.as.builder);
+        }
+        break;
+    }
+    case VAL_BUFFER_READER: {
+        // Reader cleanup - free the opaque db_reader handle
+        db_reader temp = value.as.reader;
+        db_reader_free(&temp);
         break;
     }
     case VAL_BOUND_METHOD: {
@@ -2958,6 +3079,12 @@ const char* value_type_name(value_type type) {
         return "range";
     case VAL_ITERATOR:
         return "iterator";
+    case VAL_BUFFER:
+        return "buffer";
+    case VAL_BUFFER_BUILDER:
+        return "buffer_builder";
+    case VAL_BUFFER_READER:
+        return "buffer_reader";
     case VAL_FUNCTION:
         return "function";
     case VAL_CLOSURE:

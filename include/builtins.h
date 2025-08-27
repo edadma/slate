@@ -47,6 +47,33 @@ value_t builtin_iterator(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_has_next(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_next(slate_vm* vm, int arg_count, value_t* args);
 
+// Buffer functions
+value_t builtin_buffer(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_buffer_from_hex(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_buffer_slice(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_buffer_concat(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_buffer_to_hex(slate_vm* vm, int arg_count, value_t* args);
+
+// Buffer builder functions
+value_t builtin_buffer_builder(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_builder_append_uint8(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_builder_append_uint16_le(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_builder_append_uint32_le(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_builder_append_cstring(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_builder_finish(slate_vm* vm, int arg_count, value_t* args);
+
+// Buffer reader functions
+value_t builtin_buffer_reader(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_reader_read_uint8(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_reader_read_uint16_le(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_reader_read_uint32_le(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_reader_position(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_reader_remaining(slate_vm* vm, int arg_count, value_t* args);
+
+// I/O functions
+value_t builtin_read_file(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_write_file(slate_vm* vm, int arg_count, value_t* args);
+
 // Runtime error handling
 void runtime_error(const char* message, ...);
 
