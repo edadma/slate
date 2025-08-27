@@ -116,9 +116,11 @@ value_t vm_retain(value_t value) {
         value.as.bound_method = bound_method_retain(value.as.bound_method);
     } else if (value.type == VAL_BUFFER) {
         value.as.buffer = db_retain(value.as.buffer);
+    } else if (value.type == VAL_BUFFER_BUILDER) {
+        value.as.builder = db_builder_retain(value.as.builder);
+    } else if (value.type == VAL_BUFFER_READER) {
+        value.as.reader = db_reader_retain(value.as.reader);
     }
-    // Note: VAL_BUFFER_BUILDER and VAL_BUFFER_READER don't need retain/release
-    // as they are managed at the builtin function level
     return value;
 }
 
@@ -140,16 +142,17 @@ void vm_release(value_t value) {
     } else if (value.type == VAL_BUFFER) {
         db_release(&value.as.buffer);
     } else if (value.type == VAL_BUFFER_BUILDER) {
-        // Builder cleanup - free the heap allocated db_builder struct
+        // Builder cleanup - release reference counted builder
         if (value.as.builder) {
-            // If the builder hasn't been finished, we need to clean up its internal buffer
-            // If it has been finished, db_builder_finish() already transferred ownership
-            // The db_builder struct itself is always safe to free
-            free(value.as.builder);
+            db_builder temp = value.as.builder;
+            db_builder_release(&temp);
         }
     } else if (value.type == VAL_BUFFER_READER) {
-        // Reader cleanup - free the opaque db_reader handle
-        db_reader_free(&value.as.reader);
+        // Reader cleanup - release reference counted reader
+        if (value.as.reader) {
+            db_reader temp = value.as.reader;
+            db_reader_release(&temp);
+        }
     }
 }
 
@@ -323,7 +326,7 @@ value_t make_buffer(db_buffer buffer) {
     return value;
 }
 
-value_t make_buffer_builder(db_builder* builder) {
+value_t make_buffer_builder(db_builder builder) {
     value_t value;
     value.type = VAL_BUFFER_BUILDER;
     value.as.builder = builder;
@@ -442,7 +445,7 @@ value_t make_buffer_with_debug(db_buffer buffer, debug_location* debug) {
     return value;
 }
 
-value_t make_buffer_builder_with_debug(db_builder* builder, debug_location* debug) {
+value_t make_buffer_builder_with_debug(db_builder builder, debug_location* debug) {
     value_t value = make_buffer_builder(builder);
     value.debug = debug_location_copy(debug);
     return value;
@@ -933,16 +936,19 @@ void free_value(value_t value) {
         break;
     }
     case VAL_BUFFER_BUILDER: {
-        // Builder cleanup - free the heap allocated db_builder struct
+        // Builder cleanup - release reference counted builder
         if (value.as.builder) {
-            free(value.as.builder);
+            db_builder temp = value.as.builder;
+            db_builder_release(&temp);
         }
         break;
     }
     case VAL_BUFFER_READER: {
-        // Reader cleanup - free the opaque db_reader handle
-        db_reader temp = value.as.reader;
-        db_reader_free(&temp);
+        // Reader cleanup - release reference counted reader
+        if (value.as.reader) {
+            db_reader temp = value.as.reader;
+            db_reader_release(&temp);
+        }
         break;
     }
     case VAL_BOUND_METHOD: {

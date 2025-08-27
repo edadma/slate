@@ -840,13 +840,8 @@ value_t builtin_buffer_builder(slate_vm* vm, int arg_count, value_t* args) {
         runtime_error("buffer_builder() capacity must be non-negative");
     }
     
-    // Allocate db_builder on heap since we store pointer in value
-    db_builder* builder = malloc(sizeof(db_builder));
-    if (!builder) {
-        runtime_error("Failed to allocate memory for buffer builder");
-    }
-    
-    *builder = db_builder_new((size_t)capacity);
+    // Create reference counted builder directly
+    db_builder builder = db_builder_new((size_t)capacity);
     return make_buffer_builder(builder);
 }
 
@@ -871,7 +866,7 @@ value_t builtin_builder_append_uint8(slate_vm* vm, int arg_count, value_t* args)
         runtime_error("builder_append_uint8() value must be 0-255, got %d", value);
     }
     
-    db_builder* builder = builder_val.as.builder;
+    db_builder builder = builder_val.as.builder;
     if (db_builder_append_uint8(builder, (uint8_t)value) != 0) {
         runtime_error("Failed to append to buffer builder");
     }
@@ -900,7 +895,7 @@ value_t builtin_builder_append_uint16_le(slate_vm* vm, int arg_count, value_t* a
         runtime_error("builder_append_uint16_le() value must be 0-65535, got %d", value);
     }
     
-    db_builder* builder = builder_val.as.builder;
+    db_builder builder = builder_val.as.builder;
     if (db_builder_append_uint16_le(builder, (uint16_t)value) != 0) {
         runtime_error("Failed to append to buffer builder");
     }
@@ -929,7 +924,7 @@ value_t builtin_builder_append_uint32_le(slate_vm* vm, int arg_count, value_t* a
         runtime_error("builder_append_uint32_le() value must be non-negative, got %d", value);
     }
     
-    db_builder* builder = builder_val.as.builder;
+    db_builder builder = builder_val.as.builder;
     if (db_builder_append_uint32_le(builder, (uint32_t)value) != 0) {
         runtime_error("Failed to append to buffer builder");
     }
@@ -958,7 +953,7 @@ value_t builtin_builder_append_cstring(slate_vm* vm, int arg_count, value_t* arg
         runtime_error("builder_append_cstring() requires a non-null string");
     }
     
-    db_builder* builder = builder_val.as.builder;
+    db_builder builder = builder_val.as.builder;
     if (db_builder_append_cstring(builder, str) != 0) {
         runtime_error("Failed to append string to buffer builder");
     }
@@ -977,11 +972,10 @@ value_t builtin_builder_finish(slate_vm* vm, int arg_count, value_t* args) {
         runtime_error("builder_finish() requires a buffer builder, not %s", value_type_name(builder_val.type));
     }
     
-    db_builder* builder = builder_val.as.builder;
-    db_buffer result = db_builder_finish(builder);
+    db_builder builder = builder_val.as.builder;
+    db_buffer result = db_builder_finish(&builder);
     
-    // After finish, the builder is invalidated, so we should not access it again
-    // The VM will clean up the heap allocation when the value is freed
+    // After finish, the builder is invalidated - reference counting handles cleanup
     
     return make_buffer(result);
 }
