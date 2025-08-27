@@ -154,7 +154,7 @@ void test_lexer_compound_assignments(void) {
     lexer_t lexer;
     token_t token;
     
-    lexer_init(&lexer, "+= -= *= /= %= **=");
+    lexer_init(&lexer, "+= -= *= /= %= **= &= |= ^= &&= ||=");
     
     token = lexer_next_token(&lexer);
     TEST_ASSERT_EQUAL_INT(TOKEN_PLUS_ASSIGN, token.type);
@@ -173,6 +173,21 @@ void test_lexer_compound_assignments(void) {
     
     token = lexer_next_token(&lexer);
     TEST_ASSERT_EQUAL_INT(TOKEN_POWER_ASSIGN, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_BITWISE_AND_ASSIGN, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_BITWISE_OR_ASSIGN, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_BITWISE_XOR_ASSIGN, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_LOGICAL_AND_ASSIGN, token.type);
+    
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_LOGICAL_OR_ASSIGN, token.type);
     
     lexer_cleanup(&lexer);
 }
