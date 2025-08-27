@@ -25,6 +25,7 @@ typedef enum {
     TOKEN_LOOP,          // loop
     TOKEN_DO,            // do
     TOKEN_BREAK,         // break
+    TOKEN_CONTINUE,      // continue
     TOKEN_RETURN,        // return
     TOKEN_THEN,          // then
     TOKEN_END,           // end

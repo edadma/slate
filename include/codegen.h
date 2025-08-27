@@ -39,6 +39,10 @@ typedef struct {
     size_t* break_jumps;    // Array of break jump locations to patch
     size_t break_count;     // Number of break statements in current loop
     size_t break_capacity;  // Capacity of break_jumps array
+    size_t* continue_jumps; // Array of continue jump locations to patch
+    size_t continue_count;  // Number of continue statements in current loop
+    size_t continue_capacity; // Capacity of continue_jumps array
+    size_t loop_start;      // Position to jump to for continue
     int in_loop;            // Whether we're currently inside a loop
 } codegen_t;
 
@@ -92,6 +96,7 @@ void codegen_emit_if(codegen_t* codegen, ast_if* node);
 void codegen_emit_while(codegen_t* codegen, ast_while* node);
 void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node);
 void codegen_emit_break(codegen_t* codegen, ast_break* node);
+void codegen_emit_continue(codegen_t* codegen, ast_continue* node);
 void codegen_emit_return(codegen_t* codegen, ast_return* node);
 
 // Utility functions
@@ -104,8 +109,8 @@ size_t codegen_emit_jump(codegen_t* codegen, opcode op);
 void codegen_patch_jump(codegen_t* codegen, size_t offset);
 void codegen_emit_loop(codegen_t* codegen, size_t loop_start);
 
-// Loop management for break statements
-void codegen_begin_loop(codegen_t* codegen);
+// Loop management for break and continue statements
+void codegen_begin_loop(codegen_t* codegen, size_t loop_start);
 void codegen_end_loop(codegen_t* codegen);
 
 // Error handling

@@ -134,6 +134,10 @@ codegen_t* codegen_create(void) {
     codegen->break_jumps = NULL;
     codegen->break_count = 0;
     codegen->break_capacity = 0;
+    codegen->continue_jumps = NULL;
+    codegen->continue_count = 0;
+    codegen->continue_capacity = 0;
+    codegen->loop_start = 0;
     codegen->in_loop = 0;
     
     return codegen;
@@ -154,6 +158,10 @@ codegen_t* codegen_create_with_debug(const char* source_code) {
     codegen->break_jumps = NULL;
     codegen->break_count = 0;
     codegen->break_capacity = 0;
+    codegen->continue_jumps = NULL;
+    codegen->continue_count = 0;
+    codegen->continue_capacity = 0;
+    codegen->loop_start = 0;
     codegen->in_loop = 0;
     
     return codegen;
@@ -164,6 +172,7 @@ void codegen_destroy(codegen_t* codegen) {
     
     chunk_destroy(codegen->chunk);
     free(codegen->break_jumps);
+    free(codegen->continue_jumps);
     free(codegen);
 }
 
@@ -340,6 +349,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_break(codegen, (ast_break*)expr);
             break;
             
+        case AST_CONTINUE:
+            codegen_emit_continue(codegen, (ast_continue*)expr);
+            break;
+            
         default:
             codegen_error(codegen, "Unknown expression type");
             break;
@@ -377,6 +390,10 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             
         case AST_BREAK:
             codegen_emit_break(codegen, (ast_break*)stmt);
+            break;
+            
+        case AST_CONTINUE:
+            codegen_emit_continue(codegen, (ast_continue*)stmt);
             break;
             
         case AST_RETURN:
@@ -721,8 +738,8 @@ void codegen_emit_block_expression(codegen_t* codegen, ast_block* node) {
 void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     size_t loop_start = codegen->chunk->count;
     
-    // Begin loop context for break statements
-    codegen_begin_loop(codegen);
+    // Begin loop context for break and continue statements
+    codegen_begin_loop(codegen, loop_start);
     
     // Generate condition
     codegen_emit_expression(codegen, node->condition);
@@ -755,8 +772,8 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
 void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node) {
     size_t loop_start = codegen->chunk->count;
     
-    // Begin loop context for break statements
-    codegen_begin_loop(codegen);
+    // Begin loop context for break and continue statements
+    codegen_begin_loop(codegen, loop_start);
     
     // Generate body (no condition needed for infinite loop)
     codegen_emit_statement(codegen, node->body);
@@ -799,9 +816,30 @@ void codegen_emit_break(codegen_t* codegen, ast_break* node) {
     codegen->break_jumps[codegen->break_count++] = jump_offset;
 }
 
-void codegen_begin_loop(codegen_t* codegen) {
+void codegen_emit_continue(codegen_t* codegen, ast_continue* node) {
+    if (!codegen->in_loop) {
+        codegen_error(codegen, "Continue statement outside of loop");
+        return;
+    }
+    
+    // Calculate jump distance back to loop start
+    size_t current_pos = codegen->chunk->count;
+    size_t backward_distance = current_pos - codegen->loop_start + 3; // +3 for the JUMP instruction itself
+    
+    if (backward_distance > UINT16_MAX) {
+        codegen_error(codegen, "Loop body too large for continue");
+        return;
+    }
+    
+    // Emit backward jump to loop start
+    codegen_emit_op_operand(codegen, OP_JUMP, (uint16_t)(-backward_distance));
+}
+
+void codegen_begin_loop(codegen_t* codegen, size_t loop_start) {
     codegen->in_loop = 1;
+    codegen->loop_start = loop_start;
     codegen->break_count = 0;
+    codegen->continue_count = 0;
 }
 
 void codegen_end_loop(codegen_t* codegen) {
@@ -812,6 +850,7 @@ void codegen_end_loop(codegen_t* codegen) {
     
     codegen->in_loop = 0;
     codegen->break_count = 0;
+    codegen->continue_count = 0;
 }
 
 void codegen_emit_return(codegen_t* codegen, ast_return* node) {

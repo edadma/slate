@@ -308,6 +308,17 @@ ast_break* ast_create_break(int line, int column) {
     return node;
 }
 
+ast_continue* ast_create_continue(int line, int column) {
+    ast_continue* node = malloc(sizeof(ast_continue));
+    if (!node) return NULL;
+    
+    node->base.type = AST_CONTINUE;
+    node->base.line = line;
+    node->base.column = column;
+    
+    return node;
+}
+
 ast_return* ast_create_return(ast_node* value, int line, int column) {
     ast_return* node = malloc(sizeof(ast_return));
     if (!node) return NULL;
@@ -503,6 +514,11 @@ void ast_free(ast_node* node) {
             break;
         }
         
+        case AST_CONTINUE: {
+            // No additional cleanup needed for continue statements
+            break;
+        }
+        
         case AST_RETURN: {
             ast_return* ret_node = (ast_return*)node;
             ast_free(ret_node->value);
@@ -562,6 +578,7 @@ const char* ast_node_type_name(ast_node_type type) {
         case AST_WHILE: return "WHILE";
         case AST_LOOP: return "LOOP";
         case AST_BREAK: return "BREAK";
+        case AST_CONTINUE: return "CONTINUE";
         case AST_RETURN: return "RETURN";
         case AST_EXPRESSION_STMT: return "EXPRESSION_STMT";
         case AST_BLOCK: return "BLOCK";

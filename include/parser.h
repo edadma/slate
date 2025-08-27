@@ -42,6 +42,7 @@ int validate_block_expression(ast_node* expr);
 ast_node* parse_while_statement(parser_t* parser);
 ast_node* parse_loop_statement(parser_t* parser);
 ast_node* parse_break_statement(parser_t* parser);
+ast_node* parse_continue_statement(parser_t* parser);
 ast_node* parse_return_statement(parser_t* parser);
 
 // Expressions (by precedence)

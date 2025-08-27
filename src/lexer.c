@@ -32,6 +32,7 @@ static keyword_entry_t keywords[] = {
     {"loop", TOKEN_LOOP},
     {"do", TOKEN_DO},
     {"break", TOKEN_BREAK},
+    {"continue", TOKEN_CONTINUE},
     {"return", TOKEN_RETURN},
     {"then", TOKEN_THEN},
     {"end", TOKEN_END},

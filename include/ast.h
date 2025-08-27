@@ -46,6 +46,7 @@ typedef enum {
     AST_WHILE,
     AST_LOOP,
     AST_BREAK,
+    AST_CONTINUE,
     AST_RETURN,
     AST_EXPRESSION_STMT,
     AST_BLOCK,
@@ -255,6 +256,12 @@ typedef struct {
     // No additional fields needed - break is just a simple statement
 } ast_break;
 
+// Continue statement node
+typedef struct {
+    ast_node base;
+    // No additional fields needed - continue is just a simple statement
+} ast_continue;
+
 // Return statement node
 typedef struct {
     ast_node base;
@@ -310,6 +317,7 @@ ast_if* ast_create_if(ast_node* condition, ast_node* then_stmt, ast_node* else_s
 ast_while* ast_create_while(ast_node* condition, ast_node* body, int line, int column);
 ast_loop* ast_create_loop(ast_node* body, int line, int column);
 ast_break* ast_create_break(int line, int column);
+ast_continue* ast_create_continue(int line, int column);
 ast_return* ast_create_return(ast_node* value, int line, int column);
 
 ast_expression_stmt* ast_create_expression_stmt(ast_node* expression, int line, int column);

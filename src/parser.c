@@ -564,6 +564,12 @@ ast_node* parse_break_statement(parser_t* parser) {
     return (ast_node*)ast_create_break(parser->previous.line, parser->previous.column);
 }
 
+// Parse continue statement
+ast_node* parse_continue_statement(parser_t* parser) {
+    // Continue statements are simple - just the keyword
+    return (ast_node*)ast_create_continue(parser->previous.line, parser->previous.column);
+}
+
 // Parse return statement
 ast_node* parse_return_statement(parser_t* parser) {
     ast_node* value = NULL;
@@ -1006,6 +1012,10 @@ ast_node* parse_primary(parser_t* parser) {
     
     if (parser_match(parser, TOKEN_BREAK)) {
         return parse_break_statement(parser);
+    }
+    
+    if (parser_match(parser, TOKEN_CONTINUE)) {
+        return parse_continue_statement(parser);
     }
     
     parser_error_at_current(parser, "Expected expression.");
