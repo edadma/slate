@@ -6,7 +6,7 @@
 #include "unity.h"
 #include "vm.h"
 
-// Helper function to compile and run code
+// Helper function to compile and slate code
 value_t run_code(const char* source) {
     lexer_t lexer;
     parser_t parser;

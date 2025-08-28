@@ -2459,7 +2459,7 @@ int UnityParseOptions(int argc, char** argv)
                 case 'h':
                     UnityPrint("Options: "); UNITY_PRINT_EOL();
                     UnityPrint("-l        List all tests and exit"); UNITY_PRINT_EOL();
-                    UnityPrint("-f NAME   Filter to run only tests whose name includes NAME"); UNITY_PRINT_EOL();
+                    UnityPrint("-f NAME   Filter to slate only tests whose name includes NAME"); UNITY_PRINT_EOL();
                     UnityPrint("-n NAME   Run only the test named NAME"); UNITY_PRINT_EOL();
                     UnityPrint("-h        show this Help menu"); UNITY_PRINT_EOL();
                     UnityPrint("-q        Quiet/decrease verbosity"); UNITY_PRINT_EOL();

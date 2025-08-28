@@ -53,8 +53,15 @@ void builtins_init(slate_vm* vm) {
     register_builtin(vm, "sin", builtin_sin, 1, 1);
     register_builtin(vm, "cos", builtin_cos, 1, 1);
     register_builtin(vm, "tan", builtin_tan, 1, 1);
+    register_builtin(vm, "asin", builtin_asin, 1, 1);
+    register_builtin(vm, "acos", builtin_acos, 1, 1);
+    register_builtin(vm, "atan", builtin_atan, 1, 1);
+    register_builtin(vm, "atan2", builtin_atan2, 2, 2);
+    register_builtin(vm, "degrees", builtin_degrees, 1, 1);
+    register_builtin(vm, "radians", builtin_radians, 1, 1);
     register_builtin(vm, "exp", builtin_exp, 1, 1);
     register_builtin(vm, "ln", builtin_ln, 1, 1);
+    register_builtin(vm, "sign", builtin_sign, 1, 1);
     register_builtin(vm, "input", builtin_input, 0, 1);
     register_builtin(vm, "parse_int", builtin_parse_int, 1, 1);
     register_builtin(vm, "parse_number", builtin_parse_number, 1, 1);
@@ -462,6 +469,150 @@ value_t builtin_ln(slate_vm* vm, int arg_count, value_t* args) {
     }
 
     return make_number(log(val));
+}
+
+// asin(number) - Inverse sine function (returns radians)
+value_t builtin_asin(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("asin() takes exactly 1 argument (%d given)", arg_count);
+    }
+
+    value_t arg = args[0];
+
+    // Check if it's a numeric type
+    if (!is_number(arg)) {
+        runtime_error("asin() requires a number argument");
+    }
+
+    double val = value_to_double(arg);
+
+    // Check for domain error (asin domain is [-1, 1])
+    if (val < -1.0 || val > 1.0) {
+        runtime_error("asin() domain error: argument must be in range [-1, 1]");
+    }
+
+    return make_number(asin(val));
+}
+
+// acos(number) - Inverse cosine function (returns radians)
+value_t builtin_acos(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("acos() takes exactly 1 argument (%d given)", arg_count);
+    }
+
+    value_t arg = args[0];
+
+    // Check if it's a numeric type
+    if (!is_number(arg)) {
+        runtime_error("acos() requires a number argument");
+    }
+
+    double val = value_to_double(arg);
+
+    // Check for domain error (acos domain is [-1, 1])
+    if (val < -1.0 || val > 1.0) {
+        runtime_error("acos() domain error: argument must be in range [-1, 1]");
+    }
+
+    return make_number(acos(val));
+}
+
+// atan(number) - Inverse tangent function (returns radians)
+value_t builtin_atan(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("atan() takes exactly 1 argument (%d given)", arg_count);
+    }
+
+    value_t arg = args[0];
+
+    // Check if it's a numeric type
+    if (!is_number(arg)) {
+        runtime_error("atan() requires a number argument");
+    }
+
+    double val = value_to_double(arg);
+
+    return make_number(atan(val));
+}
+
+// atan2(y, x) - Two-argument inverse tangent function (returns radians)
+value_t builtin_atan2(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("atan2() takes exactly 2 arguments (%d given)", arg_count);
+    }
+
+    value_t y = args[0];
+    value_t x = args[1];
+
+    // Check if both are numeric types
+    if (!is_number(y) || !is_number(x)) {
+        runtime_error("atan2() requires number arguments");
+    }
+
+    double y_val = value_to_double(y);
+    double x_val = value_to_double(x);
+
+    return make_number(atan2(y_val, x_val));
+}
+
+// degrees(radians) - Convert radians to degrees
+value_t builtin_degrees(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("degrees() takes exactly 1 argument (%d given)", arg_count);
+    }
+
+    value_t arg = args[0];
+
+    // Check if it's a numeric type
+    if (!is_number(arg)) {
+        runtime_error("degrees() requires a number argument");
+    }
+
+    double val = value_to_double(arg);
+
+    return make_number(val * 180.0 / M_PI);
+}
+
+// radians(degrees) - Convert degrees to radians
+value_t builtin_radians(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("radians() takes exactly 1 argument (%d given)", arg_count);
+    }
+
+    value_t arg = args[0];
+
+    // Check if it's a numeric type
+    if (!is_number(arg)) {
+        runtime_error("radians() requires a number argument");
+    }
+
+    double val = value_to_double(arg);
+
+    return make_number(val * M_PI / 180.0);
+}
+
+// sign(number) - Sign function (-1, 0, or 1)
+value_t builtin_sign(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("sign() takes exactly 1 argument (%d given)", arg_count);
+    }
+
+    value_t arg = args[0];
+
+    // Check if it's a numeric type
+    if (!is_number(arg)) {
+        runtime_error("sign() requires a number argument");
+    }
+
+    double val = value_to_double(arg);
+
+    if (val > 0.0) {
+        return make_int32(1);
+    } else if (val < 0.0) {
+        return make_int32(-1);
+    } else {
+        return make_int32(0);
+    }
 }
 
 // input(prompt) - Read user input with optional prompt

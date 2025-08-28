@@ -36,9 +36,22 @@ value_t builtin_sin(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_cos(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_tan(slate_vm* vm, int arg_count, value_t* args);
 
+// Inverse trigonometric functions
+value_t builtin_asin(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_acos(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_atan(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_atan2(slate_vm* vm, int arg_count, value_t* args);
+
+// Angle conversion functions
+value_t builtin_degrees(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_radians(slate_vm* vm, int arg_count, value_t* args);
+
 // Exponential and logarithmic functions
 value_t builtin_exp(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_ln(slate_vm* vm, int arg_count, value_t* args);
+
+// Sign function
+value_t builtin_sign(slate_vm* vm, int arg_count, value_t* args);
 
 // Input/conversion functions
 value_t builtin_input(slate_vm* vm, int arg_count, value_t* args);

@@ -3,9 +3,9 @@
 #include <string.h>
 #include "codegen.h"
 #include "lexer.h"
+#include "line_editor.h"
 #include "parser.h"
 #include "vm.h"
-#include "line_editor.h"
 
 // Global debug flag
 static int debug_mode = 0;
@@ -21,7 +21,7 @@ static void print_tokens(const char* source) {
         printf("%-15s '%.*s'\n", token_type_name(token.type), (int)token.length, token.start);
     } while (token.type != TOKEN_EOF);
     printf("\n");
-    
+
     lexer_cleanup(&lexer);
 }
 
@@ -38,7 +38,7 @@ static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_un
 static void interpret(const char* source) { interpret_with_vm(source, NULL); }
 
 static void interpret_with_vm(const char* source, slate_vm* vm) {
-    interpret_with_vm_mode(source, vm, 1); // REPL mode - show undefined
+    interpret_with_vm_mode(source, vm, 0); // REPL mode - show undefined
 }
 
 static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_undefined) {
@@ -91,7 +91,7 @@ static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_un
         // Execute
         printf("=== EXECUTION ===\n");
     }
-    
+
     slate_vm* vm_to_use = vm ? vm : vm_create();
     vm_result result = vm_execute(vm_to_use, function);
 
@@ -221,7 +221,7 @@ static void repl_with_args(int argc, char** argv) {
         stderr = error_capture;
 
         ast_program* program = parse_program(&parser);
-        
+
         // Restore stderr
         stderr = old_stderr;
 
@@ -229,9 +229,8 @@ static void repl_with_args(int argc, char** argv) {
             // Check if this was an "unexpected end of input" error
             rewind(error_capture);
             char error_msg[512];
-            if (fgets(error_msg, sizeof(error_msg), error_capture) && 
-                strstr(error_msg, "Error at end")) {
-                
+            if (fgets(error_msg, sizeof(error_msg), error_capture) && strstr(error_msg, "Error at end")) {
+
                 // This looks like incomplete input - enter continuation mode
                 if (!in_continuation) {
                     in_continuation = 1;
@@ -247,7 +246,7 @@ static void repl_with_args(int argc, char** argv) {
                 }
                 fclose(error_capture);
                 accumulated_input[0] = '\0';
-                in_continuation = 0;  // Exit continuation mode on syntax error
+                in_continuation = 0; // Exit continuation mode on syntax error
                 lexer_cleanup(&lexer);
                 continue;
             }
@@ -255,7 +254,7 @@ static void repl_with_args(int argc, char** argv) {
 
         // Parse succeeded - but stay in continuation mode until empty line
         fclose(error_capture);
-        
+
         if (program) {
             ast_free((ast_node*)program);
         }
@@ -270,7 +269,7 @@ static void repl_with_args(int argc, char** argv) {
             printf("\n");
         }
         // If in continuation mode, just continue accumulating until empty line
-        
+
         lexer_cleanup(&lexer);
     }
 
@@ -333,8 +332,9 @@ static char* read_stdin(void) {
     size_t capacity = 1024;
     size_t length = 0;
     char* buffer = malloc(capacity);
-    if (!buffer) return NULL;
-    
+    if (!buffer)
+        return NULL;
+
     int c;
     while ((c = fgetc(stdin)) != EOF) {
         if (length + 1 >= capacity) {
@@ -348,7 +348,7 @@ static char* read_stdin(void) {
         }
         buffer[length++] = c;
     }
-    
+
     buffer[length] = '\0';
     return buffer;
 }
@@ -358,8 +358,8 @@ int main(int argc, char* argv[]) {
     char* script_file = NULL;
     int use_stdin = 0;
     char* script_content = NULL;
-    int script_args_start = -1;  // Index where script arguments begin
-    
+    int script_args_start = -1; // Index where script arguments begin
+
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--debug") == 0) {
             debug_mode = 1;
@@ -400,15 +400,17 @@ int main(int argc, char* argv[]) {
             break;
         } else {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            fprintf(stderr, "Usage: %s [--debug] [--stdin] [--script <code>] [-f <file>] [script_args...] or %s --test\n", argv[0], argv[0]);
+            fprintf(stderr,
+                    "Usage: %s [--debug] [--stdin] [--script <code>] [-f <file>] [script_args...] or %s --test\n",
+                    argv[0], argv[0]);
             return 1;
         }
     }
-    
+
     // Create script arguments for VM (either all args or subset starting from script_args_start)
     char** script_argv = NULL;
     int script_argc = 0;
-    
+
     if (script_args_start != -1) {
         // Script arguments start at script_args_start
         script_argc = argc - script_args_start;
@@ -418,31 +420,30 @@ int main(int argc, char* argv[]) {
         script_argc = 0;
         script_argv = NULL;
     }
-    
     if (use_stdin) {
         // Read and interpret from stdin with result display
         char* source = read_stdin();
         if (source) {
             // Create a shared VM to maintain state and show results
             slate_vm* vm = vm_create_with_args(script_argc, script_argv);
-            
+
             // Split by lines and interpret each one
             char* line = strtok(source, "\n");
             while (line) {
-                if (strlen(line) > 0) {  // Skip empty lines
+                if (strlen(line) > 0) { // Skip empty lines
                     printf("> %s\n", line);
-                    interpret_with_vm(line, vm);
+                    interpret_with_vm_mode(line, vm, 1);
                 }
                 line = strtok(NULL, "\n");
             }
-            
+
             vm_destroy(vm);
             free(source);
         }
     } else if (script_content) {
         // Execute script content directly with result display
         slate_vm* vm = vm_create_with_args(script_argc, script_argv);
-        interpret_with_vm_mode(script_content, vm, 0); // Hide undefined results
+        interpret_with_vm_mode(script_content, vm, 1);
         vm_destroy(vm);
     } else if (script_file) {
         // Run file with script arguments

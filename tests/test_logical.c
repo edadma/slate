@@ -6,7 +6,7 @@
 #include "unity.h"
 #include "vm.h"
 
-// Helper function to compile and run code
+// Helper function to compile and slate code
 static value_t run_code(const char* source) {
     lexer_t lexer;
     parser_t parser;
@@ -48,15 +48,15 @@ void test_bitwise_and(void) {
     // Basic AND operations
     result = run_code("12 & 10");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(8, result.as.int32);  // 1100 & 1010 = 1000
+    TEST_ASSERT_EQUAL_INT32(8, result.as.int32); // 1100 & 1010 = 1000
 
     result = run_code("15 & 7");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(7, result.as.int32);  // 1111 & 0111 = 0111
+    TEST_ASSERT_EQUAL_INT32(7, result.as.int32); // 1111 & 0111 = 0111
 
     result = run_code("255 & 240");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(240, result.as.int32);  // 11111111 & 11110000 = 11110000
+    TEST_ASSERT_EQUAL_INT32(240, result.as.int32); // 11111111 & 11110000 = 11110000
 
     // AND with zero
     result = run_code("42 & 0");
@@ -78,15 +78,15 @@ void test_bitwise_or(void) {
     // Basic OR operations
     result = run_code("12 | 10");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(14, result.as.int32);  // 1100 | 1010 = 1110
+    TEST_ASSERT_EQUAL_INT32(14, result.as.int32); // 1100 | 1010 = 1110
 
     result = run_code("8 | 4");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(12, result.as.int32);  // 1000 | 0100 = 1100
+    TEST_ASSERT_EQUAL_INT32(12, result.as.int32); // 1000 | 0100 = 1100
 
     result = run_code("1 | 2 | 4 | 8");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(15, result.as.int32);  // Setting individual bits
+    TEST_ASSERT_EQUAL_INT32(15, result.as.int32); // Setting individual bits
 
     // OR with zero
     result = run_code("42 | 0");
@@ -103,20 +103,20 @@ void test_bitwise_xor(void) {
     // Basic XOR operations
     result = run_code("12 ^ 10");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(6, result.as.int32);  // 1100 ^ 1010 = 0110
+    TEST_ASSERT_EQUAL_INT32(6, result.as.int32); // 1100 ^ 1010 = 0110
 
     result = run_code("15 ^ 15");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);  // Same value XOR = 0
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32); // Same value XOR = 0
 
     result = run_code("255 ^ 170");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(85, result.as.int32);  // 11111111 ^ 10101010 = 01010101
+    TEST_ASSERT_EQUAL_INT32(85, result.as.int32); // 11111111 ^ 10101010 = 01010101
 
     // XOR for bit flipping
     result = run_code("42 ^ -1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(~42, result.as.int32);  // XOR with all 1s flips all bits
+    TEST_ASSERT_EQUAL_INT32(~42, result.as.int32); // XOR with all 1s flips all bits
 
     vm_release(result);
 }
@@ -128,19 +128,19 @@ void test_bitwise_not(void) {
     // Basic NOT operations
     result = run_code("~0");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(-1, result.as.int32);  // ~0 = all 1s = -1
+    TEST_ASSERT_EQUAL_INT32(-1, result.as.int32); // ~0 = all 1s = -1
 
     result = run_code("~-1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);  // ~(-1) = ~(all 1s) = 0
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32); // ~(-1) = ~(all 1s) = 0
 
     result = run_code("~15");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(-16, result.as.int32);  // ~1111 = ...11110000 = -16
+    TEST_ASSERT_EQUAL_INT32(-16, result.as.int32); // ~1111 = ...11110000 = -16
 
     result = run_code("~255");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(-256, result.as.int32);  // ~11111111 = ...00000000 = -256
+    TEST_ASSERT_EQUAL_INT32(-256, result.as.int32); // ~11111111 = ...00000000 = -256
 
     vm_release(result);
 }
@@ -164,11 +164,11 @@ void test_left_shift(void) {
 
     result = run_code("5 << 2");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(20, result.as.int32);  // 101 << 2 = 10100
+    TEST_ASSERT_EQUAL_INT32(20, result.as.int32); // 101 << 2 = 10100
 
     result = run_code("42 << 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(84, result.as.int32);  // Same as multiply by 2
+    TEST_ASSERT_EQUAL_INT32(84, result.as.int32); // Same as multiply by 2
 
     // Left shift with zero
     result = run_code("0 << 5");
@@ -198,15 +198,15 @@ void test_arithmetic_right_shift(void) {
     // Arithmetic right shift with negative numbers (sign-extending)
     result = run_code("-8 >> 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(-4, result.as.int32);  // Sign bit is preserved
+    TEST_ASSERT_EQUAL_INT32(-4, result.as.int32); // Sign bit is preserved
 
     result = run_code("-1 >> 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(-1, result.as.int32);  // All 1s remain all 1s
+    TEST_ASSERT_EQUAL_INT32(-1, result.as.int32); // All 1s remain all 1s
 
     result = run_code("-16 >> 2");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(-4, result.as.int32);  // Sign-extending
+    TEST_ASSERT_EQUAL_INT32(-4, result.as.int32); // Sign-extending
 
     // Right shift by zero
     result = run_code("42 >> 0");
@@ -236,15 +236,15 @@ void test_logical_right_shift(void) {
     // Logical right shift with negative numbers (zero-filling)
     result = run_code("-8 >>> 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(2147483644, result.as.int32);  // Zero-filled, no sign extension
+    TEST_ASSERT_EQUAL_INT32(2147483644, result.as.int32); // Zero-filled, no sign extension
 
     result = run_code("-1 >>> 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(2147483647, result.as.int32);  // 0x7FFFFFFF
+    TEST_ASSERT_EQUAL_INT32(2147483647, result.as.int32); // 0x7FFFFFFF
 
     result = run_code("-1 >>> 31");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);  // Only the sign bit remains
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32); // Only the sign bit remains
 
     // Edge case: maximum shift
     result = run_code("-1 >>> 32");
@@ -262,30 +262,31 @@ void test_shift_precedence_and_combinations(void) {
     // Test precedence: shifts have lower precedence than arithmetic
     result = run_code("2 + 3 << 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(10, result.as.int32);  // (2 + 3) << 1 = 5 << 1 = 10
+    TEST_ASSERT_EQUAL_INT32(10, result.as.int32); // (2 + 3) << 1 = 5 << 1 = 10
 
     result = run_code("16 >> 1 + 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(4, result.as.int32);  // 16 >> (1 + 1) = 16 >> 2 = 4 (shifts have lower precedence than addition)
+    TEST_ASSERT_EQUAL_INT32(
+        4, result.as.int32); // 16 >> (1 + 1) = 16 >> 2 = 4 (shifts have lower precedence than addition)
 
     // Let's test with explicit parentheses to be sure
     result = run_code("(16 >> 1) + 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(9, result.as.int32);  // (16 >> 1) + 1 = 8 + 1 = 9
+    TEST_ASSERT_EQUAL_INT32(9, result.as.int32); // (16 >> 1) + 1 = 8 + 1 = 9
 
     // Test combinations of different shift operators
     result = run_code("(256 >> 2) << 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(128, result.as.int32);  // (256 >> 2) << 1 = 64 << 1 = 128
+    TEST_ASSERT_EQUAL_INT32(128, result.as.int32); // (256 >> 2) << 1 = 64 << 1 = 128
 
     // Test arithmetic vs logical difference
     result = run_code("-16 >> 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(-8, result.as.int32);  // Arithmetic (sign-extending)
+    TEST_ASSERT_EQUAL_INT32(-8, result.as.int32); // Arithmetic (sign-extending)
 
     result = run_code("-16 >>> 1");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(2147483640, result.as.int32);  // Logical (zero-filling)
+    TEST_ASSERT_EQUAL_INT32(2147483640, result.as.int32); // Logical (zero-filling)
 
     vm_release(result);
 }
@@ -297,26 +298,26 @@ void test_bitwise_complex_expressions(void) {
     // Test chaining bitwise operations
     result = run_code("15 & 7 | 8");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(15, result.as.int32);  // (15 & 7) | 8 = 7 | 8 = 15
+    TEST_ASSERT_EQUAL_INT32(15, result.as.int32); // (15 & 7) | 8 = 7 | 8 = 15
 
     result = run_code("255 ^ 170 ^ 85");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);  // XOR is associative, should cancel out
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32); // XOR is associative, should cancel out
 
     // Test precedence: & has higher precedence than |
     result = run_code("12 | 3 & 7");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(15, result.as.int32);  // 12 | (3 & 7) = 12 | 3 = 15
+    TEST_ASSERT_EQUAL_INT32(15, result.as.int32); // 12 | (3 & 7) = 12 | 3 = 15
 
     // Test precedence: ^ has precedence between & and |
     result = run_code("8 | 4 ^ 12");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(8, result.as.int32);  // 8 | (4 ^ 12) = 8 | 8 = 8
+    TEST_ASSERT_EQUAL_INT32(8, result.as.int32); // 8 | (4 ^ 12) = 8 | 8 = 8
 
     // Test NOT with other operations
     result = run_code("~0 & 255");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
-    TEST_ASSERT_EQUAL_INT32(255, result.as.int32);  // (~0) & 255 = (-1) & 255 = 255
+    TEST_ASSERT_EQUAL_INT32(255, result.as.int32); // (~0) & 255 = (-1) & 255 = 255
 
     vm_release(result);
 }
@@ -327,19 +328,19 @@ void test_bitwise_error_cases(void) {
 
     // Test type errors - bitwise operations should only work with integers
     result = run_code("3.14 & 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);  // Should be error
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
 
     result = run_code("5 | \"hello\"");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);  // Should be error
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
 
     result = run_code("true ^ false");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);  // Should be error
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
 
     result = run_code("~null");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);  // Should be error
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
 
     result = run_code("42 << 3.5");
-    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);  // Should be error
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
 
     vm_release(result);
 }
@@ -352,7 +353,7 @@ void test_logical_suite(void) {
     RUN_TEST(test_bitwise_xor);
     RUN_TEST(test_bitwise_not);
 
-    // Shift operator tests  
+    // Shift operator tests
     RUN_TEST(test_left_shift);
     RUN_TEST(test_arithmetic_right_shift);
     RUN_TEST(test_logical_right_shift);

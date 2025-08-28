@@ -339,6 +339,177 @@ void test_builtin_ln_exp_inverse(void) {
     vm_release(result);
 }
 
+// Test asin function
+void test_builtin_asin_zero(void) {
+    value_t result = interpret_expression("asin(0)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_asin_one(void) {
+    value_t result = interpret_expression("asin(1)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.570796, result.as.number); // π/2
+    vm_release(result);
+}
+
+void test_builtin_asin_negative(void) {
+    value_t result = interpret_expression("asin(-0.5)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -0.523599, result.as.number); // -π/6
+    vm_release(result);
+}
+
+// Test acos function
+void test_builtin_acos_one(void) {
+    value_t result = interpret_expression("acos(1)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_acos_zero(void) {
+    value_t result = interpret_expression("acos(0)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.570796, result.as.number); // π/2
+    vm_release(result);
+}
+
+void test_builtin_acos_half(void) {
+    value_t result = interpret_expression("acos(0.5)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.047198, result.as.number); // π/3
+    vm_release(result);
+}
+
+// Test atan function
+void test_builtin_atan_zero(void) {
+    value_t result = interpret_expression("atan(0)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_atan_one(void) {
+    value_t result = interpret_expression("atan(1)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.785398, result.as.number); // π/4
+    vm_release(result);
+}
+
+void test_builtin_atan_negative(void) {
+    value_t result = interpret_expression("atan(-1)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -0.785398, result.as.number); // -π/4
+    vm_release(result);
+}
+
+// Test atan2 function
+void test_builtin_atan2_positive_x(void) {
+    value_t result = interpret_expression("atan2(1, 1)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.785398, result.as.number); // π/4
+    vm_release(result);
+}
+
+void test_builtin_atan2_negative_x(void) {
+    value_t result = interpret_expression("atan2(1, -1)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.356194, result.as.number); // 3π/4
+    vm_release(result);
+}
+
+void test_builtin_atan2_origin(void) {
+    value_t result = interpret_expression("atan2(0, 0)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    vm_release(result);
+}
+
+// Test degrees function
+void test_builtin_degrees_zero(void) {
+    value_t result = interpret_expression("degrees(0)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_degrees_pi(void) {
+    value_t result = interpret_expression("degrees(3.14159265359)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 180.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_degrees_pi_half(void) {
+    value_t result = interpret_expression("degrees(1.5707963268)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 90.0, result.as.number);
+    vm_release(result);
+}
+
+// Test radians function
+void test_builtin_radians_zero(void) {
+    value_t result = interpret_expression("radians(0)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_radians_180(void) {
+    value_t result = interpret_expression("radians(180)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 3.14159265359, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_radians_90(void) {
+    value_t result = interpret_expression("radians(90)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.5707963268, result.as.number);
+    vm_release(result);
+}
+
+// Test sign function
+void test_builtin_sign_positive(void) {
+    value_t result = interpret_expression("sign(42)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.int32);
+    vm_release(result);
+}
+
+void test_builtin_sign_negative(void) {
+    value_t result = interpret_expression("sign(-3.14)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(-1, result.as.int32);
+    vm_release(result);
+}
+
+void test_builtin_sign_zero(void) {
+    value_t result = interpret_expression("sign(0)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.int32);
+    vm_release(result);
+}
+
+// Test inverse trig relationships
+void test_builtin_trig_inverse_relationships(void) {
+    // sin(asin(0.5)) should be 0.5
+    value_t result = interpret_expression("sin(asin(0.5))");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.5, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_degrees_radians_inverse(void) {
+    // radians(degrees(2)) should be 2
+    value_t result = interpret_expression("radians(degrees(2))");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.0, result.as.number);
+    vm_release(result);
+}
+
 // Test string concatenation with arrays
 void test_string_concat_with_array(void) {
     value_t result = interpret_expression("\"Array: \" + [1, 2, 3]");
@@ -538,6 +709,31 @@ void test_builtins_suite(void) {
     RUN_TEST(test_builtin_ln_half);
     RUN_TEST(test_builtin_exp_ln_inverse);
     RUN_TEST(test_builtin_ln_exp_inverse);
+    
+    // Inverse trigonometric and angle conversion tests
+    RUN_TEST(test_builtin_asin_zero);
+    RUN_TEST(test_builtin_asin_one);
+    RUN_TEST(test_builtin_asin_negative);
+    RUN_TEST(test_builtin_acos_one);
+    RUN_TEST(test_builtin_acos_zero);
+    RUN_TEST(test_builtin_acos_half);
+    RUN_TEST(test_builtin_atan_zero);
+    RUN_TEST(test_builtin_atan_one);
+    RUN_TEST(test_builtin_atan_negative);
+    RUN_TEST(test_builtin_atan2_positive_x);
+    RUN_TEST(test_builtin_atan2_negative_x);
+    RUN_TEST(test_builtin_atan2_origin);
+    RUN_TEST(test_builtin_degrees_zero);
+    RUN_TEST(test_builtin_degrees_pi);
+    RUN_TEST(test_builtin_degrees_pi_half);
+    RUN_TEST(test_builtin_radians_zero);
+    RUN_TEST(test_builtin_radians_180);
+    RUN_TEST(test_builtin_radians_90);
+    RUN_TEST(test_builtin_sign_positive);
+    RUN_TEST(test_builtin_sign_negative);
+    RUN_TEST(test_builtin_sign_zero);
+    RUN_TEST(test_builtin_trig_inverse_relationships);
+    RUN_TEST(test_builtin_degrees_radians_inverse);
     
     // String concatenation tests
     RUN_TEST(test_string_concat_with_array);
