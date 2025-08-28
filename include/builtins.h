@@ -90,6 +90,17 @@ value_t builtin_iterator(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_has_next(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_next(slate_vm* vm, int arg_count, value_t* args);
 
+// Range functions
+value_t builtin_range_start(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_range_end(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_range_is_exclusive(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_range_is_empty(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_range_length(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_range_contains(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_range_to_array(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_range_reverse(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_range_equals(slate_vm* vm, int arg_count, value_t* args);
+
 // Buffer functions
 value_t builtin_buffer(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_buffer_from_hex(slate_vm* vm, int arg_count, value_t* args);
