@@ -17,7 +17,7 @@
 // Forward declarations
 typedef struct value value_t;
 typedef struct slate_vm slate_vm;
-typedef value_t (*builtin_func_t)(slate_vm* vm, int arg_count, value_t* args);
+typedef value_t (*native_t)(slate_vm* vm, int arg_count, value_t* args);
 
 // Debug location for values (NULL when debugging disabled)
 typedef struct debug_location {
@@ -134,7 +134,7 @@ typedef enum
     VAL_BUFFER_READER,  // Buffer reader for parsing buffers
     VAL_FUNCTION,
     VAL_CLOSURE,
-    VAL_BUILTIN,
+    VAL_NATIVE,
     VAL_BOUND_METHOD
 } value_type;
 
@@ -163,7 +163,7 @@ typedef struct value
         db_reader reader; // Buffer reader handle (reference counted)
         struct function* function;
         struct closure* closure;
-        void* builtin; // Built-in function pointer (cast from builtin_func_t)
+        native_t native; // Native C function pointer
         bound_method_t* bound_method; // Bound method (method + receiver)
     } as;
     debug_location* debug; // Debug info for error reporting (NULL when disabled)
@@ -205,7 +205,7 @@ struct iterator {
 struct bound_method {
     int ref_count;              // Reference count for memory management
     value_t receiver;           // The object this method is bound to
-    builtin_func_t method;      // The method function pointer
+    native_t method;      // The method function pointer
 };
 
 // Function structure
@@ -331,8 +331,8 @@ value_t make_buffer_builder(db_builder builder);
 value_t make_buffer_reader(db_reader reader);
 value_t make_function(function_t* function);
 value_t make_closure(closure_t* closure);
-value_t make_builtin(void* builtin_func);
-value_t make_bound_method(value_t receiver, builtin_func_t method);
+value_t make_native(native_t func);
+value_t make_bound_method(value_t receiver, native_t method);
 
 // Iterator creation helpers
 iterator_t* create_array_iterator(da_array array);
@@ -371,7 +371,7 @@ value_t make_buffer_reader_with_debug(db_reader reader, debug_location* debug);
 value_t make_function_with_debug(function_t* function, debug_location* debug);
 value_t make_closure_with_debug(closure_t* closure, debug_location* debug);
 value_t make_builtin_with_debug(void* builtin_func, debug_location* debug);
-value_t make_bound_method_with_debug(value_t receiver, builtin_func_t method, debug_location* debug);
+value_t make_bound_method_with_debug(value_t receiver, native_t method, debug_location* debug);
 
 // Debug location management
 debug_location* debug_location_create(int line, int column, const char* source_text);
@@ -380,10 +380,12 @@ void debug_location_free(debug_location* debug);
 
 // Value utility functions
 int is_falsy(value_t value);
+int is_number(value_t value);  // Check if value is numeric (int32, bigint, or number)
 int values_equal(value_t a, value_t b);
 void print_value(value_t value);
 void print_for_builtin(value_t value);
 void free_value(value_t value);
+double value_to_double(value_t value);  // Convert numeric values to double
 
 // Constant pool management
 size_t vm_add_constant(slate_vm* vm, value_t value);

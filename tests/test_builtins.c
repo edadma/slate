@@ -266,6 +266,79 @@ void test_builtin_sin_integer(void) {
     vm_release(result);
 }
 
+// Test exp function
+void test_builtin_exp_zero(void) {
+    value_t result = interpret_expression("exp(0)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_exp_one(void) {
+    value_t result = interpret_expression("exp(1)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.718282, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_exp_negative(void) {
+    value_t result = interpret_expression("exp(-1)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.367879, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_exp_integer(void) {
+    value_t result = interpret_expression("exp(2)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 7.389056, result.as.number);
+    vm_release(result);
+}
+
+// Test ln function
+void test_builtin_ln_one(void) {
+    value_t result = interpret_expression("ln(1)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_ln_e(void) {
+    value_t result = interpret_expression("ln(2.718282)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_ln_ten(void) {
+    value_t result = interpret_expression("ln(10)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.302585, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_ln_half(void) {
+    value_t result = interpret_expression("ln(0.5)");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -0.693147, result.as.number);
+    vm_release(result);
+}
+
+// Test exp and ln inverse relationship
+void test_builtin_exp_ln_inverse(void) {
+    value_t result = interpret_expression("exp(ln(5))");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 5.0, result.as.number);
+    vm_release(result);
+}
+
+void test_builtin_ln_exp_inverse(void) {
+    value_t result = interpret_expression("ln(exp(3))");
+    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 3.0, result.as.number);
+    vm_release(result);
+}
+
 // Test string concatenation with arrays
 void test_string_concat_with_array(void) {
     value_t result = interpret_expression("\"Array: \" + [1, 2, 3]");
@@ -453,6 +526,18 @@ void test_builtins_suite(void) {
     RUN_TEST(test_builtin_tan_zero);
     RUN_TEST(test_builtin_tan_pi_quarter);
     RUN_TEST(test_builtin_sin_integer);
+    
+    // Exponential and logarithm tests
+    RUN_TEST(test_builtin_exp_zero);
+    RUN_TEST(test_builtin_exp_one);
+    RUN_TEST(test_builtin_exp_negative);
+    RUN_TEST(test_builtin_exp_integer);
+    RUN_TEST(test_builtin_ln_one);
+    RUN_TEST(test_builtin_ln_e);
+    RUN_TEST(test_builtin_ln_ten);
+    RUN_TEST(test_builtin_ln_half);
+    RUN_TEST(test_builtin_exp_ln_inverse);
+    RUN_TEST(test_builtin_ln_exp_inverse);
     
     // String concatenation tests
     RUN_TEST(test_string_concat_with_array);

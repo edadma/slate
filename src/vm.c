@@ -293,15 +293,15 @@ value_t make_closure(closure_t* closure) {
     return value;
 }
 
-value_t make_builtin(void* builtin_func) {
+value_t make_native(native_t func) {
     value_t value;
-    value.type = VAL_BUILTIN;
-    value.as.builtin = builtin_func;
+    value.type = VAL_NATIVE;
+    value.as.native = func;
     value.debug = NULL;
     return value;
 }
 
-value_t make_bound_method(value_t receiver, builtin_func_t method_func) {
+value_t make_bound_method(value_t receiver, native_t method_func) {
     bound_method_t* method = malloc(sizeof(bound_method_t));
     if (!method) {
         return make_null(); // Handle allocation failure
@@ -428,12 +428,12 @@ value_t make_closure_with_debug(closure_t* closure, debug_location* debug) {
 }
 
 value_t make_builtin_with_debug(void* builtin_func, debug_location* debug) {
-    value_t value = make_builtin(builtin_func);
+    value_t value = make_native(builtin_func);
     value.debug = debug_location_copy(debug);
     return value;
 }
 
-value_t make_bound_method_with_debug(value_t receiver, builtin_func_t method_func, debug_location* debug) {
+value_t make_bound_method_with_debug(value_t receiver, native_t method_func, debug_location* debug) {
     value_t value = make_bound_method(receiver, method_func);
     value.debug = debug_location_copy(debug);
     return value;
@@ -703,10 +703,13 @@ int is_falsy(value_t value) {
     }
 }
 
+int is_number(value_t value) {
+    return value.type == VAL_INT32 || value.type == VAL_BIGINT || value.type == VAL_NUMBER;
+}
+
 int values_equal(value_t a, value_t b) {
     // Handle cross-type numeric comparisons
-    if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-        (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+    if (is_number(a) && is_number(b)) {
         // Convert to common type for comparison
         if (a.type == VAL_INT32 && b.type == VAL_INT32) {
             return a.as.int32 == b.as.int32;
@@ -747,8 +750,10 @@ int values_equal(value_t a, value_t b) {
     case VAL_OBJECT:
         return a.as.object == b.as.object;
     case VAL_BUFFER:
-        if (a.as.buffer == b.as.buffer) return 1; // Same buffer reference
-        if (a.as.buffer == NULL || b.as.buffer == NULL) return 0;
+        if (a.as.buffer == b.as.buffer)
+            return 1; // Same buffer reference
+        if (a.as.buffer == NULL || b.as.buffer == NULL)
+            return 0;
         return db_equals(a.as.buffer, b.as.buffer);
     case VAL_BUFFER_BUILDER:
         return a.as.builder == b.as.builder;
@@ -758,8 +763,8 @@ int values_equal(value_t a, value_t b) {
         return a.as.function == b.as.function;
     case VAL_CLOSURE:
         return a.as.closure == b.as.closure;
-    case VAL_BUILTIN:
-        return a.as.builtin == b.as.builtin;
+    case VAL_NATIVE:
+        return a.as.native == b.as.native;
     default:
         return 0;
     }
@@ -828,7 +833,7 @@ void print_value(value_t value) {
     case VAL_CLOSURE:
         printf("<closure %s>", value.as.closure->function->name ? value.as.closure->function->name : "anonymous");
         break;
-    case VAL_BUILTIN:
+    case VAL_NATIVE:
         printf("<builtin function>");
         break;
     case VAL_RANGE: {
@@ -885,6 +890,20 @@ void print_value(value_t value) {
         }
         break;
     }
+    }
+}
+
+double value_to_double(value_t value) {
+    switch (value.type) {
+    case VAL_INT32:
+        return (double)value.as.int32;
+    case VAL_BIGINT:
+        return di_to_double(value.as.bigint);
+    case VAL_NUMBER:
+        return value.as.number;
+    default:
+        runtime_error("Cannot convert %s to number", value_type_name(value.type));
+        return 0.0; // Never reached, but keeps compiler happy
     }
 }
 
@@ -962,7 +981,7 @@ void free_value(value_t value) {
     case VAL_CLOSURE:
         closure_destroy(value.as.closure);
         break;
-    case VAL_BUILTIN:
+    case VAL_NATIVE:
         // No cleanup needed for builtin function pointers
         break;
     default:
@@ -1291,8 +1310,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 vm_push(vm, make_array_with_debug(result_array, a.debug));
             }
             // Numeric addition - handle all numeric type combinations
-            else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                     (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+            else if (is_number(a) && is_number(b)) {
 
                 // int32 + int32 with overflow detection
                 if (a.type == VAL_INT32 && b.type == VAL_INT32) {
@@ -1361,8 +1379,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             value_t a = vm_pop(vm);
 
             // Handle all numeric type combinations
-            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+            if (is_number(a) && is_number(b)) {
 
                 // int32 - int32 with overflow detection
                 if (a.type == VAL_INT32 && b.type == VAL_INT32) {
@@ -1389,11 +1406,9 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             } else {
                 // For subtraction, determine which operand is problematic
                 debug_location* error_debug = NULL;
-                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) &&
-                    (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                if (!is_number(a) && is_number(b)) {
                     error_debug = a.debug; // Left operand is problematic
-                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                           (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
+                } else if (is_number(a) && !is_number(b)) {
                     error_debug = b.debug; // Right operand is problematic
                 } else {
                     error_debug = a.debug; // Both problematic, use left
@@ -1416,8 +1431,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             value_t a = vm_pop(vm);
 
             // Handle all numeric type combinations
-            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+            if (is_number(a) && is_number(b)) {
 
                 // int32 * int32 with overflow detection
                 if (a.type == VAL_INT32 && b.type == VAL_INT32) {
@@ -1459,11 +1473,9 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             } else {
                 // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) &&
-                    (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                if (!is_number(a) && is_number(b)) {
                     error_debug = a.debug; // Left operand is problematic
-                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                           (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
+                } else if (is_number(a) && !is_number(b)) {
                     error_debug = b.debug; // Right operand is problematic
                 } else {
                     error_debug = a.debug; // Both problematic, use left
@@ -1486,8 +1498,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             value_t a = vm_pop(vm);
 
             // Handle all numeric type combinations
-            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+            if (is_number(a) && is_number(b)) {
 
                 // Check for division by zero
                 bool is_zero = false;
@@ -1519,11 +1530,9 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             } else {
                 // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) &&
-                    (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                if (!is_number(a) && is_number(b)) {
                     error_debug = a.debug; // Left operand is problematic
-                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                           (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
+                } else if (is_number(a) && !is_number(b)) {
                     error_debug = b.debug; // Right operand is problematic
                 } else {
                     error_debug = a.debug; // Both problematic, use left
@@ -1546,8 +1555,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             value_t a = vm_pop(vm);
 
             // Handle all numeric type combinations
-            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+            if (is_number(a) && is_number(b)) {
 
                 // Check for modulo by zero
                 bool is_zero = false;
@@ -1604,11 +1612,9 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             } else {
                 // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) &&
-                    (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                if (!is_number(a) && is_number(b)) {
                     error_debug = a.debug; // Left operand is problematic
-                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                           (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
+                } else if (is_number(a) && !is_number(b)) {
                     error_debug = b.debug; // Right operand is problematic
                 } else {
                     error_debug = a.debug; // Both problematic, use left
@@ -1631,8 +1637,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             value_t a = vm_pop(vm);
 
             // Handle all numeric type combinations for power operations
-            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+            if (is_number(a) && is_number(b)) {
 
                 // Convert to double for power calculation (always returns float)
                 double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
@@ -1646,11 +1651,9 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             } else {
                 // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
-                if ((a.type != VAL_INT32 && a.type != VAL_BIGINT && a.type != VAL_NUMBER) &&
-                    (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+                if (!is_number(a) && is_number(b)) {
                     error_debug = a.debug; // Left operand is problematic
-                } else if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                           (b.type != VAL_INT32 && b.type != VAL_BIGINT && b.type != VAL_NUMBER)) {
+                } else if (is_number(a) && !is_number(b)) {
                     error_debug = b.debug; // Right operand is problematic
                 } else {
                     error_debug = a.debug; // Both problematic, use left
@@ -1728,8 +1731,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             value_t a = vm_pop(vm);
 
             // Handle all numeric type combinations for comparison
-            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+            if (is_number(a) && is_number(b)) {
 
                 // Convert both to double for comparison (simple but works)
                 double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
@@ -1758,8 +1760,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             value_t a = vm_pop(vm);
 
             // Handle all numeric type combinations for comparison
-            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+            if (is_number(a) && is_number(b)) {
 
                 // Convert both to double for comparison (simple but works)
                 double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
@@ -1788,8 +1789,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             value_t a = vm_pop(vm);
 
             // Handle all numeric type combinations for comparison
-            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+            if (is_number(a) && is_number(b)) {
 
                 // Convert both to double for comparison (simple but works)
                 double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
@@ -1818,8 +1818,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             value_t a = vm_pop(vm);
 
             // Handle all numeric type combinations for comparison
-            if ((a.type == VAL_INT32 || a.type == VAL_BIGINT || a.type == VAL_NUMBER) &&
-                (b.type == VAL_INT32 || b.type == VAL_BIGINT || b.type == VAL_NUMBER)) {
+            if (is_number(a) && is_number(b)) {
 
                 // Convert both to double for comparison (simple but works)
                 double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
@@ -2422,8 +2421,8 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 }
             }
             // Built-in functions
-            else if (callable.type == VAL_BUILTIN) {
-                builtin_func_t builtin_func = (builtin_func_t)callable.as.builtin;
+            else if (callable.type == VAL_NATIVE) {
+                native_t builtin_func = (native_t)callable.as.native;
                 value_t result = builtin_func(vm, arg_count, args);
                 vm_push(vm, result);
                 if (args)
@@ -3095,7 +3094,7 @@ const char* value_type_name(value_type type) {
         return "function";
     case VAL_CLOSURE:
         return "closure";
-    case VAL_BUILTIN:
+    case VAL_NATIVE:
         return "builtin";
     case VAL_BOUND_METHOD:
         return "bound_method";

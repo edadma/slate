@@ -4,12 +4,12 @@
 #include "vm.h"
 
 // Built-in function signature
-typedef value_t (*builtin_func_t)(slate_vm* vm, int arg_count, value_t* args);
+typedef value_t (*native_t)(slate_vm* vm, int arg_count, value_t* args);
 
 // Built-in function entry
 typedef struct {
     const char* name;
-    builtin_func_t func;
+    native_t func;
     int min_args;
     int max_args; // -1 for unlimited
 } builtin_entry_t;
@@ -35,6 +35,10 @@ value_t builtin_random(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_sin(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_cos(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_tan(slate_vm* vm, int arg_count, value_t* args);
+
+// Exponential and logarithmic functions
+value_t builtin_exp(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_ln(slate_vm* vm, int arg_count, value_t* args);
 
 // Input/conversion functions
 value_t builtin_input(slate_vm* vm, int arg_count, value_t* args);
@@ -78,6 +82,6 @@ value_t builtin_write_file(slate_vm* vm, int arg_count, value_t* args);
 void runtime_error(const char* message, ...);
 
 // Helper functions
-void register_builtin(slate_vm* vm, const char* name, builtin_func_t func, int min_args, int max_args);
+void register_builtin(slate_vm* vm, const char* name, native_t func, int min_args, int max_args);
 
 #endif // SLATE_BUILTINS_H
