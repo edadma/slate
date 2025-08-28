@@ -44,17 +44,44 @@ void builtins_init(slate_vm* vm) {
 
     // Create the String class with its prototype
     do_object string_proto = do_create(NULL);
-    
-    // Add the length method to String prototype
+
+    // Add methods to String prototype
     value_t length_method = make_native(builtin_string_length);
     do_set(string_proto, "length", &length_method, sizeof(value_t));
-    
+
+    value_t substring_method = make_native(builtin_string_substring);
+    do_set(string_proto, "substring", &substring_method, sizeof(value_t));
+
+    value_t to_upper_method = make_native(builtin_string_to_upper);
+    do_set(string_proto, "toUpper", &to_upper_method, sizeof(value_t));
+
+    value_t to_lower_method = make_native(builtin_string_to_lower);
+    do_set(string_proto, "toLower", &to_lower_method, sizeof(value_t));
+
+    value_t trim_method = make_native(builtin_string_trim);
+    do_set(string_proto, "trim", &trim_method, sizeof(value_t));
+
+    value_t starts_with_method = make_native(builtin_string_starts_with);
+    do_set(string_proto, "startsWith", &starts_with_method, sizeof(value_t));
+
+    value_t ends_with_method = make_native(builtin_string_ends_with);
+    do_set(string_proto, "endsWith", &ends_with_method, sizeof(value_t));
+
+    value_t contains_method = make_native(builtin_string_contains);
+    do_set(string_proto, "contains", &contains_method, sizeof(value_t));
+
+    value_t replace_method = make_native(builtin_string_replace);
+    do_set(string_proto, "replace", &replace_method, sizeof(value_t));
+
+    value_t index_of_method = make_native(builtin_string_index_of);
+    do_set(string_proto, "indexOf", &index_of_method, sizeof(value_t));
+
     // Create the String class
     value_t string_class = make_class("String", string_proto);
-    
+
     // Store in globals
     do_set(vm->globals, "String", &string_class, sizeof(value_t));
-    
+
     // Store a global reference for use in make_string
     static value_t string_class_storage;
     string_class_storage = vm_retain(string_class);
@@ -778,21 +805,198 @@ value_t builtin_string_length(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error("length() takes no arguments (%d given)", arg_count - 1);
     }
-    
+
     value_t receiver = args[0];
     if (receiver.type != VAL_STRING) {
         runtime_error("length() can only be called on strings");
     }
-    
+
     // Get the length of the string
-    size_t length = receiver.as.string ? strlen(receiver.as.string) : 0;
-    
+    size_t length = ds_length(receiver.as.string);
+
     // Return as int32 if it fits, otherwise as number
     if (length <= INT32_MAX) {
         return make_int32((int32_t)length);
     } else {
         return make_number((double)length);
     }
+}
+
+// String method: substring(start, length)
+value_t builtin_string_substring(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 3) { // receiver + 2 args
+        runtime_error("substring() takes exactly 2 arguments (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    value_t start_val = args[1];
+    value_t length_val = args[2];
+
+    if (receiver.type != VAL_STRING) {
+        runtime_error("substring() can only be called on strings");
+    }
+    if (!is_int(start_val) || !is_int(length_val)) {
+        runtime_error("substring() arguments must be integers");
+    }
+
+    int start_int = value_to_int(start_val);
+    int length_int = value_to_int(length_val);
+    
+    if (start_int < 0 || length_int < 0) {
+        runtime_error("substring() arguments must be non-negative");
+    }
+    
+    size_t start = (size_t)start_int;
+    size_t length = (size_t)length_int;
+
+    ds_string result = ds_substring(receiver.as.string, start, length);
+    return make_string_ds(result);
+}
+
+// String method: toUpper()
+value_t builtin_string_to_upper(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("toUpper() takes no arguments (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    if (receiver.type != VAL_STRING) {
+        runtime_error("toUpper() can only be called on strings");
+    }
+
+    ds_string result = ds_to_upper(receiver.as.string);
+    return make_string_ds(result);
+}
+
+// String method: toLower()
+value_t builtin_string_to_lower(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("toLower() takes no arguments (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    if (receiver.type != VAL_STRING) {
+        runtime_error("toLower() can only be called on strings");
+    }
+
+    ds_string result = ds_to_lower(receiver.as.string);
+    return make_string_ds(result);
+}
+
+// String method: trim()
+value_t builtin_string_trim(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("trim() takes no arguments (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    if (receiver.type != VAL_STRING) {
+        runtime_error("trim() can only be called on strings");
+    }
+
+    ds_string result = ds_trim(receiver.as.string);
+    return make_string_ds(result);
+}
+
+// String method: startsWith(prefix)
+value_t builtin_string_starts_with(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("startsWith() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    value_t prefix = args[1];
+
+    if (receiver.type != VAL_STRING) {
+        runtime_error("startsWith() can only be called on strings");
+    }
+    if (prefix.type != VAL_STRING) {
+        runtime_error("startsWith() argument must be a string");
+    }
+
+    int result = ds_starts_with(receiver.as.string, prefix.as.string);
+    return make_boolean(result);
+}
+
+// String method: endsWith(suffix)
+value_t builtin_string_ends_with(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("endsWith() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    value_t suffix = args[1];
+
+    if (receiver.type != VAL_STRING) {
+        runtime_error("endsWith() can only be called on strings");
+    }
+    if (suffix.type != VAL_STRING) {
+        runtime_error("endsWith() argument must be a string");
+    }
+
+    int result = ds_ends_with(receiver.as.string, suffix.as.string);
+    return make_boolean(result);
+}
+
+// String method: contains(needle)
+value_t builtin_string_contains(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("contains() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    value_t needle = args[1];
+
+    if (receiver.type != VAL_STRING) {
+        runtime_error("contains() can only be called on strings");
+    }
+    if (needle.type != VAL_STRING) {
+        runtime_error("contains() argument must be a string");
+    }
+
+    int result = ds_contains(receiver.as.string, needle.as.string);
+    return make_boolean(result);
+}
+
+// String method: replace(old, new)
+value_t builtin_string_replace(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 3) {
+        runtime_error("replace() takes exactly 2 arguments (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    value_t old_str = args[1];
+    value_t new_str = args[2];
+
+    if (receiver.type != VAL_STRING) {
+        runtime_error("replace() can only be called on strings");
+    }
+    if (old_str.type != VAL_STRING || new_str.type != VAL_STRING) {
+        runtime_error("replace() arguments must be strings");
+    }
+
+    ds_string result = ds_replace(receiver.as.string, old_str.as.string, new_str.as.string);
+    return make_string_ds(result);
+}
+
+// String method: indexOf(needle)
+value_t builtin_string_index_of(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error("indexOf() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    value_t needle = args[1];
+
+    if (receiver.type != VAL_STRING) {
+        runtime_error("indexOf() can only be called on strings");
+    }
+    if (needle.type != VAL_STRING) {
+        runtime_error("indexOf() argument must be a string");
+    }
+
+    int result = ds_find(receiver.as.string, needle.as.string);
+    return make_int32(result); // ds_find returns -1 if not found
 }
 
 // iterator(collection) - Create iterator for arrays and ranges

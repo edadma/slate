@@ -61,6 +61,15 @@ value_t builtin_args(slate_vm* vm, int arg_count, value_t* args);
 
 // String methods (for prototypal inheritance)
 value_t builtin_string_length(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_substring(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_to_upper(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_to_lower(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_trim(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_starts_with(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_ends_with(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_contains(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_replace(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_index_of(slate_vm* vm, int arg_count, value_t* args);
 
 // Iterator functions
 value_t builtin_iterator(slate_vm* vm, int arg_count, value_t* args);

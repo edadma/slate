@@ -390,6 +390,8 @@ void print_value(value_t value);
 void print_for_builtin(value_t value);
 void free_value(value_t value);
 double value_to_double(value_t value); // Convert numeric values to double
+bool is_int(value_t value); // Check if value represents an integer
+int value_to_int(value_t value); // Convert numeric values to int
 
 // Constant pool management
 size_t vm_add_constant(slate_vm* vm, value_t value);

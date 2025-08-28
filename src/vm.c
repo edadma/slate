@@ -232,7 +232,7 @@ value_t make_string(const char* val) {
     value_t value;
     value.type = VAL_STRING;
     value.as.string = ds_new(val); // Using dynamic_string.h!
-    value.class = global_string_class;  // All strings have String class
+    value.class = global_string_class; // All strings have String class
     value.debug = NULL;
     return value;
 }
@@ -241,7 +241,7 @@ value_t make_string_ds(ds_string str) {
     value_t value;
     value.type = VAL_STRING;
     value.as.string = str; // Take ownership of the ds_string
-    value.class = global_string_class;  // All strings have String class
+    value.class = global_string_class; // All strings have String class
     value.debug = NULL;
     return value;
 }
@@ -259,7 +259,7 @@ value_t make_object(do_object object) {
     value_t value;
     value.type = VAL_OBJECT;
     value.as.object = object;
-    value.class = NULL;  // Regular objects don't have a class yet
+    value.class = NULL; // Regular objects don't have a class yet
     value.debug = NULL;
     return value;
 }
@@ -267,17 +267,17 @@ value_t make_object(do_object object) {
 value_t make_class(const char* name, do_object properties) {
     class_t* cls = malloc(sizeof(class_t));
     if (!cls) {
-        return make_null();  // Return null on allocation failure
+        return make_null(); // Return null on allocation failure
     }
-    
+
     cls->ref_count = 1;
-    cls->name = strdup(name ? name : "Class");  // Duplicate the name string
-    cls->properties = properties ? do_retain(properties) : do_create(NULL);  // Retain or create empty
-    
+    cls->name = strdup(name ? name : "Class"); // Duplicate the name string
+    cls->properties = properties ? do_retain(properties) : do_create(NULL); // Retain or create empty
+
     value_t value;
     value.type = VAL_CLASS;
     value.as.class = cls;
-    value.class = NULL;  // Classes themselves don't have a class
+    value.class = NULL; // Classes themselves don't have a class
     value.debug = NULL;
     return value;
 }
@@ -638,10 +638,10 @@ static ds_string value_to_string_representation(value_t value) {
             ds_string prefix = ds_new("<class ");
             ds_string name = ds_new(value.as.class->name ? value.as.class->name : "anonymous");
             ds_string suffix = ds_new(">");
-            
+
             ds_string temp1 = ds_concat(prefix, name);
             ds_string result = ds_concat(temp1, suffix);
-            
+
             ds_release(&prefix);
             ds_release(&name);
             ds_release(&suffix);
@@ -768,9 +768,7 @@ int is_falsy(value_t value) {
     }
 }
 
-int is_number(value_t value) {
-    return value.type == VAL_INT32 || value.type == VAL_BIGINT || value.type == VAL_NUMBER;
-}
+int is_number(value_t value) { return value.type == VAL_INT32 || value.type == VAL_BIGINT || value.type == VAL_NUMBER; }
 
 int values_equal(value_t a, value_t b) {
     // Handle cross-type numeric comparisons
@@ -815,7 +813,7 @@ int values_equal(value_t a, value_t b) {
     case VAL_OBJECT:
         return a.as.object == b.as.object;
     case VAL_CLASS:
-        return a.as.class == b.as.class;  // Class identity comparison
+        return a.as.class == b.as.class; // Class identity comparison
     case VAL_BUFFER:
         if (a.as.buffer == b.as.buffer)
             return 1; // Same buffer reference
@@ -979,6 +977,51 @@ double value_to_double(value_t value) {
     default:
         runtime_error("Cannot convert %s to number", value_type_name(value.type));
         return 0.0; // Never reached, but keeps compiler happy
+    }
+}
+
+bool is_int(value_t value) {
+    switch (value.type) {
+    case VAL_INT32:
+        return true;
+    case VAL_BIGINT:
+        // Check if BigInt fits in int32 range
+        int32_t dummy;
+        return di_to_int32(value.as.bigint, &dummy);
+    case VAL_NUMBER:
+        // Check if the number is a whole number that fits in int range
+        return value.as.number == floor(value.as.number) && value.as.number >= INT_MIN && value.as.number <= INT_MAX;
+    default:
+        return false;
+    }
+}
+
+int value_to_int(value_t value) {
+    switch (value.type) {
+    case VAL_INT32:
+        return value.as.int32;
+    case VAL_BIGINT:
+        // Convert BigInt to int, checking for overflow
+        int32_t result;
+        if (di_to_int32(value.as.bigint, &result)) {
+            return result;
+        } else {
+            char* str = di_to_string(value.as.bigint, 10);
+            runtime_error("BigInt value %s too large for integer", str);
+            free(str);
+            return 0; // Never reached
+        }
+    case VAL_NUMBER:
+        // Check if it's a valid integer
+        if (value.as.number == floor(value.as.number) && value.as.number >= INT_MIN && value.as.number <= INT_MAX) {
+            return (int)value.as.number;
+        } else {
+            runtime_error("Number %g is not a valid integer", value.as.number);
+            return 0; // Never reached
+        }
+    default:
+        runtime_error("Cannot convert %s to integer", value_type_name(value.type));
+        return 0; // Never reached, but keeps compiler happy
     }
 }
 
@@ -2677,7 +2720,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             }
 
             const char* prop_name = property.as.string;
-            
+
             // Check for built-in properties that don't use prototypes yet
             if (object.type == VAL_ARRAY) {
                 if (strcmp(prop_name, "length") == 0) {
@@ -2705,7 +2748,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                     break;
                 }
             }
-            
+
             // For objects, check own properties first
             if (object.type == VAL_OBJECT) {
                 value_t* prop_value = (value_t*)do_get(object.as.object, prop_name);
@@ -2714,7 +2757,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                     break;
                 }
             }
-            
+
             // Check the prototype chain via class
             if (object.class && object.class->type == VAL_CLASS) {
                 // Get the class's prototype properties
@@ -2732,7 +2775,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                     }
                 }
             }
-            
+
             // Property not found - return undefined
             vm_push(vm, make_undefined());
             break;
@@ -2944,7 +2987,7 @@ class_t* class_retain(class_t* cls) {
 void class_release(class_t* cls) {
     if (!cls)
         return;
-    
+
     cls->ref_count--;
     if (cls->ref_count == 0) {
         // Clean up class data

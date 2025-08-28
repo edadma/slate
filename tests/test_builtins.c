@@ -666,6 +666,155 @@ void test_buffer_reader_positioning(void) {
     vm_release(result);
 }
 
+// Test string method: length
+void test_string_length(void) {
+    value_t result = interpret_expression("\"hello\".length()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(5, result.as.int32);
+    vm_release(result);
+    
+    result = interpret_expression("\"\".length()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.int32);
+    vm_release(result);
+}
+
+// Test string method: substring
+void test_string_substring(void) {
+    value_t result = interpret_expression("\"Hello World\".substring(0, 5)");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello", result.as.string);
+    vm_release(result);
+    
+    result = interpret_expression("\"Hello World\".substring(6, 5)");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("World", result.as.string);
+    vm_release(result);
+}
+
+// Test string method: toUpper
+void test_string_to_upper(void) {
+    value_t result = interpret_expression("\"hello world\".toUpper()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("HELLO WORLD", result.as.string);
+    vm_release(result);
+    
+    result = interpret_expression("\"HeLLo\".toUpper()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("HELLO", result.as.string);
+    vm_release(result);
+}
+
+// Test string method: toLower
+void test_string_to_lower(void) {
+    value_t result = interpret_expression("\"HELLO WORLD\".toLower()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("hello world", result.as.string);
+    vm_release(result);
+    
+    result = interpret_expression("\"HeLLo\".toLower()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("hello", result.as.string);
+    vm_release(result);
+}
+
+// Test string method: trim
+void test_string_trim(void) {
+    value_t result = interpret_expression("\"  hello  \".trim()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("hello", result.as.string);
+    vm_release(result);
+    
+    // Test with spaces and tabs
+    result = interpret_expression("\"   test   \".trim()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("test", result.as.string);
+    vm_release(result);
+}
+
+// Test string method: startsWith
+void test_string_starts_with(void) {
+    value_t result = interpret_expression("\"Hello World\".startsWith(\"Hello\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean);
+    vm_release(result);
+    
+    result = interpret_expression("\"Hello World\".startsWith(\"World\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean);
+    vm_release(result);
+}
+
+// Test string method: endsWith
+void test_string_ends_with(void) {
+    value_t result = interpret_expression("\"Hello World\".endsWith(\"World\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean);
+    vm_release(result);
+    
+    result = interpret_expression("\"Hello World\".endsWith(\"Hello\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean);
+    vm_release(result);
+}
+
+// Test string method: contains
+void test_string_contains(void) {
+    value_t result = interpret_expression("\"Hello World\".contains(\"lo Wo\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean);
+    vm_release(result);
+    
+    result = interpret_expression("\"Hello World\".contains(\"xyz\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean);
+    vm_release(result);
+}
+
+// Test string method: replace
+void test_string_replace(void) {
+    value_t result = interpret_expression("\"Hello World\".replace(\"World\", \"Universe\")");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello Universe", result.as.string);
+    vm_release(result);
+    
+    result = interpret_expression("\"Hello World\".replace(\"xyz\", \"abc\")");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello World", result.as.string);
+    vm_release(result);
+}
+
+// Test string method: indexOf
+void test_string_index_of(void) {
+    value_t result = interpret_expression("\"Hello World\".indexOf(\"World\")");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(6, result.as.int32);
+    vm_release(result);
+    
+    result = interpret_expression("\"Hello World\".indexOf(\"o\")");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(4, result.as.int32);
+    vm_release(result);
+    
+    result = interpret_expression("\"Hello World\".indexOf(\"xyz\")");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(-1, result.as.int32);
+    vm_release(result);
+}
+
+// Test string method chaining
+void test_string_method_chaining(void) {
+    value_t result = interpret_expression("\"  hello world  \".trim().toUpper()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("HELLO WORLD", result.as.string);
+    vm_release(result);
+    
+    result = interpret_expression("\"HELLO\".toLower().replace(\"h\", \"j\")");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("jello", result.as.string);
+    vm_release(result);
+}
+
 // Test suite function
 void test_builtins_suite(void) {
     RUN_TEST(test_builtin_print);
@@ -754,4 +903,17 @@ void test_builtins_suite(void) {
     RUN_TEST(test_buffer_type_checking);
     RUN_TEST(test_buffer_reader_basic);
     RUN_TEST(test_buffer_reader_positioning);
+    
+    // String method tests
+    RUN_TEST(test_string_length);
+    RUN_TEST(test_string_substring);
+    RUN_TEST(test_string_to_upper);
+    RUN_TEST(test_string_to_lower);
+    RUN_TEST(test_string_trim);
+    RUN_TEST(test_string_starts_with);
+    RUN_TEST(test_string_ends_with);
+    RUN_TEST(test_string_contains);
+    RUN_TEST(test_string_replace);
+    RUN_TEST(test_string_index_of);
+    RUN_TEST(test_string_method_chaining);
 }
