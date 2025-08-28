@@ -1,5 +1,5 @@
-#ifndef BITTY_VM_H
-#define BITTY_VM_H
+#ifndef SLATE_VM_H
+#define SLATE_VM_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -407,4 +407,4 @@ void vm_runtime_error_with_debug(slate_vm* vm, const char* message);
 void vm_runtime_error_with_values(slate_vm* vm, const char* format, const value_t* a, const value_t* b, debug_location* location);
 const char* value_type_name(value_type type);
 
-#endif // BITTY_VM_H
+#endif // SLATE_VM_H

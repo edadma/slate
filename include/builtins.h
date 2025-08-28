@@ -1,5 +1,5 @@
-#ifndef BITTY_BUILTINS_H
-#define BITTY_BUILTINS_H
+#ifndef SLATE_BUILTINS_H
+#define SLATE_BUILTINS_H
 
 #include "vm.h"
 
@@ -80,4 +80,4 @@ void runtime_error(const char* message, ...);
 // Helper functions
 void register_builtin(slate_vm* vm, const char* name, builtin_func_t func, int min_args, int max_args);
 
-#endif // BITTY_BUILTINS_H
+#endif // SLATE_BUILTINS_H
