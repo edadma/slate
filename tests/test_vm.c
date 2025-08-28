@@ -273,7 +273,7 @@ void test_vm_arrays_edge_cases(void) {
     free_value(result);
 
     // Empty array length
-    result = run_code("[].length");
+    result = run_code("[].length()");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 
@@ -379,7 +379,7 @@ void test_vm_complex_expressions(void) {
     value_t result;
 
     // Array operations in expressions
-    result = run_code("[1, 2, 3].length + 5");
+    result = run_code("[1, 2, 3].length() + 5");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(8, result.as.int32);
 
@@ -394,7 +394,7 @@ void test_vm_complex_expressions(void) {
     TEST_ASSERT_EQUAL_INT32(25, result.as.int32);
 
     // Complex nested operations
-    result = run_code("([1, 2, 3].length * 2) + [4, 5](1)");
+    result = run_code("([1, 2, 3].length() * 2) + [4, 5](1)");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(11, result.as.int32); // (3 * 2) + 5 = 11
 }

@@ -250,7 +250,7 @@ value_t make_array(da_array array) {
     value_t value;
     value.type = VAL_ARRAY;
     value.as.array = array;
-    value.class = NULL;
+    value.class = global_array_class; // All arrays have Array class
     value.debug = NULL;
     return value;
 }
@@ -2722,16 +2722,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             const char* prop_name = property.as.string;
 
             // Check for built-in properties that don't use prototypes yet
-            if (object.type == VAL_ARRAY) {
-                if (strcmp(prop_name, "length") == 0) {
-                    vm_push(vm, make_int32((int32_t)da_length(object.as.array)));
-                    break;
-                } else if (strcmp(prop_name, "iterator") == 0) {
-                    // Return a bound method with the array as receiver
-                    vm_push(vm, make_bound_method(object, builtin_iterator));
-                    break;
-                }
-            } else if (object.type == VAL_RANGE) {
+            if (object.type == VAL_RANGE) {
                 if (strcmp(prop_name, "iterator") == 0) {
                     // Return a bound method with the range as receiver
                     vm_push(vm, make_bound_method(object, builtin_iterator));

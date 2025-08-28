@@ -70,6 +70,20 @@ value_t builtin_string_ends_with(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_string_contains(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_string_replace(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_string_index_of(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_is_empty(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_string_non_empty(slate_vm* vm, int arg_count, value_t* args);
+
+// Array methods (for prototypal inheritance)
+value_t builtin_array_length(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_array_push(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_array_pop(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_array_is_empty(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_array_non_empty(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_array_index_of(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_array_contains(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_array_copy(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_array_slice(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_array_reverse(slate_vm* vm, int arg_count, value_t* args);
 
 // Iterator functions
 value_t builtin_iterator(slate_vm* vm, int arg_count, value_t* args);

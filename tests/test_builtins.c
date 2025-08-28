@@ -815,6 +815,133 @@ void test_string_method_chaining(void) {
     vm_release(result);
 }
 
+// Test array copy method
+void test_array_copy(void) {
+    value_t result = interpret_expression("[1, 2, 3].copy()");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(3, da_length(result.as.array));
+    
+    // Check elements
+    value_t* elem0 = (value_t*)da_get(result.as.array, 0);
+    value_t* elem1 = (value_t*)da_get(result.as.array, 1);
+    value_t* elem2 = (value_t*)da_get(result.as.array, 2);
+    TEST_ASSERT_EQUAL(VAL_INT32, elem0->type);
+    TEST_ASSERT_EQUAL(VAL_INT32, elem1->type);
+    TEST_ASSERT_EQUAL(VAL_INT32, elem2->type);
+    TEST_ASSERT_EQUAL(1, elem0->as.int32);
+    TEST_ASSERT_EQUAL(2, elem1->as.int32);
+    TEST_ASSERT_EQUAL(3, elem2->as.int32);
+    vm_release(result);
+}
+
+// Test array slice method with start and end
+void test_array_slice_start_end(void) {
+    value_t result = interpret_expression("[1, 2, 3, 4, 5].slice(1, 4)");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(3, da_length(result.as.array));
+    
+    // Check elements [2, 3, 4]
+    value_t* elem0 = (value_t*)da_get(result.as.array, 0);
+    value_t* elem1 = (value_t*)da_get(result.as.array, 1);
+    value_t* elem2 = (value_t*)da_get(result.as.array, 2);
+    TEST_ASSERT_EQUAL(2, elem0->as.int32);
+    TEST_ASSERT_EQUAL(3, elem1->as.int32);
+    TEST_ASSERT_EQUAL(4, elem2->as.int32);
+    vm_release(result);
+}
+
+// Test array slice method with only start
+void test_array_slice_start_only(void) {
+    value_t result = interpret_expression("[1, 2, 3, 4, 5].slice(2)");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(3, da_length(result.as.array));
+    
+    // Check elements [3, 4, 5]
+    value_t* elem0 = (value_t*)da_get(result.as.array, 0);
+    value_t* elem1 = (value_t*)da_get(result.as.array, 1);
+    value_t* elem2 = (value_t*)da_get(result.as.array, 2);
+    TEST_ASSERT_EQUAL(3, elem0->as.int32);
+    TEST_ASSERT_EQUAL(4, elem1->as.int32);
+    TEST_ASSERT_EQUAL(5, elem2->as.int32);
+    vm_release(result);
+}
+
+// Test array slice method with negative indices
+void test_array_slice_negative_indices(void) {
+    value_t result = interpret_expression("[1, 2, 3].slice(-2)");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(2, da_length(result.as.array));
+    
+    // Check elements [2, 3]
+    value_t* elem0 = (value_t*)da_get(result.as.array, 0);
+    value_t* elem1 = (value_t*)da_get(result.as.array, 1);
+    TEST_ASSERT_EQUAL(2, elem0->as.int32);
+    TEST_ASSERT_EQUAL(3, elem1->as.int32);
+    vm_release(result);
+}
+
+// Test array slice edge cases
+void test_array_slice_edge_cases(void) {
+    // Empty slice
+    value_t result = interpret_expression("[1, 2, 3].slice(1, 1)");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(0, da_length(result.as.array));
+    vm_release(result);
+    
+    // Out of bounds indices
+    result = interpret_expression("[1, 2, 3].slice(10, 20)");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(0, da_length(result.as.array));
+    vm_release(result);
+    
+    // Negative start, positive end
+    result = interpret_expression("[1, 2, 3, 4].slice(-3, 3)");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(2, da_length(result.as.array));
+    vm_release(result);
+}
+
+// Test array reverse method
+void test_array_reverse(void) {
+    // Test requires variable support for proper testing
+    // For now, we'll test a copy+reverse to avoid modifying original in tests
+    value_t result = interpret_expression("[1, 2, 3].copy().reverse()");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(3, da_length(result.as.array));
+    
+    // Check elements are reversed [3, 2, 1]
+    value_t* elem0 = (value_t*)da_get(result.as.array, 0);
+    value_t* elem1 = (value_t*)da_get(result.as.array, 1);
+    value_t* elem2 = (value_t*)da_get(result.as.array, 2);
+    TEST_ASSERT_EQUAL(3, elem0->as.int32);
+    TEST_ASSERT_EQUAL(2, elem1->as.int32);
+    TEST_ASSERT_EQUAL(1, elem2->as.int32);
+    vm_release(result);
+}
+
+// Test string isEmpty and nonEmpty methods
+void test_string_is_empty_non_empty(void) {
+    value_t result = interpret_expression("\"\".isEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean);
+    vm_release(result);
+    
+    result = interpret_expression("\"\".nonEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean);
+    vm_release(result);
+    
+    result = interpret_expression("\"hello\".isEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean);
+    vm_release(result);
+    
+    result = interpret_expression("\"hello\".nonEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean);
+    vm_release(result);
+}
+
 // Test suite function
 void test_builtins_suite(void) {
     RUN_TEST(test_builtin_print);
@@ -916,4 +1043,13 @@ void test_builtins_suite(void) {
     RUN_TEST(test_string_replace);
     RUN_TEST(test_string_index_of);
     RUN_TEST(test_string_method_chaining);
+    RUN_TEST(test_string_is_empty_non_empty);
+    
+    // Array utility method tests
+    RUN_TEST(test_array_copy);
+    RUN_TEST(test_array_slice_start_end);
+    RUN_TEST(test_array_slice_start_only);
+    RUN_TEST(test_array_slice_negative_indices);
+    RUN_TEST(test_array_slice_edge_cases);
+    RUN_TEST(test_array_reverse);
 }

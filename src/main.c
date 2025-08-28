@@ -313,7 +313,7 @@ static void run_tests(void) {
 
     // Test 7: Array length
     printf("--- Test 7: Array length ---\n");
-    interpret("[1, 2, 3, 4].length;");
+    interpret("[1, 2, 3, 4].length();");
     printf("\n");
 
     // Test 8: String indexing (strings as functions)
@@ -323,7 +323,43 @@ static void run_tests(void) {
 
     // Test 9: String length
     printf("--- Test 9: String length ---\n");
-    interpret("\"World\".length;");
+    interpret("\"World\".length();");
+    printf("\n");
+
+    // Test 10: Array method tests
+    printf("--- Test 10: Array Methods ---\n");
+    
+    // Array isEmpty and nonEmpty
+    printf("Array isEmpty/nonEmpty tests:\n");
+    interpret("[].isEmpty();");  // Should be true
+    interpret("[].nonEmpty();"); // Should be false
+    interpret("[1, 2].isEmpty();"); // Should be false
+    interpret("[1, 2].nonEmpty();"); // Should be true
+    printf("\n");
+    
+    // Array push and pop
+    printf("Array push/pop tests:\n");
+    interpret("var arr = [1, 2]; arr.push(3); arr.length(); arr.pop(); arr.length();"); // Test push/pop sequence
+    interpret("[].pop();"); // Should return null
+    printf("\n");
+    
+    // Array indexOf and contains
+    printf("Array indexOf/contains tests:\n");
+    interpret("[1, 2, 3].indexOf(2);"); // Should return 1
+    interpret("[1, 2, 3].indexOf(5);"); // Should return -1
+    interpret("[1, 2, 3].contains(2);"); // Should return true
+    interpret("[1, 2, 3].contains(5);"); // Should return false
+    printf("\n");
+
+    // Test 11: String method tests
+    printf("--- Test 11: String Methods ---\n");
+    
+    // String isEmpty and nonEmpty
+    printf("String isEmpty/nonEmpty tests:\n");
+    interpret("\"\".isEmpty();");    // Should be true
+    interpret("\"\".nonEmpty();");   // Should be false
+    interpret("\"hello\".isEmpty();");  // Should be false
+    interpret("\"hello\".nonEmpty();"); // Should be true
     printf("\n");
 }
 

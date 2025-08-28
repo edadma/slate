@@ -34,6 +34,9 @@ void register_builtin(slate_vm* vm, const char* name, native_t func, int min_arg
 // Global String class storage
 value_t* global_string_class = NULL;
 
+// Global Array class storage
+value_t* global_array_class = NULL;
+
 // Initialize all built-in functions
 void builtins_init(slate_vm* vm) {
     // Initialize random seed once
@@ -76,6 +79,12 @@ void builtins_init(slate_vm* vm) {
     value_t index_of_method = make_native(builtin_string_index_of);
     do_set(string_proto, "indexOf", &index_of_method, sizeof(value_t));
 
+    value_t string_is_empty_method = make_native(builtin_string_is_empty);
+    do_set(string_proto, "isEmpty", &string_is_empty_method, sizeof(value_t));
+
+    value_t string_non_empty_method = make_native(builtin_string_non_empty);
+    do_set(string_proto, "nonEmpty", &string_non_empty_method, sizeof(value_t));
+
     // Create the String class
     value_t string_class = make_class("String", string_proto);
 
@@ -86,6 +95,54 @@ void builtins_init(slate_vm* vm) {
     static value_t string_class_storage;
     string_class_storage = vm_retain(string_class);
     global_string_class = &string_class_storage;
+
+    // Create the Array class with its prototype
+    do_object array_proto = do_create(NULL);
+
+    // Add methods to Array prototype
+    value_t array_length_method = make_native(builtin_array_length);
+    do_set(array_proto, "length", &array_length_method, sizeof(value_t));
+
+    value_t array_push_method = make_native(builtin_array_push);
+    do_set(array_proto, "push", &array_push_method, sizeof(value_t));
+
+    value_t array_pop_method = make_native(builtin_array_pop);
+    do_set(array_proto, "pop", &array_pop_method, sizeof(value_t));
+
+    value_t array_is_empty_method = make_native(builtin_array_is_empty);
+    do_set(array_proto, "isEmpty", &array_is_empty_method, sizeof(value_t));
+
+    value_t array_non_empty_method = make_native(builtin_array_non_empty);
+    do_set(array_proto, "nonEmpty", &array_non_empty_method, sizeof(value_t));
+
+    value_t array_index_of_method = make_native(builtin_array_index_of);
+    do_set(array_proto, "indexOf", &array_index_of_method, sizeof(value_t));
+
+    value_t array_contains_method = make_native(builtin_array_contains);
+    do_set(array_proto, "contains", &array_contains_method, sizeof(value_t));
+
+    value_t array_iterator_method = make_native(builtin_iterator);
+    do_set(array_proto, "iterator", &array_iterator_method, sizeof(value_t));
+
+    value_t array_copy_method = make_native(builtin_array_copy);
+    do_set(array_proto, "copy", &array_copy_method, sizeof(value_t));
+
+    value_t array_slice_method = make_native(builtin_array_slice);
+    do_set(array_proto, "slice", &array_slice_method, sizeof(value_t));
+
+    value_t array_reverse_method = make_native(builtin_array_reverse);
+    do_set(array_proto, "reverse", &array_reverse_method, sizeof(value_t));
+
+    // Create the Array class
+    value_t array_class = make_class("Array", array_proto);
+
+    // Store in globals
+    do_set(vm->globals, "Array", &array_class, sizeof(value_t));
+
+    // Store a global reference for use in make_array
+    static value_t array_class_storage;
+    array_class_storage = vm_retain(array_class);
+    global_array_class = &array_class_storage;
 
     // Register all built-ins
     register_builtin(vm, "print", builtin_print, 1, 1);
@@ -1562,4 +1619,275 @@ value_t builtin_write_file(slate_vm* vm, int arg_count, value_t* args) {
 
     bool success = db_write_file(buffer_val.as.buffer, filename);
     return make_boolean(success);
+}
+
+// Array method: length()
+// Returns the length of the array as an int32
+value_t builtin_array_length(slate_vm* vm, int arg_count, value_t* args) {
+    // When called as a method, args[0] is the receiver (the array)
+    if (arg_count != 1) {
+        runtime_error("length() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("length() can only be called on arrays");
+    }
+    
+    size_t length = da_length(receiver.as.array);
+    return make_int32((int32_t)length);
+}
+
+// Array method: push(element)
+// Adds element to end of array, returns new length
+value_t builtin_array_push(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) { // receiver + 1 arg
+        runtime_error("push() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t element = args[1];
+    
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("push() can only be called on arrays");
+    }
+    
+    // Add element to array
+    da_push(receiver.as.array, &element);
+    
+    // Return new length
+    size_t length = da_length(receiver.as.array);
+    return make_int32((int32_t)length);
+}
+
+// Array method: pop()
+// Removes and returns last element
+value_t builtin_array_pop(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("pop() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("pop() can only be called on arrays");
+    }
+    
+    da_array array = receiver.as.array;
+    size_t length = da_length(array);
+    
+    if (length == 0) {
+        return make_null(); // Return null for empty array
+    }
+    
+    // Get last element
+    value_t* last_elem = (value_t*)da_get(array, length - 1);
+    value_t result = *last_elem; // Copy the value
+    result = vm_retain(result); // Retain since we're returning it
+    
+    // Remove last element
+    da_remove(array, length - 1, NULL);
+    
+    return result;
+}
+
+// Array method: isEmpty()
+// Returns true if array has no elements
+value_t builtin_array_is_empty(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("isEmpty() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("isEmpty() can only be called on arrays");
+    }
+    
+    bool is_empty = da_is_empty(receiver.as.array);
+    return make_boolean(is_empty);
+}
+
+// Array method: nonEmpty()
+// Returns true if array has at least one element (Scala-inspired)
+value_t builtin_array_non_empty(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("nonEmpty() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("nonEmpty() can only be called on arrays");
+    }
+    
+    bool is_empty = da_is_empty(receiver.as.array);
+    return make_boolean(!is_empty);
+}
+
+// Array method: indexOf(element)
+// Returns first index of element, or -1 if not found
+value_t builtin_array_index_of(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) { // receiver + 1 arg
+        runtime_error("indexOf() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t element = args[1];
+    
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("indexOf() can only be called on arrays");
+    }
+    
+    da_array array = receiver.as.array;
+    size_t length = da_length(array);
+    
+    // Search for element
+    for (size_t i = 0; i < length; i++) {
+        value_t* elem = (value_t*)da_get(array, i);
+        if (values_equal(*elem, element)) {
+            return make_int32((int32_t)i);
+        }
+    }
+    
+    return make_int32(-1); // Not found
+}
+
+// Array method: contains(element)
+// Returns true if array contains element
+value_t builtin_array_contains(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) { // receiver + 1 arg
+        runtime_error("contains() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t element = args[1];
+    
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("contains() can only be called on arrays");
+    }
+    
+    da_array array = receiver.as.array;
+    size_t length = da_length(array);
+    
+    // Search for element
+    for (size_t i = 0; i < length; i++) {
+        value_t* elem = (value_t*)da_get(array, i);
+        if (values_equal(*elem, element)) {
+            return make_boolean(true);
+        }
+    }
+    
+    return make_boolean(false); // Not found
+}
+
+// Array method: copy()
+// Returns a copy of the array
+value_t builtin_array_copy(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("copy() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("copy() can only be called on arrays");
+    }
+    
+    // Create a copy using da_copy
+    da_array copy = da_copy(receiver.as.array);
+    return make_array(copy);
+}
+
+// Array method: slice(start, end?)
+// Returns a subset of the array from start to end (exclusive)
+value_t builtin_array_slice(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count < 2 || arg_count > 3) {
+        runtime_error("slice() takes 1 or 2 arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t start_val = args[1];
+    
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("slice() can only be called on arrays");
+    }
+    
+    if (start_val.type != VAL_INT32) {
+        runtime_error("slice() start index must be an integer");
+    }
+    
+    da_array array = receiver.as.array;
+    size_t length = da_length(array);
+    int start = start_val.as.int32;
+    int end = (int)length; // Default to end of array
+    
+    // Handle optional end parameter
+    if (arg_count == 3) {
+        value_t end_val = args[2];
+        if (end_val.type != VAL_INT32) {
+            runtime_error("slice() end index must be an integer");
+        }
+        end = end_val.as.int32;
+    }
+    
+    // Handle negative indices (Python-style)
+    if (start < 0) start += (int)length;
+    if (end < 0) end += (int)length;
+    
+    // Clamp to valid range
+    if (start < 0) start = 0;
+    if (end > (int)length) end = (int)length;
+    if (start > end) start = end;
+    
+    // Create slice using da_slice
+    da_array slice = da_slice(array, start, end);
+    return make_array(slice);
+}
+
+// Array method: reverse()
+// Reverses the array in-place and returns it
+value_t builtin_array_reverse(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("reverse() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("reverse() can only be called on arrays");
+    }
+    
+    // Reverse the array in-place
+    da_reverse(receiver.as.array);
+    
+    // Return the array (for chaining)
+    return vm_retain(receiver);
+}
+
+// String method: isEmpty()
+// Returns true if string has no characters
+value_t builtin_string_is_empty(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("isEmpty() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_STRING) {
+        runtime_error("isEmpty() can only be called on strings");
+    }
+    
+    bool is_empty = (ds_length(receiver.as.string) == 0);
+    return make_boolean(is_empty);
+}
+
+// String method: nonEmpty()
+// Returns true if string has at least one character (Scala-inspired)
+value_t builtin_string_non_empty(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("nonEmpty() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_STRING) {
+        runtime_error("nonEmpty() can only be called on strings");
+    }
+    
+    bool is_empty = (ds_length(receiver.as.string) == 0);
+    return make_boolean(!is_empty);
 }

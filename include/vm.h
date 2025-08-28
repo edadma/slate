@@ -296,6 +296,9 @@ void vm_reset(slate_vm* vm);
 // Store global String class (accessed by vm.c for string creation)
 extern value_t* global_string_class;
 
+// Store global Array class (accessed by vm.c for array creation)
+extern value_t* global_array_class;
+
 // Bytecode execution
 typedef enum { VM_OK, VM_COMPILE_ERROR, VM_RUNTIME_ERROR, VM_STACK_OVERFLOW, VM_STACK_UNDERFLOW } vm_result;
 
