@@ -154,6 +154,9 @@ value_t builtin_type(slate_vm* vm, int arg_count, value_t* args) {
     case VAL_OBJECT:
         type_name = "object";
         break;
+    case VAL_CLASS:
+        type_name = "class";
+        break;
     case VAL_FUNCTION:
         type_name = "function";
         break;

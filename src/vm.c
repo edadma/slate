@@ -106,6 +106,8 @@ value_t vm_retain(value_t value) {
         value.as.array = da_retain(value.as.array);
     } else if (value.type == VAL_OBJECT) {
         value.as.object = do_retain(value.as.object);
+    } else if (value.type == VAL_CLASS) {
+        value.as.class = class_retain(value.as.class);
     } else if (value.type == VAL_BIGINT) {
         value.as.bigint = di_retain(value.as.bigint);
     } else if (value.type == VAL_RANGE) {
@@ -131,6 +133,8 @@ void vm_release(value_t value) {
         da_release(&value.as.array);
     } else if (value.type == VAL_OBJECT) {
         do_release(&value.as.object);
+    } else if (value.type == VAL_CLASS) {
+        class_release(value.as.class);
     } else if (value.type == VAL_BIGINT) {
         di_release(&value.as.bigint);
     } else if (value.type == VAL_RANGE) {
@@ -175,6 +179,7 @@ value_t vm_peek(slate_vm* vm, int distance) { return vm->stack_top[-1 - distance
 value_t make_null(void) {
     value_t value;
     value.type = VAL_NULL;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -182,6 +187,7 @@ value_t make_null(void) {
 value_t make_undefined(void) {
     value_t value;
     value.type = VAL_UNDEFINED;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -190,6 +196,7 @@ value_t make_boolean(int val) {
     value_t value;
     value.type = VAL_BOOLEAN;
     value.as.boolean = val;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -198,6 +205,7 @@ value_t make_int32(int32_t val) {
     value_t value;
     value.type = VAL_INT32;
     value.as.int32 = val;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -206,6 +214,7 @@ value_t make_bigint(di_int big) {
     value_t value;
     value.type = VAL_BIGINT;
     value.as.bigint = big;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -214,6 +223,7 @@ value_t make_number(double val) {
     value_t value;
     value.type = VAL_NUMBER;
     value.as.number = val;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -222,6 +232,7 @@ value_t make_string(const char* val) {
     value_t value;
     value.type = VAL_STRING;
     value.as.string = ds_new(val); // Using dynamic_string.h!
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -230,6 +241,7 @@ value_t make_string_ds(ds_string str) {
     value_t value;
     value.type = VAL_STRING;
     value.as.string = str; // Take ownership of the ds_string
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -238,6 +250,7 @@ value_t make_array(da_array array) {
     value_t value;
     value.type = VAL_ARRAY;
     value.as.array = array;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -246,6 +259,25 @@ value_t make_object(do_object object) {
     value_t value;
     value.type = VAL_OBJECT;
     value.as.object = object;
+    value.class = NULL;  // Regular objects don't have a class yet
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_class(const char* name, do_object properties) {
+    class_t* cls = malloc(sizeof(class_t));
+    if (!cls) {
+        return make_null();  // Return null on allocation failure
+    }
+    
+    cls->ref_count = 1;
+    cls->name = strdup(name ? name : "Class");  // Duplicate the name string
+    cls->properties = properties ? do_retain(properties) : do_create(NULL);  // Retain or create empty
+    
+    value_t value;
+    value.type = VAL_CLASS;
+    value.as.class = cls;
+    value.class = NULL;  // Classes themselves don't have a class
     value.debug = NULL;
     return value;
 }
@@ -265,6 +297,7 @@ value_t make_range(value_t start, value_t end, int exclusive) {
     value_t value;
     value.type = VAL_RANGE;
     value.as.range = range;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -273,6 +306,7 @@ value_t make_iterator(iterator_t* iterator) {
     value_t value;
     value.type = VAL_ITERATOR;
     value.as.iterator = iterator;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -281,6 +315,7 @@ value_t make_function(function_t* function) {
     value_t value;
     value.type = VAL_FUNCTION;
     value.as.function = function;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -289,6 +324,7 @@ value_t make_closure(closure_t* closure) {
     value_t value;
     value.type = VAL_CLOSURE;
     value.as.closure = closure;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -297,6 +333,7 @@ value_t make_native(native_t func) {
     value_t value;
     value.type = VAL_NATIVE;
     value.as.native = func;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -314,6 +351,7 @@ value_t make_bound_method(value_t receiver, native_t method_func) {
     value_t value;
     value.type = VAL_BOUND_METHOD;
     value.as.bound_method = method;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -322,6 +360,7 @@ value_t make_buffer(db_buffer buffer) {
     value_t value;
     value.type = VAL_BUFFER;
     value.as.buffer = buffer;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -330,6 +369,7 @@ value_t make_buffer_builder(db_builder builder) {
     value_t value;
     value.type = VAL_BUFFER_BUILDER;
     value.as.builder = builder;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -338,6 +378,7 @@ value_t make_buffer_reader(db_reader reader) {
     value_t value;
     value.type = VAL_BUFFER_READER;
     value.as.reader = reader;
+    value.class = NULL;
     value.debug = NULL;
     return value;
 }
@@ -399,6 +440,12 @@ value_t make_array_with_debug(da_array array, debug_location* debug) {
 
 value_t make_object_with_debug(do_object object, debug_location* debug) {
     value_t value = make_object(object);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_class_with_debug(const char* name, do_object properties, debug_location* debug) {
+    value_t value = make_class(name, properties);
     value.debug = debug_location_copy(debug);
     return value;
 }
@@ -586,6 +633,24 @@ static ds_string value_to_string_representation(value_t value) {
         ds_release(&bracket);
         return temp;
     }
+    case VAL_CLASS: {
+        if (value.as.class) {
+            ds_string prefix = ds_new("<class ");
+            ds_string name = ds_new(value.as.class->name ? value.as.class->name : "anonymous");
+            ds_string suffix = ds_new(">");
+            
+            ds_string temp1 = ds_concat(prefix, name);
+            ds_string result = ds_concat(temp1, suffix);
+            
+            ds_release(&prefix);
+            ds_release(&name);
+            ds_release(&suffix);
+            ds_release(&temp1);
+            return result;
+        } else {
+            return ds_new("<null class>");
+        }
+    }
     case VAL_RANGE: {
         if (!value.as.range) {
             return ds_new("{null range}");
@@ -749,6 +814,8 @@ int values_equal(value_t a, value_t b) {
         return a.as.array == b.as.array;
     case VAL_OBJECT:
         return a.as.object == b.as.object;
+    case VAL_CLASS:
+        return a.as.class == b.as.class;  // Class identity comparison
     case VAL_BUFFER:
         if (a.as.buffer == b.as.buffer)
             return 1; // Same buffer reference
@@ -825,6 +892,14 @@ void print_value(value_t value) {
             printf("Object");
         }
         printf("}");
+        break;
+    }
+    case VAL_CLASS: {
+        if (value.as.class) {
+            printf("<class %s>", value.as.class->name ? value.as.class->name : "anonymous");
+        } else {
+            printf("<null class>");
+        }
         break;
     }
     case VAL_FUNCTION:
@@ -937,6 +1012,11 @@ void free_value(value_t value) {
     case VAL_OBJECT: {
         do_object temp = value.as.object;
         do_release(&temp); // DO cleanup with reference counting!
+        break;
+    }
+    case VAL_CLASS: {
+        // Class cleanup is handled by vm_release() through reference counting
+        // Don't duplicate cleanup here
         break;
     }
     case VAL_RANGE: {
@@ -2845,6 +2925,31 @@ void bound_method_release(bound_method_t* method) {
     }
 }
 
+// Class reference counting functions
+class_t* class_retain(class_t* cls) {
+    if (!cls)
+        return cls;
+    cls->ref_count++;
+    return cls;
+}
+
+void class_release(class_t* cls) {
+    if (!cls)
+        return;
+    
+    cls->ref_count--;
+    if (cls->ref_count == 0) {
+        // Clean up class data
+        if (cls->name) {
+            free(cls->name);
+        }
+        if (cls->properties) {
+            do_release(&cls->properties);
+        }
+        free(cls);
+    }
+}
+
 // Range reference counting functions
 range_t* range_retain(range_t* range) {
     if (!range)
@@ -3080,6 +3185,8 @@ const char* value_type_name(value_type type) {
         return "array";
     case VAL_OBJECT:
         return "object";
+    case VAL_CLASS:
+        return "class";
     case VAL_RANGE:
         return "range";
     case VAL_ITERATOR:
