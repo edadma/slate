@@ -31,6 +31,9 @@ void register_builtin(slate_vm* vm, const char* name, native_t func, int min_arg
     do_set(vm->globals, name, &builtin_val, sizeof(value_t));
 }
 
+// Global String class storage
+value_t* global_string_class = NULL;
+
 // Initialize all built-in functions
 void builtins_init(slate_vm* vm) {
     // Initialize random seed once
@@ -38,6 +41,24 @@ void builtins_init(slate_vm* vm) {
         srand((unsigned int)time(NULL));
         random_initialized = 1;
     }
+
+    // Create the String class with its prototype
+    do_object string_proto = do_create(NULL);
+    
+    // Add the length method to String prototype
+    value_t length_method = make_native(builtin_string_length);
+    do_set(string_proto, "length", &length_method, sizeof(value_t));
+    
+    // Create the String class
+    value_t string_class = make_class("String", string_proto);
+    
+    // Store in globals
+    do_set(vm->globals, "String", &string_class, sizeof(value_t));
+    
+    // Store a global reference for use in make_string
+    static value_t string_class_storage;
+    string_class_storage = vm_retain(string_class);
+    global_string_class = &string_class_storage;
 
     // Register all built-ins
     register_builtin(vm, "print", builtin_print, 1, 1);
@@ -748,6 +769,30 @@ value_t builtin_args(slate_vm* vm, int arg_count, value_t* args) {
     }
 
     return make_array(arg_array);
+}
+
+// String method: length
+// This will be used as a method on the String prototype
+value_t builtin_string_length(slate_vm* vm, int arg_count, value_t* args) {
+    // When called as a method, args[0] is the receiver (the string)
+    if (arg_count != 1) {
+        runtime_error("length() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_STRING) {
+        runtime_error("length() can only be called on strings");
+    }
+    
+    // Get the length of the string
+    size_t length = receiver.as.string ? strlen(receiver.as.string) : 0;
+    
+    // Return as int32 if it fits, otherwise as number
+    if (length <= INT32_MAX) {
+        return make_int32((int32_t)length);
+    } else {
+        return make_number((double)length);
+    }
 }
 
 // iterator(collection) - Create iterator for arrays and ranges

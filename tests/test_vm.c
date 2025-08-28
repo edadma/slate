@@ -383,8 +383,8 @@ void test_vm_complex_expressions(void) {
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(8, result.as.int32);
 
-    // String operations in expressions
-    result = run_code("\"hello\".length * 2");
+    // String operations in expressions (now using method call)
+    result = run_code("\"hello\".length() * 2");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(10, result.as.int32);
 
@@ -413,8 +413,8 @@ void test_vm_property_access_edge_cases(void) {
     result = run_code("42.length");
     TEST_ASSERT_EQUAL_INT(VAL_UNDEFINED, result.type);
 
-    // Empty string length
-    result = run_code("\"\".length");
+    // Empty string length (now using method call)
+    result = run_code("\"\".length()");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
 

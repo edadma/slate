@@ -232,7 +232,7 @@ value_t make_string(const char* val) {
     value_t value;
     value.type = VAL_STRING;
     value.as.string = ds_new(val); // Using dynamic_string.h!
-    value.class = NULL;
+    value.class = global_string_class;  // All strings have String class
     value.debug = NULL;
     return value;
 }
@@ -241,7 +241,7 @@ value_t make_string_ds(ds_string str) {
     value_t value;
     value.type = VAL_STRING;
     value.as.string = str; // Take ownership of the ds_string
-    value.class = NULL;
+    value.class = global_string_class;  // All strings have String class
     value.debug = NULL;
     return value;
 }
@@ -2677,56 +2677,64 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             }
 
             const char* prop_name = property.as.string;
-
+            
+            // Check for built-in properties that don't use prototypes yet
             if (object.type == VAL_ARRAY) {
                 if (strcmp(prop_name, "length") == 0) {
                     vm_push(vm, make_int32((int32_t)da_length(object.as.array)));
+                    break;
                 } else if (strcmp(prop_name, "iterator") == 0) {
                     // Return a bound method with the array as receiver
                     vm_push(vm, make_bound_method(object, builtin_iterator));
-                } else {
-                    // Invalid property returns undefined, not error
-                    vm_push(vm, make_undefined());
-                }
-            } else if (object.type == VAL_STRING) {
-                if (strcmp(prop_name, "length") == 0) {
-                    vm_push(vm, make_int32((int32_t)ds_length(object.as.string)));
-                } else {
-                    // Invalid property returns undefined, not error
-                    vm_push(vm, make_undefined());
-                }
-            } else if (object.type == VAL_OBJECT) {
-                // Get property from dynamic object (returns bit_value*)
-                value_t* prop_value = (value_t*)do_get(object.as.object, prop_name);
-                if (prop_value) {
-                    vm_push(vm, *prop_value);
-                } else {
-                    // Missing property returns undefined
-                    vm_push(vm, make_undefined());
+                    break;
                 }
             } else if (object.type == VAL_RANGE) {
                 if (strcmp(prop_name, "iterator") == 0) {
                     // Return a bound method with the range as receiver
                     vm_push(vm, make_bound_method(object, builtin_iterator));
-                } else {
-                    // Invalid property returns undefined, not error
-                    vm_push(vm, make_undefined());
+                    break;
                 }
             } else if (object.type == VAL_ITERATOR) {
                 if (strcmp(prop_name, "hasNext") == 0) {
                     // Return a bound method with the iterator as receiver
                     vm_push(vm, make_bound_method(object, builtin_has_next));
+                    break;
                 } else if (strcmp(prop_name, "next") == 0) {
                     // Return a bound method with the iterator as receiver
                     vm_push(vm, make_bound_method(object, builtin_next));
-                } else {
-                    // Invalid property returns undefined, not error
-                    vm_push(vm, make_undefined());
+                    break;
                 }
-            } else {
-                // Property access on invalid types returns undefined
-                vm_push(vm, make_undefined());
             }
+            
+            // For objects, check own properties first
+            if (object.type == VAL_OBJECT) {
+                value_t* prop_value = (value_t*)do_get(object.as.object, prop_name);
+                if (prop_value) {
+                    vm_push(vm, *prop_value);
+                    break;
+                }
+            }
+            
+            // Check the prototype chain via class
+            if (object.class && object.class->type == VAL_CLASS) {
+                // Get the class's prototype properties
+                class_t* cls = object.class->as.class;
+                if (cls && cls->properties) {
+                    value_t* prop_value = (value_t*)do_get(cls->properties, prop_name);
+                    if (prop_value) {
+                        // If it's a native function, create a bound method
+                        if (prop_value->type == VAL_NATIVE) {
+                            vm_push(vm, make_bound_method(object, prop_value->as.native));
+                        } else {
+                            vm_push(vm, *prop_value);
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Property not found - return undefined
+            vm_push(vm, make_undefined());
             break;
         }
 

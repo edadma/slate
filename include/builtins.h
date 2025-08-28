@@ -59,6 +59,9 @@ value_t builtin_parse_int(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_parse_number(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_args(slate_vm* vm, int arg_count, value_t* args);
 
+// String methods (for prototypal inheritance)
+value_t builtin_string_length(slate_vm* vm, int arg_count, value_t* args);
+
 // Iterator functions
 value_t builtin_iterator(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_has_next(slate_vm* vm, int arg_count, value_t* args);
