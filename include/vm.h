@@ -302,6 +302,9 @@ extern value_t* global_array_class;
 // Store global Range class (accessed by vm.c for range creation)
 extern value_t* global_range_class;
 
+// Store global Iterator class (accessed by vm.c for iterator creation)
+extern value_t* global_iterator_class;
+
 // Bytecode execution
 typedef enum { VM_OK, VM_COMPILE_ERROR, VM_RUNTIME_ERROR, VM_STACK_OVERFLOW, VM_STACK_UNDERFLOW } vm_result;
 

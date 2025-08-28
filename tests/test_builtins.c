@@ -1127,6 +1127,131 @@ void test_range_iterator(void) {
     // This is already tested in existing iterator tests, so just verify creation
 }
 
+// Iterator method tests
+
+void test_iterator_has_next_next(void) {
+    // Test basic iterator functionality with array
+    value_t result = interpret_expression("var it = [1, 2].iterator(); it.hasNext()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean); // true
+    vm_release(result);
+    
+    result = interpret_expression("var it = [1, 2].iterator(); it.next()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.int32); // first element
+    vm_release(result);
+    
+    // Test empty iterator
+    result = interpret_expression("var it = [].iterator(); it.hasNext()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean); // false
+    vm_release(result);
+    
+    // Test range iterator
+    result = interpret_expression("var it = (1..2).iterator(); it.hasNext()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean); // true
+    vm_release(result);
+    
+    result = interpret_expression("var it = (1..2).iterator(); it.next()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.int32); // first element
+    vm_release(result);
+}
+
+void test_iterator_is_empty(void) {
+    // Test empty iterator
+    value_t result = interpret_expression("var it = [].iterator(); it.isEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean); // true - empty
+    vm_release(result);
+    
+    // Test non-empty iterator  
+    result = interpret_expression("var it = [1, 2, 3].iterator(); it.isEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean); // false - not empty
+    vm_release(result);
+    
+    // Test range iterator
+    result = interpret_expression("var it = (1..3).iterator(); it.isEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean); // false - not empty
+    vm_release(result);
+    
+    // Test empty range iterator  
+    result = interpret_expression("var it = (5..<5).iterator(); it.isEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean); // true - empty
+    vm_release(result);
+}
+
+void test_iterator_to_array(void) {
+    // Test array iterator to array
+    value_t result = interpret_expression("var it = [1, 2, 3].iterator(); it.toArray()");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(3, da_length(result.as.array));
+    
+    // Check elements [1, 2, 3]
+    value_t* elem0 = (value_t*)da_get(result.as.array, 0);
+    value_t* elem1 = (value_t*)da_get(result.as.array, 1);
+    value_t* elem2 = (value_t*)da_get(result.as.array, 2);
+    TEST_ASSERT_EQUAL(1, elem0->as.int32);
+    TEST_ASSERT_EQUAL(2, elem1->as.int32);
+    TEST_ASSERT_EQUAL(3, elem2->as.int32);
+    vm_release(result);
+    
+    // Test range iterator to array
+    result = interpret_expression("var it = (1..3).iterator(); it.toArray()");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(3, da_length(result.as.array));
+    
+    elem0 = (value_t*)da_get(result.as.array, 0);
+    elem1 = (value_t*)da_get(result.as.array, 1);
+    elem2 = (value_t*)da_get(result.as.array, 2);
+    TEST_ASSERT_EQUAL(1, elem0->as.int32);
+    TEST_ASSERT_EQUAL(2, elem1->as.int32);
+    TEST_ASSERT_EQUAL(3, elem2->as.int32);
+    vm_release(result);
+    
+    // Test empty iterator to array
+    result = interpret_expression("var it = [].iterator(); it.toArray()");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(0, da_length(result.as.array)); // empty array
+    vm_release(result);
+}
+
+void test_iterator_array_vs_range(void) {
+    // Test that array and range iterators behave the same
+    value_t array_result = interpret_expression("[1, 2, 3].iterator().toArray()");
+    value_t range_result = interpret_expression("(1..3).iterator().toArray()");
+    
+    TEST_ASSERT_EQUAL(VAL_ARRAY, array_result.type);
+    TEST_ASSERT_EQUAL(VAL_ARRAY, range_result.type);
+    TEST_ASSERT_EQUAL(da_length(array_result.as.array), da_length(range_result.as.array));
+    
+    // Compare elements
+    for (int i = 0; i < (int)da_length(array_result.as.array); i++) {
+        value_t* arr_elem = (value_t*)da_get(array_result.as.array, i);
+        value_t* range_elem = (value_t*)da_get(range_result.as.array, i);
+        TEST_ASSERT_EQUAL(arr_elem->as.int32, range_elem->as.int32);
+    }
+    
+    vm_release(array_result);
+    vm_release(range_result);
+    
+    // Test isEmpty consistency
+    value_t array_empty = interpret_expression("[].iterator().isEmpty()");
+    value_t range_empty = interpret_expression("(5..<5).iterator().isEmpty()");
+    
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, array_empty.type);
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, range_empty.type);
+    TEST_ASSERT_EQUAL(1, array_empty.as.boolean);  // both empty
+    TEST_ASSERT_EQUAL(1, range_empty.as.boolean);  // both empty
+    
+    vm_release(array_empty);
+    vm_release(range_empty);
+}
+
 // Test suite function
 void test_builtins_suite(void) {
     RUN_TEST(test_builtin_print);
@@ -1248,4 +1373,10 @@ void test_builtins_suite(void) {
     RUN_TEST(test_range_reverse);
     RUN_TEST(test_range_equals);
     RUN_TEST(test_range_iterator);
+    
+    // Iterator method tests
+    RUN_TEST(test_iterator_has_next_next);
+    RUN_TEST(test_iterator_is_empty);
+    RUN_TEST(test_iterator_to_array);
+    RUN_TEST(test_iterator_array_vs_range);
 }
