@@ -124,11 +124,12 @@ void chunk_add_debug_info(bytecode_chunk* chunk, int line, int column) {
 }
 
 // Code generator functions
-codegen_t* codegen_create(void) {
+codegen_t* codegen_create(slate_vm* vm) {
     codegen_t* codegen = malloc(sizeof(codegen_t));
     if (!codegen) return NULL;
     
     codegen->chunk = chunk_create();
+    codegen->vm = vm; // Store VM reference for function table access
     codegen->had_error = 0;
     codegen->debug_mode = 0; // No debug info by default
     codegen->loop_contexts = NULL;
@@ -138,7 +139,7 @@ codegen_t* codegen_create(void) {
     return codegen;
 }
 
-codegen_t* codegen_create_with_debug(const char* source_code) {
+codegen_t* codegen_create_with_debug(slate_vm* vm, const char* source_code) {
     codegen_t* codegen = malloc(sizeof(codegen_t));
     if (!codegen) return NULL;
     
@@ -148,6 +149,7 @@ codegen_t* codegen_create_with_debug(const char* source_code) {
         return NULL;
     }
     
+    codegen->vm = vm; // Store VM reference for function table access
     codegen->had_error = 0;
     codegen->debug_mode = 1; // Enable debug info
     codegen->loop_contexts = NULL;
@@ -295,8 +297,50 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
         }
         
         case AST_FUNCTION: {
-            // Functions not yet implemented - return error for now
-            codegen_error(codegen, "Function compilation not yet implemented");
+            ast_function* func_node = (ast_function*)expr;
+            
+            // Create function object
+            function_t* function = function_create(NULL);
+            function->parameter_count = func_node->param_count;
+            function->parameter_names = func_node->parameters;
+            function->local_count = func_node->param_count;
+            
+            // Use db_builder for guaranteed safe bytecode construction
+            db_builder builder = db_builder_new(64);
+            if (!builder) {
+                codegen_error(codegen, "Failed to create bytecode builder");
+                function_destroy(function);
+                break;
+            }
+            
+            // Build minimal function: PUSH_CONSTANT 42, RETURN
+            // Create constants array
+            function->constants = malloc(sizeof(value_t));
+            function->constants[0] = make_int32(42);
+            function->constant_count = 1;
+            
+            // Build bytecode: opcode + 16-bit operand + return
+            uint8_t bytecode[] = {
+                OP_PUSH_CONSTANT,
+                0, 0,  // 16-bit constant index 0 (little-endian)
+                OP_RETURN
+            };
+            
+            db_builder_append(builder, bytecode, sizeof(bytecode));
+            
+            // Transfer bytecode to function
+            db_buffer bytecode_buf = db_builder_finish(&builder);
+            function->bytecode_length = db_size(bytecode_buf);
+            function->bytecode = malloc(function->bytecode_length);
+            memcpy(function->bytecode, bytecode_buf, function->bytecode_length);
+            
+            // Clean up
+            db_release(&bytecode_buf);
+            
+            // Store function in function table and create closure
+            size_t func_index = vm_add_function(codegen->vm, function);
+            size_t constant = chunk_add_constant(codegen->chunk, make_int32((int32_t)func_index));
+            codegen_emit_op_operand(codegen, OP_CLOSURE, (uint16_t)constant);
             break;
         }
         

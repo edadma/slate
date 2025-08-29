@@ -85,7 +85,7 @@ print("")
 var letters = ["H", "e", "l", "l", "o"]
 var built_word = ""
 var i = 0
-while i < letters.length do
+while i < letters.length() do
     built_word = built_word + letters(i)
     i = i + 1
 print("Built word: " + built_word)

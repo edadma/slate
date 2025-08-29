@@ -41,6 +41,7 @@ typedef struct {
 // Code generator state
 typedef struct {
     bytecode_chunk* chunk;
+    slate_vm* vm;                  // VM instance for function table access
     int had_error;
     int debug_mode; // Whether to generate debug information
     // Stack-based loop context for nested loops
@@ -65,8 +66,8 @@ size_t chunk_add_constant(bytecode_chunk* chunk, value_t value);
 void chunk_add_debug_info(bytecode_chunk* chunk, int line, int column);
 
 // Code generation functions
-codegen_t* codegen_create(void);
-codegen_t* codegen_create_with_debug(const char* source_code);
+codegen_t* codegen_create(slate_vm* vm);
+codegen_t* codegen_create_with_debug(slate_vm* vm, const char* source_code);
 void codegen_destroy(codegen_t* codegen);
 
 function_t* codegen_compile(codegen_t* codegen, ast_program* program);

@@ -20,7 +20,9 @@ static value_t run_continue_test(const char* source) {
         return make_null();
     }
 
-    codegen_t* codegen = codegen_create();
+    slate_vm* vm = vm_create();
+    
+    codegen_t* codegen = codegen_create(vm);
     function_t* function = codegen_compile(codegen, program);
 
     if (codegen->had_error || !function) {
@@ -30,7 +32,6 @@ static value_t run_continue_test(const char* source) {
         return make_null();
     }
 
-    slate_vm* vm = vm_create();
     vm_result result = vm_execute(vm, function);
 
     value_t return_value = make_null();

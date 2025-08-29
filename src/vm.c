@@ -37,6 +37,13 @@ slate_vm* vm_create(void) {
         return NULL;
     }
 
+    // Create function table - stores all defined functions with reference counting
+    vm->functions = da_new(sizeof(function_t*)); // Store pointers to functions
+    if (!vm->functions) {
+        vm_destroy(vm);
+        return NULL;
+    }
+
     // Initialize built-in functions
     builtins_init(vm);
 
@@ -76,6 +83,9 @@ void vm_destroy(slate_vm* vm) {
     free(vm->frames);
     free(vm->constants);
     do_release(&vm->globals);
+    
+    // Release function table (functions handle their own ref counting)
+    da_release(&vm->functions);
 
     // Release result register
     free_value(vm->result);
@@ -1123,6 +1133,18 @@ size_t vm_add_constant(slate_vm* vm, value_t value) {
 value_t vm_get_constant(slate_vm* vm, size_t index) {
     assert(index < vm->constant_count);
     return vm->constants[index];
+}
+
+// Function table management
+size_t vm_add_function(slate_vm* vm, function_t* function) {
+    size_t index = vm->functions->length;
+    DA_PUSH(vm->functions, function);
+    return index;
+}
+
+function_t* vm_get_function(slate_vm* vm, size_t index) {
+    assert(index < vm->functions->length);
+    return DA_AT(vm->functions, index, function_t*);
 }
 
 // Note: Object operations now use dynamic_object.h
@@ -2573,18 +2595,126 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                     free(args);
                 free(method_args);
             }
-            // Functions: traditional function call (not implemented yet)
-            else if (callable.type == VAL_FUNCTION || callable.type == VAL_CLOSURE) {
-                printf("Runtime error: Function calls not yet implemented\n");
+            // Functions and closures: user-defined function calls
+            else if (callable.type == VAL_CLOSURE) {
+                closure_t* func_closure = callable.as.closure;
+                function_t* func = func_closure->function;
+                
+                // Check argument count
+                if (arg_count != func->parameter_count) {
+                    printf("Runtime error: Expected %zu arguments but got %d\n", 
+                           func->parameter_count, arg_count);
+                    if (args) {
+                        for (int i = 0; i < arg_count; i++) {
+                            vm_release(args[i]);
+                        }
+                        free(args);
+                    }
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
+                
+                // Set up new call frame
+                if (vm->frame_count >= vm->frame_capacity) {
+                    if (args) {
+                        for (int i = 0; i < arg_count; i++) {
+                            vm_release(args[i]);
+                        }
+                        free(args);
+                    }
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_STACK_OVERFLOW;
+                }
+                
+                call_frame* frame = &vm->frames[vm->frame_count++];
+                frame->closure = func_closure;
+                frame->ip = vm->ip;  // Save current IP for return
+                
+                // Push arguments onto stack in correct order (they become parameters)
                 if (args) {
                     for (int i = 0; i < arg_count; i++) {
-                        vm_release(args[i]);
+                        vm_push(vm, args[i]);
                     }
                     free(args);
                 }
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
+                
+                // Set frame slots to point to where parameters start (after pushing args)
+                frame->slots = vm->stack_top - arg_count;
+                
+                // Switch execution context to function
+                vm->ip = func->bytecode;
+                vm->bytecode = func->bytecode;
+                
+                // NOTE: Arguments are now on stack in correct positions for parameter access
+                // Parameters will be accessed via OP_GET_GLOBAL with name resolution
+            }
+            // VAL_FUNCTION (bare functions without closure wrapper) 
+            else if (callable.type == VAL_FUNCTION) {
+                // For simplicity, just handle VAL_FUNCTION the same as VAL_CLOSURE
+                function_t* func = callable.as.function;
+                
+                // Check argument count
+                if (arg_count != func->parameter_count) {
+                    printf("Runtime error: Expected %zu arguments but got %d\n", 
+                           func->parameter_count, arg_count);
+                    if (args) {
+                        for (int i = 0; i < arg_count; i++) {
+                            vm_release(args[i]);
+                        }
+                        free(args);
+                    }
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
+                
+                // Set up new call frame with a temporary closure
+                if (vm->frame_count >= vm->frame_capacity) {
+                    if (args) {
+                        for (int i = 0; i < arg_count; i++) {
+                            vm_release(args[i]);
+                        }
+                        free(args);
+                    }
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_STACK_OVERFLOW;
+                }
+                
+                call_frame* frame = &vm->frames[vm->frame_count++];
+                closure_t* temp_closure = closure_create(func);
+                if (!temp_closure) {
+                    printf("Runtime error: Failed to create closure wrapper\n");
+                    if (args) {
+                        for (int i = 0; i < arg_count; i++) {
+                            vm_release(args[i]);
+                        }
+                        free(args);
+                    }
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
+                
+                frame->closure = temp_closure;
+                frame->ip = vm->ip;  // Save current IP for return
+                
+                // Push arguments onto stack in correct order (they become parameters)
+                if (args) {
+                    for (int i = 0; i < arg_count; i++) {
+                        vm_push(vm, args[i]);
+                    }
+                    free(args);
+                }
+                
+                // Set frame slots to point to where parameters start (after pushing args)
+                frame->slots = vm->stack_top - arg_count;
+                
+                // Switch execution context to function
+                vm->ip = func->bytecode;
+                vm->bytecode = func->bytecode;
             } else {
                 // Provide specific error for undefined (likely unknown function)
                 if (callable.type == VAL_UNDEFINED) {
@@ -2651,7 +2781,27 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 return VM_RUNTIME_ERROR;
             }
 
-            value_t* stored_value = (value_t*)do_get(vm->globals, name_val.as.string);
+            char* name = name_val.as.string;
+            
+            // Check if we're in a function call (frame_count > 1) and look for parameters first
+            if (vm->frame_count > 1) {
+                call_frame* current_frame = &vm->frames[vm->frame_count - 1];
+                function_t* func = current_frame->closure->function;
+                
+                // Check if name matches a parameter
+                for (size_t i = 0; i < func->parameter_count; i++) {
+                    if (strcmp(name, func->parameter_names[i]) == 0) {
+                        // Found parameter - get value from stack slot
+                        // Parameters start at frame->slots and go up
+                        value_t param_value = current_frame->slots[i];
+                        vm_push(vm, param_value);
+                        goto found_variable; // Skip global lookup
+                    }
+                }
+            }
+            
+            // Fall through to global variable lookup
+            value_t* stored_value = (value_t*)do_get(vm->globals, name);
             if (stored_value) {
                 vm_push(vm, *stored_value);
             } else {
@@ -2659,12 +2809,14 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 char error_msg[256];
                 snprintf(error_msg, sizeof(error_msg),
                          "Undefined variable '%s' (if this is a function call, the function doesn't exist)",
-                         name_val.as.string);
+                         name);
                 vm_runtime_error_with_debug(vm, error_msg);
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
+            
+            found_variable:
             break;
         }
 
@@ -2815,6 +2967,74 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
         case OP_CLEAR_DEBUG_LOCATION: {
             debug_location_free(vm->current_debug);
             vm->current_debug = NULL;
+            break;
+        }
+        
+        case OP_CLOSURE: {
+            uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            
+            // Get function index from constants
+            value_t index_val = function->constants[constant];
+            if (index_val.type != VAL_INT32) {
+                vm_runtime_error_with_debug(vm, "Expected function index in OP_CLOSURE");
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            // Get function from function table
+            size_t func_index = (size_t)index_val.as.int32;
+            function_t* target_func = vm_get_function(vm, func_index);
+            if (!target_func) {
+                vm_runtime_error_with_debug(vm, "Invalid function index in OP_CLOSURE");
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            // For now, create a simple closure (no upvalues)
+            closure_t* new_closure = closure_create(target_func);
+            if (!new_closure) {
+                vm_runtime_error_with_debug(vm, "Failed to create closure");
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            vm_push(vm, make_closure(new_closure));
+            break;
+        }
+        
+        case OP_RETURN: {
+            // Get return value from top of stack
+            value_t result = vm_pop(vm);
+            
+            // Restore previous call frame
+            vm->frame_count--;
+            if (vm->frame_count == 0) {
+                // Returning from main - set result and halt
+                vm->result = result;
+                closure_destroy(closure);
+                return VM_OK;
+            }
+            
+            // Get current and previous frame
+            call_frame* current_frame = &vm->frames[vm->frame_count]; 
+            call_frame* prev_frame = &vm->frames[vm->frame_count - 1];
+            
+            // Clean up stack (remove local variables and arguments)
+            vm->stack_top = current_frame->slots;
+            
+            // Push return value
+            vm_push(vm, result);
+            
+            // Restore execution context to previous frame
+            vm->ip = prev_frame->ip;
+            vm->bytecode = prev_frame->closure->function->bytecode;
+            
+            // Clean up current frame's closure
+            closure_destroy(closure);
             break;
         }
 

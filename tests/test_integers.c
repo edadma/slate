@@ -18,12 +18,13 @@ static value_t execute_expression(const char* source) {
     TEST_ASSERT_FALSE(parser.had_error);
     TEST_ASSERT_NOT_NULL(program);
     
-    codegen_t* codegen = codegen_create();
+    slate_vm* vm = vm_create();
+    
+    codegen_t* codegen = codegen_create(vm);
     function_t* function = codegen_compile(codegen, program);
     TEST_ASSERT_FALSE(codegen->had_error);
     TEST_ASSERT_NOT_NULL(function);
     
-    slate_vm* vm = vm_create();
     vm_result result = vm_execute(vm, function);
     TEST_ASSERT_EQUAL(VM_OK, result);
     

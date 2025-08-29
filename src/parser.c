@@ -298,7 +298,7 @@ ast_node* parse_var_declaration(parser_t* parser) {
                                                 parser->previous.line, parser->previous.column);
 }
 
-// Parse def function declaration: def name(params) = expr
+// Parse def function declaration: def name(params) = expr or def name(params) =\n<indent>
 ast_node* parse_def_declaration(parser_t* parser) {
     parser_consume(parser, TOKEN_IDENTIFIER, "Expected function name after 'def'");
     
@@ -331,10 +331,17 @@ ast_node* parse_def_declaration(parser_t* parser) {
     parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after parameters");
     parser_consume(parser, TOKEN_ASSIGN, "Expected '=' after parameter list");
     
-    // Parse function body (expression or indented block)
-    ast_node* body = parse_expression(parser);
+    // Parse function body - support both single-line and indented block forms
+    ast_node* body = NULL;
+    if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+        // Indented block form: def name(params) =\n  <block>
+        body = parse_indented_block(parser);
+    } else {
+        // Single-line form: def name(params) = expr
+        body = parse_expression(parser);
+    }
     
-    // Create function AST node
+    // Create function AST node (both forms are treated as expressions)
     ast_node* func_node = (ast_node*)ast_create_function(parameters, param_count, body, 1,
                                                         name_line, name_column);
     

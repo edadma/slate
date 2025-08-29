@@ -67,7 +67,7 @@ static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_un
     }
 
     // Generate code with debug info for better error reporting
-    codegen_t* codegen = codegen_create_with_debug(source);
+    codegen_t* codegen = codegen_create_with_debug(vm, source);
     function_t* function = codegen_compile(codegen, program);
 
     if (codegen->had_error || !function) {

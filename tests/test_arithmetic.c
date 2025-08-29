@@ -19,12 +19,13 @@ static value_t execute_expression(const char* source) {
     TEST_ASSERT_FALSE(parser.had_error);
     TEST_ASSERT_NOT_NULL(program);
 
-    codegen_t* codegen = codegen_create();
+    slate_vm* vm = vm_create();
+    
+    codegen_t* codegen = codegen_create(vm);
     function_t* function = codegen_compile(codegen, program);
     TEST_ASSERT_FALSE(codegen->had_error);
     TEST_ASSERT_NOT_NULL(function);
 
-    slate_vm* vm = vm_create();
     vm_result result = vm_execute(vm, function);
     TEST_ASSERT_EQUAL(VM_OK, result);
 
@@ -57,10 +58,11 @@ static value_t execute_expression_allow_errors(const char* source) {
         return make_null();
     }
 
-    codegen_t* codegen = codegen_create();
+    slate_vm* vm = vm_create();
+    
+    codegen_t* codegen = codegen_create(vm);
     function_t* function = codegen_compile(codegen, program);
 
-    slate_vm* vm = vm_create();
     vm_result result = vm_execute(vm, function);
 
     value_t return_value = make_null();
@@ -273,7 +275,9 @@ void test_invalid_increment_decrement_errors() {
     // Create a temporary test program to check compilation errors
     parser_t parser;
     lexer_t lexer;
-    codegen_t* codegen = codegen_create();
+    slate_vm* vm = vm_create();
+    
+    codegen_t* codegen = codegen_create(vm);
     
     // Test 1: ++42 (increment on literal)
     lexer_init(&lexer, "++42");
@@ -287,9 +291,11 @@ void test_invalid_increment_decrement_errors() {
     
     ast_free((ast_node*)program1);
     codegen_destroy(codegen);
+    vm_destroy(vm);
     
-    // Test 2: --(-2147483648) (decrement on parenthesized literal)  
-    codegen = codegen_create();
+    // Test 2: --(-2147483648) (decrement on parenthesized literal)
+    vm = vm_create();
+    codegen = codegen_create(vm);
     lexer_init(&lexer, "--(-2147483648)");
     parser_init(&parser, &lexer);
     ast_program* program2 = parse_program(&parser);
@@ -301,9 +307,11 @@ void test_invalid_increment_decrement_errors() {
     
     ast_free((ast_node*)program2);
     codegen_destroy(codegen);
+    vm_destroy(vm);
     
     // Test 3: --(2 + 3) (decrement on expression)
-    codegen = codegen_create();
+    vm = vm_create();
+    codegen = codegen_create(vm);
     lexer_init(&lexer, "--(2 + 3)");
     parser_init(&parser, &lexer);
     ast_program* program3 = parse_program(&parser);
@@ -315,9 +323,11 @@ void test_invalid_increment_decrement_errors() {
     
     ast_free((ast_node*)program3);
     codegen_destroy(codegen);
+    vm_destroy(vm);
     
     // Test 4: ++3.14 (increment on float literal)
-    codegen = codegen_create();
+    vm = vm_create();
+    codegen = codegen_create(vm);
     lexer_init(&lexer, "++3.14");
     parser_init(&parser, &lexer);
     ast_program* program4 = parse_program(&parser);
@@ -329,6 +339,7 @@ void test_invalid_increment_decrement_errors() {
     
     ast_free((ast_node*)program4);
     codegen_destroy(codegen);
+    vm_destroy(vm);
 }
 
 // Test comprehensive arithmetic operations (moved from test_vm.c)

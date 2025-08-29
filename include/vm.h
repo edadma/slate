@@ -267,6 +267,9 @@ typedef struct slate_vm {
     // Global variables
     do_object globals; // Global variable table
 
+    // Function table - stores all defined functions with proper reference counting
+    da_array functions; // Global function table
+
     // Result register - holds the value of the last executed statement
     value_t result;
 
@@ -405,6 +408,10 @@ int value_to_int(value_t value); // Convert numeric values to int
 // Constant pool management
 size_t vm_add_constant(slate_vm* vm, value_t value);
 value_t vm_get_constant(slate_vm* vm, size_t index);
+
+// Function table management
+size_t vm_add_function(slate_vm* vm, function_t* function);
+function_t* vm_get_function(slate_vm* vm, size_t index);
 
 // Note: Object and array operations now use dynamic_object.h and dynamic_array.h
 // No separate functions needed - we'll use the library APIs directly

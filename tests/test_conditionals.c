@@ -20,10 +20,10 @@ static value_t run_conditional_test(const char* source) {
         return make_null();
     }
 
-    codegen_t* codegen = codegen_create();
-    function_t* function = codegen_compile(codegen, program);
-
     slate_vm* vm = vm_create();
+    
+    codegen_t* codegen = codegen_create(vm);
+    function_t* function = codegen_compile(codegen, program);
     vm_result result = vm_execute(vm, function);
 
     value_t return_value = make_null();

@@ -19,10 +19,11 @@ static value_t interpret_expression(const char* source) {
         return make_null();
     }
     
-    codegen_t* codegen = codegen_create();
+    slate_vm* vm = vm_create();
+    
+    codegen_t* codegen = codegen_create(vm);
     function_t* function = codegen_compile(codegen, program);
     
-    slate_vm* vm = vm_create();
     vm_result result = vm_execute(vm, function);
     
     value_t return_value = make_null();
