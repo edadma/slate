@@ -1,4 +1,6 @@
 #include "builtins.h"
+#include "datetime.h"
+#include <assert.h>
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -263,6 +265,31 @@ static value_t builtin_string_builder_clear(slate_vm* vm, int arg_count, value_t
     
     // Return the receiver for chaining
     return receiver;
+}
+
+// LocalDate factory function
+static value_t local_date_factory(value_t* args, int arg_count) {
+    if (arg_count != 3) {
+        runtime_error("LocalDate() requires 3 arguments: year, month, day");
+    }
+    
+    // Validate arguments are numbers
+    if (!is_number(args[0]) || !is_number(args[1]) || !is_number(args[2])) {
+        runtime_error("LocalDate() arguments must be numbers");
+    }
+    
+    int year = (int)value_to_double(args[0]);
+    int month = (int)value_to_double(args[1]);
+    int day = (int)value_to_double(args[2]);
+    
+    // Validate date components
+    if (!is_valid_date(year, month, day)) {
+        runtime_error("Invalid date: %d-%02d-%02d", year, month, day);
+    }
+    
+    local_date_t* date = local_date_create(year, month, day);
+    assert(date != NULL); // Per user: allocation failures are assertion failures
+    return make_local_date(date);
 }
 
 // StringBuilder factory function
@@ -923,6 +950,9 @@ void builtins_init(slate_vm* vm) {
 
     // Create the LocalDate class
     value_t local_date_class = make_class("LocalDate", local_date_proto);
+    
+    // Set the factory function to allow LocalDate(year, month, day)
+    local_date_class.as.class->factory = local_date_factory;
     
     // Store in globals
     do_set(vm->globals, "LocalDate", &local_date_class, sizeof(value_t));
