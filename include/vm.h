@@ -123,6 +123,7 @@ typedef enum {
     VAL_BIGINT, // Arbitrary precision integer
     VAL_NUMBER, // Floating point (double)
     VAL_STRING,
+    VAL_STRING_BUILDER, // String builder for constructing strings
     VAL_ARRAY,
     VAL_OBJECT,
     VAL_CLASS, // Class definition (prototype holder)
@@ -152,6 +153,7 @@ typedef struct value {
         di_int bigint; // Arbitrary precision integer (ref-counted)
         double number; // Floating point
         ds_string string; // Using dynamic_string.h!
+        ds_builder string_builder; // String builder (using dynamic_string.h!)
         da_array array; // Using dynamic_array.h!
         do_object object; // Using dynamic_object.h!
         class_t* class; // Class definition pointer
@@ -309,6 +311,9 @@ extern value_t* global_range_class;
 // Store global Iterator class (accessed by vm.c for iterator creation)
 extern value_t* global_iterator_class;
 
+// Store global StringBuilder class (accessed by vm.c for string builder creation)
+extern value_t* global_string_builder_class;
+
 // Bytecode execution
 typedef enum { VM_OK, VM_COMPILE_ERROR, VM_RUNTIME_ERROR, VM_STACK_OVERFLOW, VM_STACK_UNDERFLOW } vm_result;
 
@@ -333,6 +338,7 @@ value_t make_bigint(di_int big);
 value_t make_number(double value);
 value_t make_string(const char* value);
 value_t make_string_ds(ds_string str);
+value_t make_string_builder(ds_builder builder);
 value_t make_array(da_array array);
 value_t make_object(do_object object);
 value_t make_class(const char* name, do_object properties);
@@ -377,6 +383,7 @@ value_t make_bigint_with_debug(di_int big, debug_location* debug);
 value_t make_number_with_debug(double value, debug_location* debug);
 value_t make_string_with_debug(const char* value, debug_location* debug);
 value_t make_string_ds_with_debug(ds_string str, debug_location* debug);
+value_t make_string_builder_with_debug(ds_builder builder, debug_location* debug);
 value_t make_array_with_debug(da_array array, debug_location* debug);
 value_t make_object_with_debug(do_object object, debug_location* debug);
 value_t make_class_with_debug(const char* name, do_object properties, debug_location* debug);

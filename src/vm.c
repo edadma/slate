@@ -112,6 +112,8 @@ void vm_reset(slate_vm* vm) {
 value_t vm_retain(value_t value) {
     if (value.type == VAL_STRING) {
         value.as.string = ds_retain(value.as.string);
+    } else if (value.type == VAL_STRING_BUILDER) {
+        value.as.string_builder = ds_builder_retain(value.as.string_builder);
     } else if (value.type == VAL_ARRAY) {
         value.as.array = da_retain(value.as.array);
     } else if (value.type == VAL_OBJECT) {
@@ -139,6 +141,8 @@ value_t vm_retain(value_t value) {
 void vm_release(value_t value) {
     if (value.type == VAL_STRING) {
         ds_release(&value.as.string);
+    } else if (value.type == VAL_STRING_BUILDER) {
+        ds_builder_release(&value.as.string_builder);
     } else if (value.type == VAL_ARRAY) {
         da_release(&value.as.array);
     } else if (value.type == VAL_OBJECT) {
@@ -252,6 +256,15 @@ value_t make_string_ds(ds_string str) {
     value.type = VAL_STRING;
     value.as.string = str; // Take ownership of the ds_string
     value.class = global_string_class; // All strings have String class
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_string_builder(ds_builder builder) {
+    value_t value;
+    value.type = VAL_STRING_BUILDER;
+    value.as.string_builder = builder; // Take ownership of the ds_builder
+    value.class = global_string_builder_class; // All string builders have StringBuilder class
     value.debug = NULL;
     return value;
 }
@@ -439,6 +452,12 @@ value_t make_string_with_debug(const char* val, debug_location* debug) {
 
 value_t make_string_ds_with_debug(ds_string str, debug_location* debug) {
     value_t value = make_string_ds(str);
+    value.debug = debug_location_copy(debug);
+    return value;
+}
+
+value_t make_string_builder_with_debug(ds_builder builder, debug_location* debug) {
+    value_t value = make_string_builder(builder);
     value.debug = debug_location_copy(debug);
     return value;
 }
@@ -876,6 +895,10 @@ void print_value(value_t value) {
     case VAL_STRING:
         printf("\"%s\"", value.as.string ? value.as.string : ""); // DS strings work directly!
         break;
+    case VAL_STRING_BUILDER: {
+        printf("<StringBuilder>");
+        break;
+    }
     case VAL_ARRAY: {
         printf("[");
         if (value.as.array) {
@@ -1056,6 +1079,11 @@ void free_value(value_t value) {
     case VAL_STRING: {
         ds_string temp = value.as.string;
         ds_release(&temp); // DS cleanup with reference counting!
+        break;
+    }
+    case VAL_STRING_BUILDER: {
+        ds_builder temp = value.as.string_builder;
+        ds_builder_release(&temp); // DS builder cleanup with reference counting!
         break;
     }
     case VAL_ARRAY: {
@@ -3458,6 +3486,8 @@ const char* value_type_name(value_type type) {
         return "number";
     case VAL_STRING:
         return "string";
+    case VAL_STRING_BUILDER:
+        return "string_builder";
     case VAL_ARRAY:
         return "array";
     case VAL_OBJECT:

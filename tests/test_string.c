@@ -334,6 +334,107 @@ void test_string_concat_with_empty_object(void) {
 }
 
 // =============================================================================
+// STRING BUILDER TESTS
+// =============================================================================
+
+void test_string_builder_creation_empty(void) {
+    value_t result = run_code("StringBuilder()");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING_BUILDER, result.type);
+    vm_release(result);
+}
+
+void test_string_builder_creation_with_capacity(void) {
+    value_t result = run_code("StringBuilder(100)");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING_BUILDER, result.type);
+    vm_release(result);
+}
+
+void test_string_builder_creation_with_strings(void) {
+    value_t result = run_code("StringBuilder(\"Hello\", \" \", \"World\")");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING_BUILDER, result.type);
+    vm_release(result);
+}
+
+void test_string_builder_creation_with_capacity_and_strings(void) {
+    value_t result = run_code("StringBuilder(50, \"Start\", \" here\")");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING_BUILDER, result.type);
+    vm_release(result);
+}
+
+void test_string_builder_append(void) {
+    value_t result = run_code("var sb = StringBuilder(); sb.append(\"Hello\"); sb.toString()");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello", result.as.string);
+    vm_release(result);
+}
+
+void test_string_builder_append_chaining(void) {
+    value_t result = run_code("StringBuilder().append(\"Hello\").append(\" \").append(\"World\").toString()");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello World", result.as.string);
+    vm_release(result);
+}
+
+void test_string_builder_append_char(void) {
+    value_t result = run_code("StringBuilder().appendChar(72).appendChar(101).appendChar(108).appendChar(108).appendChar(111).toString()");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello", result.as.string);
+    vm_release(result);
+}
+
+void test_string_builder_append_char_unicode(void) {
+    value_t result = run_code("StringBuilder().appendChar(128512).toString()"); // 😀 emoji
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("😀", result.as.string);
+    vm_release(result);
+}
+
+void test_string_builder_length(void) {
+    value_t result = run_code("StringBuilder(\"Hello World\").length()");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(11, result.as.int32);
+    vm_release(result);
+    
+    result = run_code("var sb = StringBuilder(); sb.append(\"Test\"); sb.length()");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(4, result.as.int32);
+    vm_release(result);
+}
+
+void test_string_builder_clear(void) {
+    value_t result = run_code("var sb = StringBuilder(\"Hello\"); sb.clear(); sb.toString()");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("", result.as.string);
+    vm_release(result);
+    
+    result = run_code("var sb = StringBuilder(\"Hello\"); sb.clear(); sb.length()");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.int32);
+    vm_release(result);
+}
+
+void test_string_builder_mixed_operations(void) {
+    value_t result = run_code("var sb = StringBuilder(); sb.append(\"Count: \"); sb.appendChar(49); sb.append(\", \"); sb.appendChar(50); sb.toString()");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Count: 1, 2", result.as.string);
+    vm_release(result);
+}
+
+void test_string_builder_initial_content(void) {
+    value_t result = run_code("StringBuilder(\"Pre\", \"-\", \"filled\").toString()");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Pre-filled", result.as.string);
+    vm_release(result);
+}
+
+void test_string_builder_capacity_with_content(void) {
+    value_t result = run_code("StringBuilder(100, \"Big\", \" \", \"buffer\").toString()");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Big buffer", result.as.string);
+    vm_release(result);
+}
+
+// =============================================================================
 // TEST SUITE FUNCTION
 // =============================================================================
 
@@ -370,4 +471,19 @@ void test_string_suite(void) {
     RUN_TEST(test_string_concat_with_nested_array);
     RUN_TEST(test_string_concat_with_object);
     RUN_TEST(test_string_concat_with_empty_object);
+    
+    // StringBuilder tests (new functionality)
+    RUN_TEST(test_string_builder_creation_empty);
+    RUN_TEST(test_string_builder_creation_with_capacity);
+    RUN_TEST(test_string_builder_creation_with_strings);
+    RUN_TEST(test_string_builder_creation_with_capacity_and_strings);
+    RUN_TEST(test_string_builder_append);
+    RUN_TEST(test_string_builder_append_chaining);
+    RUN_TEST(test_string_builder_append_char);
+    RUN_TEST(test_string_builder_append_char_unicode);
+    RUN_TEST(test_string_builder_length);
+    RUN_TEST(test_string_builder_clear);
+    RUN_TEST(test_string_builder_mixed_operations);
+    RUN_TEST(test_string_builder_initial_content);
+    RUN_TEST(test_string_builder_capacity_with_content);
 }
