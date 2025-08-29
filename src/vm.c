@@ -6,6 +6,7 @@
 #include <string.h>
 #include "builtins.h"
 #include "codegen.h" // For debug_info functions
+#include "datetime.h" // For date/time functions
 
 #define STACK_MAX 256
 #define FRAMES_MAX 64
@@ -134,6 +135,20 @@ value_t vm_retain(value_t value) {
         value.as.builder = db_builder_retain(value.as.builder);
     } else if (value.type == VAL_BUFFER_READER) {
         value.as.reader = db_reader_retain(value.as.reader);
+    } else if (value.type == VAL_LOCAL_DATE) {
+        value.as.local_date = local_date_retain(value.as.local_date);
+    } else if (value.type == VAL_LOCAL_TIME) {
+        value.as.local_time = local_time_retain(value.as.local_time);
+    } else if (value.type == VAL_LOCAL_DATETIME) {
+        value.as.local_datetime = local_datetime_retain(value.as.local_datetime);
+    } else if (value.type == VAL_ZONED_DATETIME) {
+        value.as.zoned_datetime = zoned_datetime_retain(value.as.zoned_datetime);
+    } else if (value.type == VAL_INSTANT) {
+        value.as.instant = instant_retain(value.as.instant);
+    } else if (value.type == VAL_DURATION) {
+        value.as.duration = duration_retain(value.as.duration);
+    } else if (value.type == VAL_PERIOD) {
+        value.as.period = period_retain(value.as.period);
     }
     return value;
 }
@@ -171,6 +186,20 @@ void vm_release(value_t value) {
             db_reader temp = value.as.reader;
             db_reader_release(&temp);
         }
+    } else if (value.type == VAL_LOCAL_DATE) {
+        local_date_release(value.as.local_date);
+    } else if (value.type == VAL_LOCAL_TIME) {
+        local_time_release(value.as.local_time);
+    } else if (value.type == VAL_LOCAL_DATETIME) {
+        local_datetime_release(value.as.local_datetime);
+    } else if (value.type == VAL_ZONED_DATETIME) {
+        zoned_datetime_release(value.as.zoned_datetime);
+    } else if (value.type == VAL_INSTANT) {
+        instant_release(value.as.instant);
+    } else if (value.type == VAL_DURATION) {
+        duration_release(value.as.duration);
+    } else if (value.type == VAL_PERIOD) {
+        period_release(value.as.period);
     }
 }
 
@@ -403,6 +432,70 @@ value_t make_buffer_reader(db_reader reader) {
     value.type = VAL_BUFFER_READER;
     value.as.reader = reader;
     value.class = NULL;
+    value.debug = NULL;
+    return value;
+}
+
+// Date/Time value factory functions
+value_t make_local_date(local_date_t* date) {
+    value_t value;
+    value.type = VAL_LOCAL_DATE;
+    value.as.local_date = date;
+    value.class = global_local_date_class;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_local_time(local_time_t* time) {
+    value_t value;
+    value.type = VAL_LOCAL_TIME;
+    value.as.local_time = time;
+    value.class = global_local_time_class;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_local_datetime(local_datetime_t* datetime) {
+    value_t value;
+    value.type = VAL_LOCAL_DATETIME;
+    value.as.local_datetime = datetime;
+    value.class = global_local_datetime_class;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_zoned_datetime(zoned_datetime_t* zdt) {
+    value_t value;
+    value.type = VAL_ZONED_DATETIME;
+    value.as.zoned_datetime = zdt;
+    value.class = global_zoned_datetime_class;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_instant(instant_t* instant) {
+    value_t value;
+    value.type = VAL_INSTANT;
+    value.as.instant = instant;
+    value.class = global_instant_class;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_duration(duration_t* duration) {
+    value_t value;
+    value.type = VAL_DURATION;
+    value.as.duration = duration;
+    value.class = global_duration_class;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_period(period_t* period) {
+    value_t value;
+    value.type = VAL_PERIOD;
+    value.as.period = period;
+    value.class = global_period_class;
     value.debug = NULL;
     return value;
 }
@@ -725,6 +818,47 @@ static ds_string value_to_string_representation(value_t value) {
         return ds_new("{Function}");
     case VAL_CLOSURE:
         return ds_new("{Closure}");
+    case VAL_LOCAL_DATE: {
+        if (value.as.local_date) {
+            char* str = local_date_to_string(value.as.local_date);
+            if (str) {
+                ds_string result = ds_new(str);
+                free(str);
+                return result;
+            }
+        }
+        return ds_new("<LocalDate>");
+    }
+    case VAL_LOCAL_TIME: {
+        if (value.as.local_time) {
+            char* str = local_time_to_string(value.as.local_time);
+            if (str) {
+                ds_string result = ds_new(str);
+                free(str);
+                return result;
+            }
+        }
+        return ds_new("<LocalTime>");
+    }
+    case VAL_LOCAL_DATETIME: {
+        if (value.as.local_datetime) {
+            char* str = local_datetime_to_string(value.as.local_datetime);
+            if (str) {
+                ds_string result = ds_new(str);
+                free(str);
+                return result;
+            }
+        }
+        return ds_new("<LocalDateTime>");
+    }
+    case VAL_ZONED_DATETIME:
+        return ds_new("<ZonedDateTime>");  // TODO: implement string conversion
+    case VAL_INSTANT:
+        return ds_new("<Instant>");  // TODO: implement string conversion
+    case VAL_DURATION:
+        return ds_new("<Duration>");  // TODO: implement string conversion
+    case VAL_PERIOD:
+        return ds_new("<Period>");  // TODO: implement string conversion
     default:
         return ds_new("{Unknown}");
     }
@@ -860,6 +994,25 @@ int values_equal(value_t a, value_t b) {
         return a.as.closure == b.as.closure;
     case VAL_NATIVE:
         return a.as.native == b.as.native;
+    case VAL_LOCAL_DATE:
+        if (a.as.local_date == b.as.local_date)
+            return 1; // Same reference
+        if (a.as.local_date == NULL || b.as.local_date == NULL)
+            return 0;
+        return local_date_equals(a.as.local_date, b.as.local_date);
+    case VAL_LOCAL_TIME:
+        if (a.as.local_time == b.as.local_time)
+            return 1; // Same reference
+        if (a.as.local_time == NULL || b.as.local_time == NULL)
+            return 0;
+        return local_time_equals(a.as.local_time, b.as.local_time);
+    case VAL_LOCAL_DATETIME:
+    case VAL_ZONED_DATETIME:
+    case VAL_INSTANT:
+    case VAL_DURATION:
+    case VAL_PERIOD:
+        // For now, use reference equality for complex types
+        return a.as.local_datetime == b.as.local_datetime;
     default:
         return 0;
     }
@@ -995,6 +1148,64 @@ void print_value(value_t value) {
         } else {
             printf("<bound method>");
         }
+        break;
+    }
+    case VAL_LOCAL_DATE: {
+        if (value.as.local_date) {
+            char* str = local_date_to_string(value.as.local_date);
+            if (str) {
+                printf("%s", str);
+                free(str);
+            } else {
+                printf("<LocalDate>");
+            }
+        } else {
+            printf("null");
+        }
+        break;
+    }
+    case VAL_LOCAL_TIME: {
+        if (value.as.local_time) {
+            char* str = local_time_to_string(value.as.local_time);
+            if (str) {
+                printf("%s", str);
+                free(str);
+            } else {
+                printf("<LocalTime>");
+            }
+        } else {
+            printf("null");
+        }
+        break;
+    }
+    case VAL_LOCAL_DATETIME: {
+        if (value.as.local_datetime) {
+            char* str = local_datetime_to_string(value.as.local_datetime);
+            if (str) {
+                printf("%s", str);
+                free(str);
+            } else {
+                printf("<LocalDateTime>");
+            }
+        } else {
+            printf("null");
+        }
+        break;
+    }
+    case VAL_ZONED_DATETIME: {
+        printf("<ZonedDateTime>");  // TODO: implement string conversion
+        break;
+    }
+    case VAL_INSTANT: {
+        printf("<Instant>");  // TODO: implement string conversion
+        break;
+    }
+    case VAL_DURATION: {
+        printf("<Duration>");  // TODO: implement string conversion
+        break;
+    }
+    case VAL_PERIOD: {
+        printf("<Period>");  // TODO: implement string conversion
         break;
     }
     }
@@ -1145,6 +1356,16 @@ void free_value(value_t value) {
         break;
     case VAL_NATIVE:
         // No cleanup needed for builtin function pointers
+        break;
+    case VAL_LOCAL_DATE:
+    case VAL_LOCAL_TIME:
+    case VAL_LOCAL_DATETIME:
+    case VAL_ZONED_DATETIME:
+    case VAL_INSTANT:
+    case VAL_DURATION:
+    case VAL_PERIOD:
+        // Date/time cleanup is handled by vm_release() through reference counting
+        // Don't duplicate cleanup here
         break;
     default:
         // No cleanup needed for basic types
@@ -3512,6 +3733,20 @@ const char* value_type_name(value_type type) {
         return "builtin";
     case VAL_BOUND_METHOD:
         return "bound_method";
+    case VAL_LOCAL_DATE:
+        return "LocalDate";
+    case VAL_LOCAL_TIME:
+        return "LocalTime";
+    case VAL_LOCAL_DATETIME:
+        return "LocalDateTime";
+    case VAL_ZONED_DATETIME:
+        return "ZonedDateTime";
+    case VAL_INSTANT:
+        return "Instant";
+    case VAL_DURATION:
+        return "Duration";
+    case VAL_PERIOD:
+        return "Period";
     default:
         return "unknown";
     }

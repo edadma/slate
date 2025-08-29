@@ -17,6 +17,7 @@ add_executable(slate
         src/builtins.c
         src/library_impl.c
         src/line_editor.c
+        src/datetime.c
 )
 
 # Link math library for main executable
@@ -60,6 +61,7 @@ if (BUILD_TESTS)
             tests/test_nested_loops.c
             tests/test_assignment.c
             tests/test_string.c
+            tests/test_localdate.c
             src/lexer.c
             src/parser.c
             src/ast.c
@@ -67,6 +69,7 @@ if (BUILD_TESTS)
             src/vm.c
             src/builtins.c
             src/library_impl.c
+            src/datetime.c
     )
 
     # Link math library for tests executable

@@ -1,6 +1,7 @@
 #ifndef SLATE_VM_H
 #define SLATE_VM_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -135,14 +136,29 @@ typedef enum {
     VAL_FUNCTION,
     VAL_CLOSURE,
     VAL_NATIVE,
-    VAL_BOUND_METHOD
+    VAL_BOUND_METHOD,
+    // Date/Time types
+    VAL_LOCAL_DATE, // Date without time zone (2024-12-25)
+    VAL_LOCAL_TIME, // Time without date or time zone (15:30:45)
+    VAL_LOCAL_DATETIME, // Date and time without time zone (2024-12-25T15:30:45)
+    VAL_ZONED_DATETIME, // Date and time with time zone (2024-12-25T15:30:45-05:00[America/New_York])
+    VAL_INSTANT, // Point in time (Unix timestamp with nanoseconds)
+    VAL_DURATION, // Time-based amount (2 hours, 30 minutes)
+    VAL_PERIOD // Date-based amount (2 years, 3 months, 5 days)
 } value_type;
 
-// Forward declaration for range, iterator, bound method, and class structures
+// Forward declaration for range, iterator, bound method, class, and date/time structures
 typedef struct range range_t;
 typedef struct iterator iterator_t;
 typedef struct bound_method bound_method_t;
 typedef struct class class_t;
+typedef struct local_date local_date_t;
+typedef struct local_time local_time_t;
+typedef struct local_datetime local_datetime_t;
+typedef struct zoned_datetime zoned_datetime_t;
+typedef struct instant instant_t;
+typedef struct duration duration_t;
+typedef struct period period_t;
 
 // VM value structure
 typedef struct value {
@@ -166,6 +182,14 @@ typedef struct value {
         struct closure* closure;
         native_t native; // Native C function pointer
         bound_method_t* bound_method; // Bound method (method + receiver)
+        // Date/Time types
+        local_date_t* local_date; // Date without time zone
+        local_time_t* local_time; // Time without date or time zone
+        local_datetime_t* local_datetime; // Date and time without time zone
+        zoned_datetime_t* zoned_datetime; // Date and time with time zone
+        instant_t* instant; // Point in time (Unix timestamp)
+        duration_t* duration; // Time-based amount
+        period_t* period; // Date-based amount
     } as;
     value_t* class; // For object instances: pointer to their class value (NULL for non-instances)
     debug_location* debug; // Debug info for error reporting (NULL when disabled)
@@ -210,12 +234,72 @@ struct bound_method {
     native_t method; // The method function pointer
 };
 
+
 // Class structure (prototype holder for prototypal inheritance)
 struct class {
     int ref_count; // Reference count for memory management
     char* name; // Class name
     do_object properties; // Prototype properties
     value_t (*factory)(value_t* args, int arg_count); // Factory function for creating instances (NULL if not callable)
+};
+
+// Date/Time structures with reference counting
+
+// Local Date structure (date without time zone)
+struct local_date {
+    int ref_count; // Reference count for memory management
+    int32_t year; // Year (e.g., 2024)
+    uint8_t month; // Month (1-12)
+    uint8_t day; // Day (1-31)
+    uint32_t epoch_day; // Days since 1970-01-01 (cached for performance)
+};
+
+// Local Time structure (time without date or time zone)
+struct local_time {
+    int ref_count; // Reference count for memory management
+    uint8_t hour; // Hour (0-23)
+    uint8_t minute; // Minute (0-59)
+    uint8_t second; // Second (0-59)
+    uint16_t millis; // Milliseconds (0-999)
+    uint32_t nanos; // Nanoseconds (0-999999999, total including millis)
+};
+
+// Local DateTime structure (date and time without time zone)
+struct local_datetime {
+    int ref_count; // Reference count for memory management
+    local_date_t* date; // Date component
+    local_time_t* time; // Time component
+};
+
+// Zoned DateTime structure (date and time with time zone)
+struct zoned_datetime {
+    int ref_count; // Reference count for memory management
+    local_datetime_t* dt; // Local date-time component
+    char* zone_id; // Timezone identifier (e.g., "America/New_York")
+    int16_t offset_minutes; // UTC offset in minutes (e.g., -300 for EST)
+    bool is_dst; // Whether DST is active
+};
+
+// Instant structure (point in time as Unix timestamp)
+struct instant {
+    int ref_count; // Reference count for memory management
+    int64_t epoch_seconds; // Seconds since Unix epoch
+    uint32_t nanos; // Nanosecond adjustment (0-999999999)
+};
+
+// Duration structure (time-based amount)
+struct duration {
+    int ref_count; // Reference count for memory management
+    int64_t seconds; // Total seconds (can be negative)
+    int32_t nanos; // Nanosecond adjustment (0-999999999, sign matches seconds)
+};
+
+// Period structure (date-based amount)
+struct period {
+    int ref_count; // Reference count for memory management
+    int32_t years; // Years (can be negative)
+    int32_t months; // Months (can be negative)
+    int32_t days; // Days (can be negative)
 };
 
 // Function structure
@@ -351,6 +435,14 @@ value_t make_function(function_t* function);
 value_t make_closure(closure_t* closure);
 value_t make_native(native_t func);
 value_t make_bound_method(value_t receiver, native_t method);
+// Date/Time value factory functions
+value_t make_local_date(local_date_t* date);
+value_t make_local_time(local_time_t* time);
+value_t make_local_datetime(local_datetime_t* datetime);
+value_t make_zoned_datetime(zoned_datetime_t* zdt);
+value_t make_instant(instant_t* instant);
+value_t make_duration(duration_t* duration);
+value_t make_period(period_t* period);
 
 // Iterator creation helpers
 iterator_t* create_array_iterator(da_array array);
@@ -373,6 +465,22 @@ void bound_method_release(bound_method_t* method);
 // Class reference counting
 class_t* class_retain(class_t* cls);
 void class_release(class_t* cls);
+
+// Date/Time reference counting
+local_date_t* local_date_retain(local_date_t* date);
+void local_date_release(local_date_t* date);
+local_time_t* local_time_retain(local_time_t* time);
+void local_time_release(local_time_t* time);
+local_datetime_t* local_datetime_retain(local_datetime_t* dt);
+void local_datetime_release(local_datetime_t* dt);
+zoned_datetime_t* zoned_datetime_retain(zoned_datetime_t* zdt);
+void zoned_datetime_release(zoned_datetime_t* zdt);
+instant_t* instant_retain(instant_t* instant);
+void instant_release(instant_t* instant);
+duration_t* duration_retain(duration_t* duration);
+void duration_release(duration_t* duration);
+period_t* period_retain(period_t* period);
+void period_release(period_t* period);
 
 // Value creation functions with debug info
 value_t make_null_with_debug(debug_location* debug);
