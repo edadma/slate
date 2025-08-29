@@ -131,8 +131,207 @@ void test_string_factory_max_valid_codepoint(void) {
 // STRING METHOD TESTS
 // =============================================================================
 
-// String method tests already exist in test_builtins.c, so we'll skip duplicates
-// and focus on factory-specific tests
+void test_string_length(void) {
+    value_t result = run_code("\"hello\".length()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(5, result.as.int32);
+    vm_release(result);
+    
+    result = run_code("\"\".length()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.int32);
+    vm_release(result);
+}
+
+void test_string_substring(void) {
+    value_t result = run_code("\"Hello World\".substring(0, 5)");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello", result.as.string);
+    vm_release(result);
+    
+    result = run_code("\"Hello World\".substring(6, 5)");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("World", result.as.string);
+    vm_release(result);
+}
+
+void test_string_to_upper(void) {
+    value_t result = run_code("\"hello world\".toUpper()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("HELLO WORLD", result.as.string);
+    vm_release(result);
+    
+    result = run_code("\"HeLLo\".toUpper()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("HELLO", result.as.string);
+    vm_release(result);
+}
+
+void test_string_to_lower(void) {
+    value_t result = run_code("\"HELLO WORLD\".toLower()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("hello world", result.as.string);
+    vm_release(result);
+    
+    result = run_code("\"HeLLo\".toLower()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("hello", result.as.string);
+    vm_release(result);
+}
+
+void test_string_trim(void) {
+    value_t result = run_code("\"  hello  \".trim()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("hello", result.as.string);
+    vm_release(result);
+    
+    // Test with spaces and tabs
+    result = run_code("\"   test   \".trim()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("test", result.as.string);
+    vm_release(result);
+}
+
+void test_string_starts_with(void) {
+    value_t result = run_code("\"Hello World\".startsWith(\"Hello\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean);
+    vm_release(result);
+    
+    result = run_code("\"Hello World\".startsWith(\"World\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean);
+    vm_release(result);
+}
+
+void test_string_ends_with(void) {
+    value_t result = run_code("\"Hello World\".endsWith(\"World\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean);
+    vm_release(result);
+    
+    result = run_code("\"Hello World\".endsWith(\"Hello\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean);
+    vm_release(result);
+}
+
+void test_string_contains(void) {
+    value_t result = run_code("\"Hello World\".contains(\"lo Wo\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean);
+    vm_release(result);
+    
+    result = run_code("\"Hello World\".contains(\"xyz\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean);
+    vm_release(result);
+}
+
+void test_string_replace(void) {
+    value_t result = run_code("\"Hello World\".replace(\"World\", \"Universe\")");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello Universe", result.as.string);
+    vm_release(result);
+    
+    result = run_code("\"Hello World\".replace(\"xyz\", \"abc\")");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Hello World", result.as.string);
+    vm_release(result);
+}
+
+void test_string_index_of(void) {
+    value_t result = run_code("\"Hello World\".indexOf(\"World\")");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(6, result.as.int32);
+    vm_release(result);
+    
+    result = run_code("\"Hello World\".indexOf(\"o\")");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(4, result.as.int32);
+    vm_release(result);
+    
+    result = run_code("\"Hello World\".indexOf(\"xyz\")");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(-1, result.as.int32);
+    vm_release(result);
+}
+
+void test_string_method_chaining(void) {
+    value_t result = run_code("\"  hello world  \".trim().toUpper()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("HELLO WORLD", result.as.string);
+    vm_release(result);
+    
+    result = run_code("\"HELLO\".toLower().replace(\"h\", \"j\")");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("jello", result.as.string);
+    vm_release(result);
+}
+
+void test_string_is_empty_non_empty(void) {
+    value_t result = run_code("\"\".isEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean);
+    vm_release(result);
+    
+    result = run_code("\"\".nonEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean);
+    vm_release(result);
+    
+    result = run_code("\"hello\".isEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.boolean);
+    vm_release(result);
+    
+    result = run_code("\"hello\".nonEmpty()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL(1, result.as.boolean);
+    vm_release(result);
+}
+
+// =============================================================================
+// STRING CONCATENATION TESTS
+// =============================================================================
+
+void test_string_concat_with_array(void) {
+    value_t result = run_code("\"Array: \" + [1, 2, 3]");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Array: [1, 2, 3]", result.as.string);
+    vm_release(result);
+}
+
+void test_string_concat_with_empty_array(void) {
+    value_t result = run_code("\"Empty: \" + []");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Empty: []", result.as.string);
+    vm_release(result);
+}
+
+void test_string_concat_with_nested_array(void) {
+    value_t result = run_code("\"Nested: \" + [[1, 2], [3, 4]]");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Nested: [[1, 2], [3, 4]]", result.as.string);
+    vm_release(result);
+}
+
+void test_string_concat_with_object(void) {
+    value_t result = run_code("\"Object: \" + {name: \"Test\", value: 42}");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    // Note: Object property order might vary
+    TEST_ASSERT_TRUE(strstr(result.as.string, "Object: {") != NULL);
+    TEST_ASSERT_TRUE(strstr(result.as.string, "name: \"Test\"") != NULL);
+    TEST_ASSERT_TRUE(strstr(result.as.string, "value: 42") != NULL);
+    vm_release(result);
+}
+
+void test_string_concat_with_empty_object(void) {
+    value_t result = run_code("\"Empty: \" + {}");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Empty: {}", result.as.string);
+    vm_release(result);
+}
 
 // =============================================================================
 // TEST SUITE FUNCTION
@@ -151,5 +350,24 @@ void test_string_suite(void) {
     RUN_TEST(test_string_factory_special_chars);
     RUN_TEST(test_string_factory_max_valid_codepoint);
     
-    // Note: String method tests are already covered in test_builtins.c
+    // String method tests (moved from test_builtins.c)
+    RUN_TEST(test_string_length);
+    RUN_TEST(test_string_substring);
+    RUN_TEST(test_string_to_upper);
+    RUN_TEST(test_string_to_lower);
+    RUN_TEST(test_string_trim);
+    RUN_TEST(test_string_starts_with);
+    RUN_TEST(test_string_ends_with);
+    RUN_TEST(test_string_contains);
+    RUN_TEST(test_string_replace);
+    RUN_TEST(test_string_index_of);
+    RUN_TEST(test_string_method_chaining);
+    RUN_TEST(test_string_is_empty_non_empty);
+    
+    // String concatenation tests (moved from test_builtins.c)
+    RUN_TEST(test_string_concat_with_array);
+    RUN_TEST(test_string_concat_with_empty_array);
+    RUN_TEST(test_string_concat_with_nested_array);
+    RUN_TEST(test_string_concat_with_object);
+    RUN_TEST(test_string_concat_with_empty_object);
 }
