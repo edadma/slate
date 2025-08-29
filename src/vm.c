@@ -283,6 +283,7 @@ value_t make_class(const char* name, do_object properties) {
     cls->ref_count = 1;
     cls->name = strdup(name ? name : "Class"); // Duplicate the name string
     cls->properties = properties ? do_retain(properties) : do_create(NULL); // Retain or create empty
+    cls->factory = NULL; // Default: class cannot be instantiated by calling it
 
     value_t value;
     value.type = VAL_CLASS;
@@ -2485,6 +2486,36 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 }
                 value_t* element = (value_t*)da_get(callable.as.array, idx);
                 vm_push(vm, *element);
+                if (args) {
+                    for (int i = 0; i < arg_count; i++) {
+                        vm_release(args[i]);
+                    }
+                    free(args);
+                }
+            }
+            // Classes: act as constructors if they have a factory function
+            else if (callable.type == VAL_CLASS) {
+                class_t* cls = callable.as.class;
+                
+                // Check if class has a factory function
+                if (cls->factory == NULL) {
+                    printf("Runtime error: Class '%s' has no factory\n", cls->name);
+                    if (args) {
+                        for (int i = 0; i < arg_count; i++) {
+                            vm_release(args[i]);
+                        }
+                        free(args);
+                    }
+                    vm->frame_count--;
+                    closure_destroy(closure);
+                    return VM_RUNTIME_ERROR;
+                }
+                
+                // Call the factory function
+                value_t instance = cls->factory(args, arg_count);
+                vm_push(vm, instance);
+                
+                // Clean up arguments
                 if (args) {
                     for (int i = 0; i < arg_count; i++) {
                         vm_release(args[i]);

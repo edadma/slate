@@ -213,6 +213,7 @@ struct class {
     int ref_count; // Reference count for memory management
     char* name; // Class name
     do_object properties; // Prototype properties
+    value_t (*factory)(value_t* args, int arg_count); // Factory function for creating instances (NULL if not callable)
 };
 
 // Function structure

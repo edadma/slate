@@ -59,6 +59,7 @@ if (BUILD_TESTS)
             tests/test_continue_statements.c
             tests/test_nested_loops.c
             tests/test_assignment.c
+            tests/test_string.c
             src/lexer.c
             src/parser.c
             src/ast.c
