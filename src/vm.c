@@ -628,19 +628,21 @@ value_t make_buffer_reader_with_debug(db_reader reader, debug_location* debug) {
 }
 
 // Forward declarations
-static ds_string value_to_string_representation(value_t value);
-static ds_string display_value_to_string(value_t value);
+static ds_string value_to_string_representation(slate_vm* vm, value_t value);
+static ds_string display_value_to_string(slate_vm* vm, value_t value);
 
 // Context for object property iteration
 struct object_string_context {
     ds_string* result_ptr;
     int count;
+    slate_vm* vm;
 };
 
 // Callback function for object property iteration
 static void object_property_to_string_callback(const char* key, void* data, size_t size, void* ctx) {
     struct object_string_context* context = (struct object_string_context*)ctx;
     ds_string* result_ptr = context->result_ptr;
+    slate_vm* vm = context->vm;
 
     // Add comma separator for subsequent properties
     if (context->count > 0) {
@@ -664,7 +666,7 @@ static void object_property_to_string_callback(const char* key, void* data, size
     // Convert value to string (assuming it's a value_t)
     if (size == sizeof(value_t)) {
         value_t* val = (value_t*)data;
-        ds_string val_str = display_value_to_string(*val);
+        ds_string val_str = display_value_to_string(vm, *val);
         ds_string temp3 = ds_concat(temp2, val_str);
         ds_release(&temp2);
         ds_release(&val_str);
@@ -681,7 +683,7 @@ static void object_property_to_string_callback(const char* key, void* data, size
 }
 
 // Helper function to convert any value to string representation for concatenation
-static ds_string value_to_string_representation(value_t value) {
+static ds_string value_to_string_representation(slate_vm* vm, value_t value) {
     switch (value.type) {
     case VAL_STRING:
         return ds_retain(value.as.string);
@@ -726,7 +728,7 @@ static ds_string value_to_string_representation(value_t value) {
                 }
                 value_t* element = (value_t*)da_get(value.as.array, i);
                 if (element) {
-                    ds_string element_str = display_value_to_string(*element);
+                    ds_string element_str = display_value_to_string(vm, *element);
                     ds_string temp = ds_concat(result, element_str);
                     ds_release(&result);
                     ds_release(&element_str);
@@ -745,7 +747,7 @@ static ds_string value_to_string_representation(value_t value) {
         ds_string result = ds_new("{");
         if (value.as.object) {
             // Use a context structure to track iteration state
-            struct object_string_context context = {&result, 0};
+            struct object_string_context context = {&result, 0, vm};
 
             // Iterate through properties using do_foreach_property
             do_foreach_property(value.as.object, object_property_to_string_callback, &context);
@@ -779,9 +781,9 @@ static ds_string value_to_string_representation(value_t value) {
             return ds_new("{null range}");
         }
 
-        ds_string start_str = value_to_string_representation(value.as.range->start);
+        ds_string start_str = value_to_string_representation(vm, value.as.range->start);
         ds_string range_op = ds_new(value.as.range->exclusive ? "..<" : "..");
-        ds_string end_str = value_to_string_representation(value.as.range->end);
+        ds_string end_str = value_to_string_representation(vm, value.as.range->end);
 
         // Concatenate: start + range_op + end
         ds_string temp1 = ds_concat(start_str, range_op);
@@ -820,7 +822,7 @@ static ds_string value_to_string_representation(value_t value) {
         return ds_new("{Closure}");
     case VAL_LOCAL_DATE: {
         if (value.as.local_date) {
-            char* str = local_date_to_string(value.as.local_date);
+            char* str = local_date_to_string(vm, value.as.local_date);
             if (str) {
                 ds_string result = ds_new(str);
                 free(str);
@@ -831,7 +833,7 @@ static ds_string value_to_string_representation(value_t value) {
     }
     case VAL_LOCAL_TIME: {
         if (value.as.local_time) {
-            char* str = local_time_to_string(value.as.local_time);
+            char* str = local_time_to_string(vm, value.as.local_time);
             if (str) {
                 ds_string result = ds_new(str);
                 free(str);
@@ -842,7 +844,7 @@ static ds_string value_to_string_representation(value_t value) {
     }
     case VAL_LOCAL_DATETIME: {
         if (value.as.local_datetime) {
-            char* str = local_datetime_to_string(value.as.local_datetime);
+            char* str = local_datetime_to_string(vm, value.as.local_datetime);
             if (str) {
                 ds_string result = ds_new(str);
                 free(str);
@@ -865,7 +867,7 @@ static ds_string value_to_string_representation(value_t value) {
 }
 
 // Helper function to convert values to display string (with quotes for strings, for use inside aggregates)
-static ds_string display_value_to_string(value_t value) {
+static ds_string display_value_to_string(slate_vm* vm, value_t value) {
     switch (value.type) {
     case VAL_STRING: {
         // Add quotes around strings for display inside aggregates
@@ -883,12 +885,12 @@ static ds_string display_value_to_string(value_t value) {
     }
     default:
         // For all other types, use the regular representation
-        return value_to_string_representation(value);
+        return value_to_string_representation(vm, value);
     }
 }
 
 // Print function specifically for the print() builtin - shows strings without quotes
-void print_for_builtin(value_t value) {
+void print_for_builtin(slate_vm* vm, value_t value) {
     switch (value.type) {
     case VAL_STRING:
         // Print strings without quotes for direct printing
@@ -896,7 +898,7 @@ void print_for_builtin(value_t value) {
         break;
     default: {
         // For aggregates and other types, use the string representation and print it
-        ds_string str = value_to_string_representation(value);
+        ds_string str = value_to_string_representation(vm, value);
         printf("%s", str);
         ds_release(&str);
         break;
@@ -1018,7 +1020,7 @@ int values_equal(value_t a, value_t b) {
     }
 }
 
-void print_value(value_t value) {
+void print_value(slate_vm* vm, value_t value) {
     switch (value.type) {
     case VAL_NULL:
         printf("null");
@@ -1061,7 +1063,7 @@ void print_value(value_t value) {
                     printf(", ");
                 value_t* element = (value_t*)da_get(value.as.array, i);
                 if (element) {
-                    print_value(*element);
+                    print_value(vm, *element);
                 } else {
                     printf("null");
                 }
@@ -1100,9 +1102,9 @@ void print_value(value_t value) {
         if (!value.as.range) {
             printf("<null range>");
         } else {
-            print_value(value.as.range->start);
+            print_value(vm, value.as.range->start);
             printf(value.as.range->exclusive ? "..<" : "..");
-            print_value(value.as.range->end);
+            print_value(vm, value.as.range->end);
         }
         break;
     }
@@ -1152,7 +1154,7 @@ void print_value(value_t value) {
     }
     case VAL_LOCAL_DATE: {
         if (value.as.local_date) {
-            char* str = local_date_to_string(value.as.local_date);
+            char* str = local_date_to_string(vm, value.as.local_date);
             if (str) {
                 printf("%s", str);
                 free(str);
@@ -1166,7 +1168,7 @@ void print_value(value_t value) {
     }
     case VAL_LOCAL_TIME: {
         if (value.as.local_time) {
-            char* str = local_time_to_string(value.as.local_time);
+            char* str = local_time_to_string(vm, value.as.local_time);
             if (str) {
                 printf("%s", str);
                 free(str);
@@ -1180,7 +1182,7 @@ void print_value(value_t value) {
     }
     case VAL_LOCAL_DATETIME: {
         if (value.as.local_datetime) {
-            char* str = local_datetime_to_string(value.as.local_datetime);
+            char* str = local_datetime_to_string(vm, value.as.local_datetime);
             if (str) {
                 printf("%s", str);
                 free(str);
@@ -1670,8 +1672,8 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             // String concatenation (if either operand is a string)
             if (a.type == VAL_STRING || b.type == VAL_STRING) {
                 // Convert both to strings using helper function
-                ds_string str_a = value_to_string_representation(a);
-                ds_string str_b = value_to_string_representation(b);
+                ds_string str_a = value_to_string_representation(vm, a);
+                ds_string str_b = value_to_string_representation(vm, b);
 
                 // Concatenate using DS library
                 ds_string result = ds_append(str_a, str_b);
@@ -3608,7 +3610,7 @@ void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset) {
 void vm_runtime_error_with_debug(slate_vm* vm, const char* message) {
     if (vm->frame_count == 0) {
         printf("Runtime error: %s\n", message);
-        return;
+        exit(1);
     }
 
     // Get the current function from the top call frame
@@ -3656,6 +3658,9 @@ void vm_runtime_error_with_debug(slate_vm* vm, const char* message) {
             }
         }
     }
+    
+    // Terminate program execution
+    exit(1);
 }
 
 // Enhanced error reporting using value debug information

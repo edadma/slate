@@ -1093,7 +1093,7 @@ size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset) {
                 printf("'[INVALID INDEX - max: %zu]'\n", chunk->constant_count - 1);
             } else {
                 printf("'");
-                print_value(chunk->constants[constant]);
+                print_value(NULL, chunk->constants[constant]);
                 printf("'\n");
             }
             return offset + 3;

@@ -514,8 +514,8 @@ void debug_location_free(debug_location* debug);
 int is_falsy(value_t value);
 int is_number(value_t value); // Check if value is numeric (int32, bigint, or number)
 int values_equal(value_t a, value_t b);
-void print_value(value_t value);
-void print_for_builtin(value_t value);
+void print_value(slate_vm* vm, value_t value);
+void print_for_builtin(slate_vm* vm, value_t value);
 void free_value(value_t value);
 double value_to_double(value_t value); // Convert numeric values to double
 bool is_int(value_t value); // Check if value represents an integer

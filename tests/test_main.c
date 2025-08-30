@@ -17,6 +17,7 @@ void test_nested_loops_suite(void);
 void test_assignment_suite(void);
 void test_string_suite(void);
 void test_localdate_suite(void);
+void test_localtime_suite(void);
 
 void setUp(void) {
     // Setup code that runs before each test
@@ -46,6 +47,7 @@ int main(void) {
     test_assignment_suite();
     test_string_suite();
     test_localdate_suite();
+    test_localtime_suite();
 
     return UNITY_END();
 }

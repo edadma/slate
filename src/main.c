@@ -105,7 +105,7 @@ static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_un
             // Show result based on mode
             if (show_undefined || vm_to_use->result.type != VAL_UNDEFINED) {
                 printf("Result: ");
-                print_value(vm_to_use->result);
+                print_value(vm_to_use, vm_to_use->result);
                 printf("\n");
             }
         }
