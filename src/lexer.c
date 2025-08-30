@@ -43,6 +43,8 @@ static keyword_entry_t keywords[] = {
     {"and", TOKEN_AND},
     {"or", TOKEN_OR},
     {"not", TOKEN_NOT},
+    {"in", TOKEN_IN},
+    {"instanceof", TOKEN_INSTANCEOF},
     {"mod", TOKEN_MOD},
     {"true", TOKEN_TRUE},
     {"false", TOKEN_FALSE},
@@ -455,6 +457,9 @@ token_t lexer_next_token(lexer_t* lexer) {
             if (match(lexer, '=')) {
                 return make_token(lexer, TOKEN_LESS_EQUAL);
             } else if (match(lexer, '<')) {
+                if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_LEFT_SHIFT_ASSIGN);
+                }
                 return make_token(lexer, TOKEN_LEFT_SHIFT);
             }
             return make_token(lexer, TOKEN_LESS);
@@ -464,7 +469,12 @@ token_t lexer_next_token(lexer_t* lexer) {
                 return make_token(lexer, TOKEN_GREATER_EQUAL);
             } else if (match(lexer, '>')) {
                 if (match(lexer, '>')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_LOGICAL_RIGHT_SHIFT_ASSIGN);
+                    }
                     return make_token(lexer, TOKEN_LOGICAL_RIGHT_SHIFT);
+                } else if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_RIGHT_SHIFT_ASSIGN);
                 }
                 return make_token(lexer, TOKEN_RIGHT_SHIFT);
             }
@@ -494,6 +504,18 @@ token_t lexer_next_token(lexer_t* lexer) {
             
         case '^': return make_token(lexer, match(lexer, '=') ? TOKEN_BITWISE_XOR_ASSIGN : TOKEN_BITWISE_XOR);
         case '~': return make_token(lexer, TOKEN_BITWISE_NOT);
+        
+        case '?':
+            if (match(lexer, '?')) {
+                if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_NULL_COALESCE_ASSIGN);
+                }
+                return make_token(lexer, TOKEN_NULL_COALESCE);
+            } else if (match(lexer, '.')) {
+                return make_token(lexer, TOKEN_OPTIONAL_CHAIN);
+            }
+            return make_token(lexer, TOKEN_QUESTION);
+            
         case '"': return string_token(lexer);
     }
     
@@ -526,6 +548,8 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_AND: return "AND";
         case TOKEN_OR: return "OR";
         case TOKEN_NOT: return "NOT";
+        case TOKEN_IN: return "IN";
+        case TOKEN_INSTANCEOF: return "INSTANCEOF";
         case TOKEN_PLUS: return "PLUS";
         case TOKEN_MINUS: return "MINUS";
         case TOKEN_MULTIPLY: return "MULTIPLY";
@@ -542,8 +566,12 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_BITWISE_AND_ASSIGN: return "BITWISE_AND_ASSIGN";
         case TOKEN_BITWISE_OR_ASSIGN: return "BITWISE_OR_ASSIGN";
         case TOKEN_BITWISE_XOR_ASSIGN: return "BITWISE_XOR_ASSIGN";
+        case TOKEN_LEFT_SHIFT_ASSIGN: return "LEFT_SHIFT_ASSIGN";
+        case TOKEN_RIGHT_SHIFT_ASSIGN: return "RIGHT_SHIFT_ASSIGN";
+        case TOKEN_LOGICAL_RIGHT_SHIFT_ASSIGN: return "LOGICAL_RIGHT_SHIFT_ASSIGN";
         case TOKEN_LOGICAL_AND_ASSIGN: return "LOGICAL_AND_ASSIGN";
         case TOKEN_LOGICAL_OR_ASSIGN: return "LOGICAL_OR_ASSIGN";
+        case TOKEN_NULL_COALESCE_ASSIGN: return "NULL_COALESCE_ASSIGN";
         case TOKEN_EQUAL: return "EQUAL";
         case TOKEN_NOT_EQUAL: return "NOT_EQUAL";
         case TOKEN_LESS: return "LESS";
@@ -565,6 +593,9 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_FLOOR_DIV: return "FLOOR_DIV";
         case TOKEN_RANGE: return "RANGE";
         case TOKEN_RANGE_EXCLUSIVE: return "RANGE_EXCLUSIVE";
+        case TOKEN_NULL_COALESCE: return "NULL_COALESCE";
+        case TOKEN_OPTIONAL_CHAIN: return "OPTIONAL_CHAIN";
+        case TOKEN_QUESTION: return "QUESTION";
         case TOKEN_SEMICOLON: return "SEMICOLON";
         case TOKEN_COMMA: return "COMMA";
         case TOKEN_COLON: return "COLON";

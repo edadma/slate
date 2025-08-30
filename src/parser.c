@@ -215,6 +215,9 @@ binary_operator token_to_binary_op(token_type_t type) {
         case TOKEN_RIGHT_SHIFT: return BIN_RIGHT_SHIFT;
         case TOKEN_LOGICAL_RIGHT_SHIFT: return BIN_LOGICAL_RIGHT_SHIFT;
         case TOKEN_FLOOR_DIV: return BIN_FLOOR_DIV;
+        case TOKEN_NULL_COALESCE: return BIN_NULL_COALESCE;
+        case TOKEN_IN: return BIN_IN;
+        case TOKEN_INSTANCEOF: return BIN_INSTANCEOF;
         default: return BIN_ADD; // Fallback
     }
 }
@@ -609,9 +612,39 @@ ast_node* parse_expression(parser_t* parser) {
     return parse_assignment(parser);
 }
 
+// Parse null coalescing (??)
+static ast_node* parse_null_coalesce(parser_t* parser) {
+    ast_node* expr = parse_or(parser);
+    
+    while (parser_match(parser, TOKEN_NULL_COALESCE)) {
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
+        ast_node* right = parse_or(parser);
+        expr = (ast_node*)ast_create_binary_op(BIN_NULL_COALESCE, expr, right, op_line, op_column);
+    }
+    
+    return expr;
+}
+
+// Parse ternary conditional (? :)
+static ast_node* parse_ternary(parser_t* parser) {
+    ast_node* expr = parse_null_coalesce(parser);
+    
+    if (parser_match(parser, TOKEN_QUESTION)) {
+        int op_line = parser->previous.line;
+        int op_column = parser->previous.column;
+        ast_node* true_expr = parse_assignment(parser);
+        parser_consume(parser, TOKEN_COLON, "Expected ':' after true expression in ternary");
+        ast_node* false_expr = parse_ternary(parser);
+        expr = (ast_node*)ast_create_ternary(expr, true_expr, false_expr, op_line, op_column);
+    }
+    
+    return expr;
+}
+
 // Parse assignment
 ast_node* parse_assignment(parser_t* parser) {
-    ast_node* expr = parse_or(parser);
+    ast_node* expr = parse_ternary(parser);
     
     if (parser_match(parser, TOKEN_ASSIGN)) {
         ast_node* value = parse_assignment(parser);
@@ -625,8 +658,10 @@ ast_node* parse_assignment(parser_t* parser) {
         parser_check(parser, TOKEN_MULT_ASSIGN) || parser_check(parser, TOKEN_DIV_ASSIGN) ||
         parser_check(parser, TOKEN_MOD_ASSIGN) || parser_check(parser, TOKEN_POWER_ASSIGN) ||
         parser_check(parser, TOKEN_BITWISE_AND_ASSIGN) || parser_check(parser, TOKEN_BITWISE_OR_ASSIGN) ||
-        parser_check(parser, TOKEN_BITWISE_XOR_ASSIGN) || parser_check(parser, TOKEN_LOGICAL_AND_ASSIGN) ||
-        parser_check(parser, TOKEN_LOGICAL_OR_ASSIGN)) {
+        parser_check(parser, TOKEN_BITWISE_XOR_ASSIGN) || parser_check(parser, TOKEN_LEFT_SHIFT_ASSIGN) ||
+        parser_check(parser, TOKEN_RIGHT_SHIFT_ASSIGN) || parser_check(parser, TOKEN_LOGICAL_RIGHT_SHIFT_ASSIGN) ||
+        parser_check(parser, TOKEN_LOGICAL_AND_ASSIGN) || parser_check(parser, TOKEN_LOGICAL_OR_ASSIGN) ||
+        parser_check(parser, TOKEN_NULL_COALESCE_ASSIGN)) {
         
         token_t op_token = parser->current;
         parser_advance(parser);  // consume the compound assignment operator
@@ -644,8 +679,12 @@ ast_node* parse_assignment(parser_t* parser) {
             case TOKEN_BITWISE_AND_ASSIGN: binary_op = BIN_BITWISE_AND; break;
             case TOKEN_BITWISE_OR_ASSIGN:  binary_op = BIN_BITWISE_OR; break;
             case TOKEN_BITWISE_XOR_ASSIGN: binary_op = BIN_BITWISE_XOR; break;
+            case TOKEN_LEFT_SHIFT_ASSIGN: binary_op = BIN_LEFT_SHIFT; break;
+            case TOKEN_RIGHT_SHIFT_ASSIGN: binary_op = BIN_RIGHT_SHIFT; break;
+            case TOKEN_LOGICAL_RIGHT_SHIFT_ASSIGN: binary_op = BIN_LOGICAL_RIGHT_SHIFT; break;
             case TOKEN_LOGICAL_AND_ASSIGN: binary_op = BIN_LOGICAL_AND; break;
             case TOKEN_LOGICAL_OR_ASSIGN:  binary_op = BIN_LOGICAL_OR; break;
+            case TOKEN_NULL_COALESCE_ASSIGN: binary_op = BIN_NULL_COALESCE; break;
             default: 
                 parser_error_at(parser, &op_token, "Unknown compound assignment operator");
                 return expr;
@@ -753,7 +792,8 @@ ast_node* parse_comparison(parser_t* parser) {
     ast_node* expr = parse_range(parser);
     
     while (parser_match(parser, TOKEN_GREATER) || parser_match(parser, TOKEN_GREATER_EQUAL) ||
-           parser_match(parser, TOKEN_LESS) || parser_match(parser, TOKEN_LESS_EQUAL)) {
+           parser_match(parser, TOKEN_LESS) || parser_match(parser, TOKEN_LESS_EQUAL) ||
+           parser_match(parser, TOKEN_IN) || parser_match(parser, TOKEN_INSTANCEOF)) {
         binary_operator op = token_to_binary_op(parser->previous.type);
         int op_line = parser->previous.line;
         int op_column = parser->previous.column;

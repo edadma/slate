@@ -18,6 +18,7 @@ void test_assignment_suite(void);
 void test_string_suite(void);
 void test_localdate_suite(void);
 void test_localtime_suite(void);
+void run_new_operators_tests(void);
 
 void setUp(void) {
     // Setup code that runs before each test
@@ -48,6 +49,7 @@ int main(void) {
     test_string_suite();
     test_localdate_suite();
     test_localtime_suite();
+    run_new_operators_tests();
 
     return UNITY_END();
 }

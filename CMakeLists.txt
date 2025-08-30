@@ -63,6 +63,7 @@ if (BUILD_TESTS)
             tests/test_string.c
             tests/test_localdate.c
             tests/test_localtime.c
+            tests/test_new_operators.c
             src/lexer.c
             src/parser.c
             src/ast.c

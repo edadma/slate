@@ -32,6 +32,8 @@ typedef enum {
     TOKEN_AND,           // and (synonym for &&)
     TOKEN_OR,            // or (synonym for ||)
     TOKEN_NOT,           // not (synonym for !)
+    TOKEN_IN,            // in (property existence)
+    TOKEN_INSTANCEOF,    // instanceof (type checking)
     
     // Operators
     TOKEN_PLUS,          // +
@@ -50,8 +52,12 @@ typedef enum {
     TOKEN_BITWISE_AND_ASSIGN,   // &=
     TOKEN_BITWISE_OR_ASSIGN,    // |=
     TOKEN_BITWISE_XOR_ASSIGN,   // ^=
+    TOKEN_LEFT_SHIFT_ASSIGN,    // <<=
+    TOKEN_RIGHT_SHIFT_ASSIGN,   // >>=
+    TOKEN_LOGICAL_RIGHT_SHIFT_ASSIGN, // >>>=
     TOKEN_LOGICAL_AND_ASSIGN,   // &&=
     TOKEN_LOGICAL_OR_ASSIGN,    // ||=
+    TOKEN_NULL_COALESCE_ASSIGN, // ??=
     TOKEN_EQUAL,         // ==
     TOKEN_NOT_EQUAL,     // !=
     TOKEN_LESS,          // <
@@ -73,6 +79,9 @@ typedef enum {
     TOKEN_FLOOR_DIV,     // //
     TOKEN_RANGE,         // .. (inclusive range)
     TOKEN_RANGE_EXCLUSIVE, // ..< (exclusive range)
+    TOKEN_NULL_COALESCE, // ??
+    TOKEN_OPTIONAL_CHAIN, // ?.
+    TOKEN_QUESTION,      // ? (for ternary)
     
     // Punctuation
     TOKEN_SEMICOLON,     // ;

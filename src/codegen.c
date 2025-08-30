@@ -248,6 +248,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_binary_op(codegen, (ast_binary_op*)expr);
             break;
             
+        case AST_TERNARY:
+            codegen_emit_ternary(codegen, (ast_ternary*)expr);
+            break;
+            
         case AST_RANGE:
             codegen_emit_range(codegen, (ast_range*)expr);
             break;
@@ -553,7 +557,35 @@ void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node) {
         case BIN_RIGHT_SHIFT:   codegen_emit_op(codegen, OP_RIGHT_SHIFT); break;
         case BIN_LOGICAL_RIGHT_SHIFT: codegen_emit_op(codegen, OP_LOGICAL_RIGHT_SHIFT); break;
         case BIN_FLOOR_DIV:     codegen_emit_op(codegen, OP_FLOOR_DIV); break;
+        case BIN_NULL_COALESCE: codegen_emit_op(codegen, OP_NULL_COALESCE); break;
+        case BIN_IN:            codegen_emit_op(codegen, OP_IN); break;
+        case BIN_INSTANCEOF:    codegen_emit_op(codegen, OP_INSTANCEOF); break;
     }
+}
+
+void codegen_emit_ternary(codegen_t* codegen, ast_ternary* node) {
+    // Generate condition
+    codegen_emit_expression(codegen, node->condition);
+    
+    // Jump if false to false branch
+    size_t false_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
+    codegen_emit_op(codegen, OP_POP); // Pop condition in true branch
+    
+    // Generate true expression
+    codegen_emit_expression(codegen, node->true_expr);
+    
+    // Jump over false branch
+    size_t end_jump = codegen_emit_jump(codegen, OP_JUMP);
+    
+    // Patch false jump
+    codegen_patch_jump(codegen, false_jump);
+    codegen_emit_op(codegen, OP_POP); // Pop condition in false branch
+    
+    // Generate false expression
+    codegen_emit_expression(codegen, node->false_expr);
+    
+    // Patch end jump
+    codegen_patch_jump(codegen, end_jump);
 }
 
 void codegen_emit_range(codegen_t* codegen, ast_range* node) {
@@ -719,8 +751,12 @@ void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignmen
         case BIN_BITWISE_AND:  codegen_emit_op(codegen, OP_BITWISE_AND); break;
         case BIN_BITWISE_OR:   codegen_emit_op(codegen, OP_BITWISE_OR); break;
         case BIN_BITWISE_XOR:  codegen_emit_op(codegen, OP_BITWISE_XOR); break;
+        case BIN_LEFT_SHIFT:   codegen_emit_op(codegen, OP_LEFT_SHIFT); break;
+        case BIN_RIGHT_SHIFT:  codegen_emit_op(codegen, OP_RIGHT_SHIFT); break;
+        case BIN_LOGICAL_RIGHT_SHIFT: codegen_emit_op(codegen, OP_LOGICAL_RIGHT_SHIFT); break;
         case BIN_LOGICAL_AND:  codegen_emit_op(codegen, OP_AND); break;
         case BIN_LOGICAL_OR:   codegen_emit_op(codegen, OP_OR); break;
+        case BIN_NULL_COALESCE: codegen_emit_op(codegen, OP_NULL_COALESCE); break;
         default:
             codegen_error(codegen, "Unsupported compound assignment operation");
             return;

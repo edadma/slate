@@ -27,6 +27,9 @@ typedef enum {
     // Binary operations
     AST_BINARY_OP,
     
+    // Ternary conditional
+    AST_TERNARY,
+    
     // Range expressions  
     AST_RANGE,
     
@@ -81,7 +84,10 @@ typedef enum {
     BIN_LEFT_SHIFT,  // <<
     BIN_RIGHT_SHIFT, // >> (arithmetic)
     BIN_LOGICAL_RIGHT_SHIFT, // >>> (logical)
-    BIN_FLOOR_DIV    // //
+    BIN_FLOOR_DIV,   // //
+    BIN_NULL_COALESCE, // ??
+    BIN_IN,          // in (property existence)
+    BIN_INSTANCEOF   // instanceof (type checking)
 } binary_operator;
 
 // Unary operators
@@ -156,6 +162,14 @@ typedef struct {
     ast_node* left;
     ast_node* right;
 } ast_binary_op;
+
+// Ternary conditional node (condition ? true_expr : false_expr)
+typedef struct {
+    ast_node base;
+    ast_node* condition;
+    ast_node* true_expr;
+    ast_node* false_expr;
+} ast_ternary;
 
 // Range expression node
 typedef struct {
@@ -309,6 +323,7 @@ ast_identifier* ast_create_identifier(const char* name, int line, int column);
 ast_array* ast_create_array(ast_node** elements, size_t count, int line, int column);
 
 ast_binary_op* ast_create_binary_op(binary_operator op, ast_node* left, ast_node* right, int line, int column);
+ast_ternary* ast_create_ternary(ast_node* condition, ast_node* true_expr, ast_node* false_expr, int line, int column);
 ast_range* ast_create_range(ast_node* start, ast_node* end, int exclusive, int line, int column);
 ast_unary_op* ast_create_unary_op(unary_operator op, ast_node* operand, int line, int column);
 

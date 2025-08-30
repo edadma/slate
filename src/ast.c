@@ -149,6 +149,20 @@ ast_range* ast_create_range(ast_node* start, ast_node* end, int exclusive, int l
     return node;
 }
 
+ast_ternary* ast_create_ternary(ast_node* condition, ast_node* true_expr, ast_node* false_expr, int line, int column) {
+    ast_ternary* node = malloc(sizeof(ast_ternary));
+    if (!node) return NULL;
+    
+    node->base.type = AST_TERNARY;
+    node->base.line = line;
+    node->base.column = column;
+    node->condition = condition;
+    node->true_expr = true_expr;
+    node->false_expr = false_expr;
+    
+    return node;
+}
+
 ast_unary_op* ast_create_unary_op(unary_operator op, ast_node* operand, int line, int column) {
     ast_unary_op* node = malloc(sizeof(ast_unary_op));
     if (!node) return NULL;
@@ -428,6 +442,14 @@ void ast_free(ast_node* node) {
             break;
         }
         
+        case AST_TERNARY: {
+            ast_ternary* tern_node = (ast_ternary*)node;
+            ast_free(tern_node->condition);
+            ast_free(tern_node->true_expr);
+            ast_free(tern_node->false_expr);
+            break;
+        }
+        
         case AST_RANGE: {
             ast_range* range_node = (ast_range*)node;
             ast_free(range_node->start);
@@ -584,6 +606,7 @@ const char* ast_node_type_name(ast_node_type type) {
         case AST_IDENTIFIER: return "IDENTIFIER";
         case AST_ARRAY: return "ARRAY";
         case AST_BINARY_OP: return "BINARY_OP";
+        case AST_TERNARY: return "TERNARY";
         case AST_UNARY_OP: return "UNARY_OP";
         case AST_FUNCTION: return "FUNCTION";
         case AST_CALL: return "CALL";
@@ -685,6 +708,21 @@ void ast_print(ast_node* node, int indent) {
             printf(": %s\n", op_names[bin_node->op]);
             ast_print(bin_node->left, indent + 1);
             ast_print(bin_node->right, indent + 1);
+            break;
+        }
+        
+        case AST_TERNARY: {
+            ast_ternary* tern_node = (ast_ternary*)node;
+            printf(": ?\n");
+            print_indent(indent + 1);
+            printf("condition: ");
+            ast_print(tern_node->condition, indent + 1);
+            print_indent(indent + 1);
+            printf("true: ");
+            ast_print(tern_node->true_expr, indent + 1);
+            print_indent(indent + 1);
+            printf("false: ");
+            ast_print(tern_node->false_expr, indent + 1);
             break;
         }
         

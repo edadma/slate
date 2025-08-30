@@ -1518,6 +1518,12 @@ const char* opcode_name(opcode op) {
         return "AND";
     case OP_OR:
         return "OR";
+    case OP_NULL_COALESCE:
+        return "NULL_COALESCE";
+    case OP_IN:
+        return "IN";
+    case OP_INSTANCEOF:
+        return "INSTANCEOF";
     case OP_BITWISE_AND:
         return "BITWISE_AND";
     case OP_BITWISE_OR:
@@ -2266,6 +2272,84 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 vm_push(vm, a);
                 vm_release(b);
             }
+            break;
+        }
+        
+        case OP_NULL_COALESCE: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            // Null coalescing: if a is null or undefined, return b, otherwise return a
+            if (a.type == VAL_NULL || a.type == VAL_UNDEFINED) {
+                vm_push(vm, b);
+                vm_release(a);
+            } else {
+                vm_push(vm, a);
+                vm_release(b);
+            }
+            break;
+        }
+        
+        case OP_IN: {
+            value_t obj = vm_pop(vm);
+            value_t prop = vm_pop(vm);
+            
+            // Check if property exists in object
+            if (obj.type != VAL_OBJECT) {
+                vm_release(obj);
+                vm_release(prop);
+                vm_runtime_error_with_values(vm, "Cannot use 'in' operator on non-object", &prop, &obj, obj.debug);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            // For now, only support string properties
+            if (prop.type != VAL_STRING) {
+                vm_release(obj);
+                vm_release(prop);
+                vm_runtime_error_with_values(vm, "Property name for 'in' operator must be a string", &prop, &obj, prop.debug);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            // Check if property exists
+            bool exists = do_get(obj.as.object, prop.as.string) != NULL;
+            
+            // Clean up
+            vm_release(obj);
+            vm_release(prop);
+            
+            // Push result
+            vm_push(vm, make_boolean(exists));
+            break;
+        }
+
+        case OP_INSTANCEOF: {
+            value_t class_constructor = vm_pop(vm);
+            value_t value = vm_pop(vm);
+            
+            // Right operand must be a class constructor/function
+            if (class_constructor.type != VAL_CLASS && class_constructor.type != VAL_FUNCTION && 
+                class_constructor.type != VAL_CLOSURE && class_constructor.type != VAL_NATIVE) {
+                vm_release(class_constructor);
+                vm_release(value);
+                vm_runtime_error_with_values(vm, "Right operand of 'instanceof' must be a class constructor", &value, &class_constructor, class_constructor.debug);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            bool is_instance = false;
+            
+            // Check if the value has a class and if it matches the constructor
+            if (value.class != NULL) {
+                // Compare the value's class with the provided class constructor
+                // Need to compare class identity, not just addresses
+                is_instance = values_equal(*value.class, class_constructor);
+            }
+            
+            // Clean up
+            vm_release(class_constructor);
+            vm_release(value);
+            
+            // Push result
+            vm_push(vm, make_boolean(is_instance));
             break;
         }
 
