@@ -1299,6 +1299,13 @@ void builtins_init(slate_vm* vm) {
     // Set the factory function to allow LocalDate(year, month, day)
     local_date_class.as.class->factory = local_date_factory;
     
+    // Add static methods to the LocalDate class
+    value_t now_method = make_native(builtin_local_date_now);
+    do_set(local_date_class.as.class->properties, "now", &now_method, sizeof(value_t));
+    
+    value_t of_method = make_native(builtin_local_date_of);
+    do_set(local_date_class.as.class->properties, "of", &of_method, sizeof(value_t));
+    
     // Store in globals
     do_set(vm->globals, "LocalDate", &local_date_class, sizeof(value_t));
 

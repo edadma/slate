@@ -3167,6 +3167,18 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 }
             }
 
+            // For classes, check static methods/properties
+            if (object.type == VAL_CLASS) {
+                class_t* cls = object.as.class;
+                if (cls && cls->properties) {
+                    value_t* prop_value = (value_t*)do_get(cls->properties, prop_name);
+                    if (prop_value) {
+                        vm_push(vm, *prop_value);
+                        break;
+                    }
+                }
+            }
+
             // Check the prototype chain via class
             if (object.class && object.class->type == VAL_CLASS) {
                 // Get the class's prototype properties
