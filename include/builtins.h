@@ -112,6 +112,15 @@ value_t builtin_buffer_slice(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_buffer_concat(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_buffer_to_hex(slate_vm* vm, int arg_count, value_t* args);
 
+// Buffer class methods (for prototypal inheritance)
+value_t builtin_buffer_method_slice(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_buffer_method_concat(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_buffer_method_to_hex(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_buffer_method_length(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_buffer_method_reader(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_buffer_method_equals(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_buffer_method_to_string(slate_vm* vm, int arg_count, value_t* args);
+
 // Buffer builder functions
 value_t builtin_buffer_builder(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_builder_append_uint8(slate_vm* vm, int arg_count, value_t* args);
@@ -137,5 +146,11 @@ void runtime_error(const char* message, ...);
 
 // Helper functions
 void register_builtin(slate_vm* vm, const char* name, native_t func, int min_args, int max_args);
+
+// Global class references (for use in make_* functions)
+extern value_t* global_string_class;
+extern value_t* global_array_class;
+extern value_t* global_string_builder_class;
+extern value_t* global_buffer_class;
 
 #endif // SLATE_BUILTINS_H

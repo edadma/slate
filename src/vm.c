@@ -413,7 +413,7 @@ value_t make_buffer(db_buffer buffer) {
     value_t value;
     value.type = VAL_BUFFER;
     value.as.buffer = buffer;
-    value.class = NULL;
+    value.class = global_buffer_class;
     value.debug = NULL;
     return value;
 }

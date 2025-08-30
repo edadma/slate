@@ -6,9 +6,85 @@
 #include "line_editor.h"
 #include "parser.h"
 #include "vm.h"
+#include "cargs.h"
 
 // Global debug flag
 static int debug_mode = 0;
+
+// Command line options
+static struct cag_option options[] = {
+    {
+        .identifier = 'h',
+        .access_letters = "h",
+        .access_name = "help",
+        .description = "Show this help message"
+    },
+    {
+        .identifier = 'v',
+        .access_letters = "v",
+        .access_name = "version",
+        .description = "Show version information"
+    },
+    {
+        .identifier = 'd',
+        .access_letters = "d",
+        .access_name = "debug",
+        .description = "Enable debug mode"
+    },
+    {
+        .identifier = 't',
+        .access_letters = "t",
+        .access_name = "test",
+        .description = "Run built-in tests"
+    },
+    {
+        .identifier = 's',
+        .access_letters = "s",
+        .access_name = "script",
+        .value_name = "CODE",
+        .description = "Execute script code directly"
+    },
+    {
+        .identifier = 'f',
+        .access_letters = "f",
+        .access_name = "file",
+        .value_name = "PATH",
+        .description = "Execute script from file"
+    },
+    {
+        .identifier = 'i',
+        .access_letters = "i",
+        .access_name = "stdin",
+        .description = "Read and execute from standard input"
+    },
+    {
+        .identifier = 'r',
+        .access_letters = "r",
+        .access_name = "repl",
+        .description = "Start interactive REPL (default if no other options)"
+    }
+};
+
+// Show help information
+static void show_help(const char* program_name) {
+    printf("Slate Programming Language\n");
+    printf("Usage: %s [OPTIONS] [script_args...]\n\n", program_name);
+    
+    cag_option_print(options, CAG_ARRAY_SIZE(options), stdout);
+    
+    printf("\nExamples:\n");
+    printf("  %s                          # Start interactive REPL\n", program_name);
+    printf("  %s -s \"print('Hello')\"       # Execute script directly\n", program_name);
+    printf("  %s -f script.slate arg1 arg2 # Run file with arguments\n", program_name);
+    printf("  %s --stdin < input.txt       # Execute from stdin\n", program_name);
+    printf("  %s --test                    # Run built-in tests\n", program_name);
+}
+
+// Show version information
+static void show_version(void) {
+    printf("Slate Programming Language v1.0.0\n");
+    printf("A toy programming language implementation\n");
+}
 
 static void print_tokens(const char* source) {
     lexer_t lexer;
@@ -390,72 +466,68 @@ static char* read_stdin(void) {
 }
 
 int main(int argc, char* argv[]) {
-    // Parse command line arguments
-    char* script_file = NULL;
+    // Parse command line arguments using cargs
+    const char* script_file = NULL;
     int use_stdin = 0;
-    char* script_content = NULL;
-    int script_args_start = -1; // Index where script arguments begin
-
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--debug") == 0) {
-            debug_mode = 1;
-        } else if (strcmp(argv[i], "--test") == 0) {
-            run_tests();
-            return 0;
-        } else if (strcmp(argv[i], "--stdin") == 0 || strcmp(argv[i], "--eval") == 0) {
-            use_stdin = 1;
-        } else if (strcmp(argv[i], "--script") == 0) {
-            // Next argument should be the script content
-            if (i + 1 >= argc) {
-                fprintf(stderr, "Error: --script requires a script argument\n");
+    const char* script_content = NULL;
+    int start_repl = 0;
+    
+    cag_option_context context;
+    cag_option_init(&context, options, CAG_ARRAY_SIZE(options), argc, argv);
+    
+    while (cag_option_fetch(&context)) {
+        char identifier = cag_option_get_identifier(&context);
+        switch (identifier) {
+            case 'h':
+                show_help(argv[0]);
+                return 0;
+            case 'v':
+                show_version();
+                return 0;
+            case 'd':
+                debug_mode = 1;
+                break;
+            case 't':
+                run_tests();
+                return 0;
+            case 's':
+                script_content = cag_option_get_value(&context);
+                break;
+            case 'f':
+                script_file = cag_option_get_value(&context);
+                break;
+            case 'i':
+                use_stdin = 1;
+                break;
+            case 'r':
+                start_repl = 1;
+                break;
+            case '?':
+                // Invalid option
+                cag_option_print_error(&context, stdout);
+                show_help(argv[0]);
                 return 1;
-            }
-            script_content = argv[i + 1];
-            i++; // Skip the next argument since we consumed it
-            // All remaining arguments are script arguments
-            if (i + 1 < argc) {
-                script_args_start = i + 1;
-            }
-            break; // Stop parsing, rest are script args
-        } else if (strcmp(argv[i], "-f") == 0) {
-            // Next argument should be the filename
-            if (i + 1 >= argc) {
-                fprintf(stderr, "Error: -f requires a filename argument\n");
-                return 1;
-            }
-            script_file = argv[i + 1];
-            i++; // Skip the next argument since we consumed it
-            // All remaining arguments are script arguments
-            if (i + 1 < argc) {
-                script_args_start = i + 1;
-            }
-            break; // Stop parsing, rest are script args
-        } else if (argv[i][0] != '-') {
-            // Non-switch arguments after switches - these are script arguments
-            script_args_start = i;
-            break;
-        } else {
-            fprintf(stderr, "Unknown option: %s\n", argv[i]);
-            fprintf(stderr,
-                    "Usage: %s [--debug] [--stdin] [--script <code>] [-f <file>] [script_args...] or %s --test\n",
-                    argv[0], argv[0]);
-            return 1;
         }
     }
 
-    // Create script arguments for VM (either all args or subset starting from script_args_start)
-    char** script_argv = NULL;
-    int script_argc = 0;
-
-    if (script_args_start != -1) {
-        // Script arguments start at script_args_start
-        script_argc = argc - script_args_start;
-        script_argv = &argv[script_args_start];
-    } else {
-        // No script arguments
-        script_argc = 0;
-        script_argv = NULL;
+    // Get remaining non-option arguments (script arguments)
+    int remaining_index = cag_option_get_index(&context);
+    char** script_argv = (remaining_index < argc) ? &argv[remaining_index] : NULL;
+    int script_argc = (remaining_index < argc) ? argc - remaining_index : 0;
+    
+    // Validation: ensure only one execution mode is specified
+    int execution_modes = 0;
+    if (use_stdin) execution_modes++;
+    if (script_content) execution_modes++;
+    if (script_file) execution_modes++;
+    if (start_repl) execution_modes++;
+    
+    if (execution_modes > 1) {
+        fprintf(stderr, "Error: Only one execution mode can be specified (--stdin, --script, --file, or --repl)\n");
+        show_help(argv[0]);
+        return 1;
     }
+    
     if (use_stdin) {
         // Read and interpret from stdin with result display
         char* source = read_stdin();
@@ -491,7 +563,7 @@ int main(int argc, char* argv[]) {
             free(source);
         }
     } else {
-        // No file specified - start REPL
+        // No execution mode specified or explicit --repl - start REPL
         repl_with_args(script_argc, script_argv);
     }
 

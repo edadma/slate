@@ -630,6 +630,7 @@ void test_buffer_reader_positioning(void) {
     vm_release(result);
 }
 
+
 // Test string method: length
 // String method tests moved to test_string.c
 

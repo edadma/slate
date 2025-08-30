@@ -5,6 +5,7 @@ set(CMAKE_C_STANDARD 11)
 
 # Include directories
 include_directories(include)
+include_directories(deps/cargs/include)
 
 # Main executable
 add_executable(slate
@@ -18,6 +19,7 @@ add_executable(slate
         src/library_impl.c
         src/line_editor.c
         src/datetime.c
+        deps/cargs/src/cargs.c
 )
 
 # Link math library for main executable
@@ -53,6 +55,7 @@ if (BUILD_TESTS)
             tests/test_while_loops.c
             tests/test_infinite_loops.c
             tests/test_builtins.c
+            tests/test_buffer_class.c
             tests/test_integers.c
             tests/test_arithmetic.c
             tests/test_logical.c
@@ -64,6 +67,7 @@ if (BUILD_TESTS)
             tests/test_localdate.c
             tests/test_localtime.c
             tests/test_new_operators.c
+            deps/cargs/src/cargs.c
             src/lexer.c
             src/parser.c
             src/ast.c
