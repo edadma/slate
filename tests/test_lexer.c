@@ -36,17 +36,29 @@ void test_lexer_strings(void) {
     lexer_t lexer;
     token_t token;
     
-    lexer_init(&lexer, "\"hello\" \"world\" \"\"");
+    lexer_init(&lexer, "\"hello\" \"world\" \"\" 'single' 'quotes' ''");
     
-    // Test first string
+    // Test first double-quoted string
     token = lexer_next_token(&lexer);
     TEST_ASSERT_EQUAL_INT(TOKEN_STRING, token.type);
     
-    // Test second string
+    // Test second double-quoted string
     token = lexer_next_token(&lexer);
     TEST_ASSERT_EQUAL_INT(TOKEN_STRING, token.type);
     
-    // Test empty string
+    // Test empty double-quoted string
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_STRING, token.type);
+    
+    // Test first single-quoted string
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_STRING, token.type);
+    
+    // Test second single-quoted string
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_STRING, token.type);
+    
+    // Test empty single-quoted string
     token = lexer_next_token(&lexer);
     TEST_ASSERT_EQUAL_INT(TOKEN_STRING, token.type);
 }
@@ -192,10 +204,38 @@ void test_lexer_compound_assignments(void) {
     lexer_cleanup(&lexer);
 }
 
+// Test single-quoted strings with escape sequences
+void test_lexer_single_quote_escapes(void) {
+    lexer_t lexer;
+    token_t token;
+    
+    lexer_init(&lexer, "'hello\\nworld' 'tab\\there' 'quote\\'' \"double\\\"quote\"");
+    
+    // Test newline escape in single quotes
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_STRING, token.type);
+    TEST_ASSERT_EQUAL_INT(14, token.length); // 'hello\nworld' (includes quotes)
+    
+    // Test tab escape in single quotes
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_STRING, token.type);
+    
+    // Test single quote escape in single quotes
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_STRING, token.type);
+    
+    // Test double quote escape in double quotes
+    token = lexer_next_token(&lexer);
+    TEST_ASSERT_EQUAL_INT(TOKEN_STRING, token.type);
+    
+    lexer_cleanup(&lexer);
+}
+
 // Test suite runner
 void test_lexer_suite(void) {
     RUN_TEST(test_lexer_numbers);
     RUN_TEST(test_lexer_strings);
+    RUN_TEST(test_lexer_single_quote_escapes);
     RUN_TEST(test_lexer_operators);
     RUN_TEST(test_lexer_keywords);
     RUN_TEST(test_lexer_identifiers);

@@ -191,8 +191,8 @@ static void skip_whitespace(lexer_t* lexer) {
     }
 }
 
-static token_t string_token(lexer_t* lexer) {
-    while (peek(lexer) != '"' && !is_at_end(lexer)) {
+static token_t string_token(lexer_t* lexer, char quote_char) {
+    while (peek(lexer) != quote_char && !is_at_end(lexer)) {
         if (peek(lexer) == '\n') {
             lexer->line++;
             lexer->column = 0; // Will be incremented by advance()
@@ -517,7 +517,8 @@ token_t lexer_next_token(lexer_t* lexer) {
             }
             return make_token(lexer, TOKEN_QUESTION);
             
-        case '"': return string_token(lexer);
+        case '"': return string_token(lexer, '"');
+        case '\'': return string_token(lexer, '\'');
     }
     
     char bad_char = advance(lexer);
