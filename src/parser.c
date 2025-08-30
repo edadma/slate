@@ -13,6 +13,7 @@ static ast_node* parse_shift(parser_t* parser);
 static ast_node* parse_arrow_function(parser_t* parser, char** parameters, size_t param_count);
 static ast_node* parse_parenthesized_or_arrow(parser_t* parser);
 static ast_node* parse_def_declaration(parser_t* parser);
+static ast_node* parse_template_literal(parser_t* parser);
 
 // Helper function to extract string from token
 static char* token_to_string(token_t* token) {
@@ -1203,6 +1204,10 @@ ast_node* parse_primary(parser_t* parser) {
         return result;
     }
     
+    if (parser_match(parser, TOKEN_TEMPLATE_START)) {
+        return parse_template_literal(parser);
+    }
+    
     if (parser_match(parser, TOKEN_LEFT_PAREN)) {
         // Check if this is an arrow function parameter list
         return parse_parenthesized_or_arrow(parser);
@@ -1392,4 +1397,61 @@ ast_node* parse_object(parser_t* parser) {
     
     return (ast_node*)ast_create_object_literal(properties, property_count,
                                                parser->previous.line, parser->previous.column);
+}
+
+// Parse template literal (backtick strings with interpolation)
+static ast_node* parse_template_literal(parser_t* parser) {
+    // We've already consumed TOKEN_TEMPLATE_START
+    int line = parser->previous.line;
+    int column = parser->previous.column;
+    
+    template_part* parts = NULL;
+    size_t part_count = 0;
+    size_t part_capacity = 0;
+    
+    while (!parser_check(parser, TOKEN_TEMPLATE_END) && !parser_check(parser, TOKEN_EOF)) {
+        template_part part;
+        
+        if (parser_match(parser, TOKEN_TEMPLATE_TEXT)) {
+            // Static text segment
+            part.type = TEMPLATE_PART_TEXT;
+            part.as.text = token_to_string(&parser->previous);
+            
+        } else if (parser_match(parser, TOKEN_TEMPLATE_SIMPLE_VAR)) {
+            // Simple variable interpolation: $identifier
+            char* var_str = token_to_string(&parser->previous);
+            // Skip the '$' character
+            char* var_name = strdup(var_str + 1);
+            free(var_str);
+            
+            part.type = TEMPLATE_PART_EXPRESSION;
+            part.as.expression = (ast_node*)ast_create_identifier(var_name, 
+                                                                 parser->previous.line, 
+                                                                 parser->previous.column);
+            free(var_name);
+            
+        } else if (parser_match(parser, TOKEN_TEMPLATE_EXPR_START)) {
+            // Complex expression interpolation: ${expr}
+            part.type = TEMPLATE_PART_EXPRESSION;
+            part.as.expression = parse_expression(parser);
+            parser_consume(parser, TOKEN_TEMPLATE_EXPR_END, "Expected '}' after template expression");
+            
+        } else {
+            parser_error_at_current(parser, "Unexpected token in template literal");
+            break;
+        }
+        
+        // Grow parts array if needed
+        if (part_count >= part_capacity) {
+            size_t new_capacity = part_capacity == 0 ? 8 : part_capacity * 2;
+            parts = realloc(parts, sizeof(template_part) * new_capacity);
+            part_capacity = new_capacity;
+        }
+        
+        parts[part_count++] = part;
+    }
+    
+    parser_consume(parser, TOKEN_TEMPLATE_END, "Expected closing backtick for template literal");
+    
+    return (ast_node*)ast_create_template_literal(parts, part_count, line, column);
 }

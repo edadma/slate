@@ -148,6 +148,7 @@ void runtime_error(const char* message, ...);
 void register_builtin(slate_vm* vm, const char* name, native_t func, int min_args, int max_args);
 
 // Global class references (for use in make_* functions)
+extern value_t* global_value_class;
 extern value_t* global_string_class;
 extern value_t* global_array_class;
 extern value_t* global_string_builder_class;

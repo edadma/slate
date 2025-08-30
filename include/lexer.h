@@ -97,6 +97,14 @@ typedef enum {
     TOKEN_RIGHT_BRACKET, // ]
     TOKEN_ARROW,         // ->
     
+    // Template literals
+    TOKEN_TEMPLATE_START,      // ` (opening backtick)
+    TOKEN_TEMPLATE_TEXT,       // literal text segments
+    TOKEN_TEMPLATE_SIMPLE_VAR, // $identifier
+    TOKEN_TEMPLATE_EXPR_START, // ${
+    TOKEN_TEMPLATE_EXPR_END,   // } (when closing expression)
+    TOKEN_TEMPLATE_END,        // ` (closing backtick)
+    
     // Special
     TOKEN_NEWLINE,       // \n (for statement termination)
     TOKEN_INDENT,        // Increased indentation
@@ -114,6 +122,19 @@ typedef struct {
     int column;           // Column number for error reporting
 } token_t;
 
+// Template lexer modes
+typedef enum {
+    LEXER_NORMAL,         // Regular lexing mode
+    LEXER_TEMPLATE,       // Inside template literal (collecting text)
+    LEXER_TEMPLATE_EXPR   // Inside ${...} expression  
+} lexer_mode_t;
+
+// Template lexer state for stack-based parsing
+typedef struct {
+    lexer_mode_t mode;    // Current lexing mode
+    int brace_depth;      // Track {} nesting depth in expressions
+} template_lexer_state;
+
 // Lexer state
 typedef struct {
     const char* source;   // Source code string
@@ -130,6 +151,11 @@ typedef struct {
     int at_line_start;    // Whether we're at the start of a line
     int pending_dedents;  // Number of DEDENT tokens to emit
     int brace_depth;      // Track nesting depth of (), [], {} to ignore indentation inside
+    
+    // Template literal state stack
+    template_lexer_state* template_stack;    // Stack of template parsing states
+    int template_stack_depth;               // Current depth of template stack
+    int template_stack_capacity;            // Capacity of template stack
 } lexer_t;
 
 // Lexer functions
@@ -137,6 +163,12 @@ void lexer_init(lexer_t* lexer, const char* source);
 void lexer_cleanup(lexer_t* lexer);
 token_t lexer_next_token(lexer_t* lexer);
 const char* token_type_name(token_type_t type);
+
+// Template state management functions
+void lexer_push_template_state(lexer_t* lexer, lexer_mode_t mode, int brace_depth);
+void lexer_pop_template_state(lexer_t* lexer);
+lexer_mode_t lexer_current_mode(lexer_t* lexer);
+int lexer_current_brace_depth(lexer_t* lexer);
 
 // Helper functions
 int is_digit(char c);

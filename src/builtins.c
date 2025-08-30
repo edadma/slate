@@ -17,6 +17,9 @@
 // Static random initialization flag
 static int random_initialized = 0;
 
+// Forward declaration for builtin_value_to_string
+static value_t builtin_value_to_string(slate_vm* vm, int arg_count, value_t* args);
+
 // Runtime error handling - exits with non-zero code for now, will throw exception later
 void runtime_error(const char* message, ...) {
     va_list args;
@@ -166,13 +169,22 @@ static value_t builtin_string_builder_append(slate_vm* vm, int arg_count, value_
         return make_null();
     }
     
-    if (str_val.type != VAL_STRING) {
-        runtime_error("append() requires a string argument, not %s", value_type_name(str_val.type));
-        return make_null();
+    // Convert value to string if it's not already a string
+    value_t string_val;
+    if (str_val.type == VAL_STRING) {
+        string_val = str_val;
+    } else {
+        // Call toString() on the value to convert it
+        string_val = builtin_value_to_string(vm, 1, &str_val);
     }
     
     // Append the string to the builder
-    ds_builder_append_string(receiver.as.string_builder, str_val.as.string);
+    ds_builder_append_string(receiver.as.string_builder, string_val.as.string);
+    
+    // Release the string if we created it
+    if (str_val.type != VAL_STRING) {
+        vm_release(string_val);
+    }
     
     // Return the receiver for chaining
     return receiver;
@@ -1270,6 +1282,200 @@ value_t builtin_local_time_to_string(slate_vm* vm, int arg_count, value_t* args)
     return result;
 }
 
+// Value.toString() - Universal toString method for all value types
+static value_t builtin_value_to_string(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error("toString() takes no arguments (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    switch (receiver.type) {
+        case VAL_NULL:
+            return make_string("null");
+            
+        case VAL_UNDEFINED:
+            return make_string("undefined");
+            
+        case VAL_BOOLEAN:
+            return make_string(receiver.as.boolean ? "true" : "false");
+            
+        case VAL_INT32:
+            {
+                char buffer[32];
+                snprintf(buffer, sizeof(buffer), "%d", receiver.as.int32);
+                return make_string(buffer);
+            }
+            
+        case VAL_BIGINT:
+            {
+                char* str = di_to_string(receiver.as.bigint, 10);
+                value_t result = make_string(str);
+                free(str);
+                return result;
+            }
+            
+        case VAL_NUMBER:
+            {
+                char buffer[64];
+                // Use %.15g for clean formatting without unnecessary zeros
+                snprintf(buffer, sizeof(buffer), "%.15g", receiver.as.number);
+                return make_string(buffer);
+            }
+            
+        case VAL_STRING:
+            // Strings return themselves (no quotes)
+            return make_string(receiver.as.string);
+            
+        case VAL_ARRAY:
+            {
+                // Format as "[1, 2, 3]"
+                ds_builder sb = ds_builder_create();
+                ds_string bracket_open = ds_new("[");
+                ds_builder_append_string(sb, bracket_open);
+                ds_release(bracket_open);
+                
+                da_array array = receiver.as.array;
+                size_t count = da_length(array);
+                
+                for (size_t i = 0; i < count; i++) {
+                    if (i > 0) {
+                        ds_string separator = ds_new(", ");
+                        ds_builder_append_string(sb, separator);
+                        ds_release(separator);
+                    }
+                    
+                    value_t* element = (value_t*)da_get(array, i);
+                    // Recursively call toString on each element
+                    value_t element_str = builtin_value_to_string(vm, 1, element);
+                    ds_builder_append_string(sb, element_str.as.string);
+                    vm_release(element_str);
+                }
+                
+                ds_string bracket_close = ds_new("]");
+                ds_builder_append_string(sb, bracket_close);
+                ds_release(bracket_close);
+                ds_string result = ds_builder_to_string(sb);
+                ds_builder_release(&sb);
+                
+                return make_string_ds(result);
+            }
+            
+        case VAL_OBJECT:
+            {
+                // Format as "{key: value, key2: value2}"
+                ds_builder sb = ds_builder_create();
+                ds_string brace_open = ds_new("{");
+                ds_builder_append_string(sb, brace_open);
+                ds_release(brace_open);
+                
+                // TODO: Implement object iteration when available
+                // For now, return a placeholder
+                ds_string placeholder = ds_new("...}");
+                ds_builder_append_string(sb, placeholder);
+                ds_release(placeholder);
+                
+                ds_string result = ds_builder_to_string(sb);
+                ds_builder_release(&sb);
+                
+                return make_string_ds(result);
+            }
+            
+        case VAL_STRING_BUILDER:
+            {
+                // Convert StringBuilder to string and format as "StringBuilder(...)"
+                ds_string content = ds_builder_to_string(receiver.as.string_builder);
+                ds_builder sb = ds_builder_create();
+                ds_string prefix = ds_new("StringBuilder(\"");
+                ds_builder_append_string(sb, prefix);
+                ds_release(prefix);
+                ds_builder_append_string(sb, content);
+                ds_string suffix = ds_new("\")");
+                ds_builder_append_string(sb, suffix);
+                ds_release(suffix);
+                
+                ds_string result = ds_builder_to_string(sb);
+                ds_builder_release(&sb);
+                ds_release(&content);
+                
+                return make_string_ds(result);
+            }
+            
+        case VAL_LOCAL_DATE:
+            {
+                // Use existing LocalDate toString functionality
+                return builtin_local_date_to_string(vm, arg_count, args);
+            }
+            
+        case VAL_LOCAL_TIME:
+            {
+                // Use existing LocalTime toString functionality  
+                return builtin_local_time_to_string(vm, arg_count, args);
+            }
+            
+        case VAL_BUFFER:
+            {
+                // Convert buffer to hex representation
+                return builtin_buffer_method_to_string(vm, arg_count, args);
+            }
+            
+        case VAL_BUFFER_READER:
+            return make_string("BufferReader");
+            
+        case VAL_RANGE:
+            {
+                // Format as "1..10" or "1..<10"
+                range_t* range = receiver.as.range;
+                ds_builder sb = ds_builder_create();
+                
+                // Convert start to string
+                // Get the start value directly (already a value_t)
+                value_t start_val = range->start;
+                value_t start_str = builtin_value_to_string(vm, 1, &start_val);
+                ds_builder_append_string(sb, start_str.as.string);
+                vm_release(start_str);
+                
+                // Add range operator
+                if (range->exclusive) {
+                    ds_string range_op = ds_new("..<");
+                    ds_builder_append_string(sb, range_op);
+                    ds_release(range_op);
+                } else {
+                    ds_string range_op = ds_new("..");
+                    ds_builder_append_string(sb, range_op);
+                    ds_release(range_op);
+                }
+                
+                // Convert end to string
+                // Get the end value directly (already a value_t)  
+                value_t end_val = range->end;
+                value_t end_str = builtin_value_to_string(vm, 1, &end_val);
+                ds_builder_append_string(sb, end_str.as.string);
+                vm_release(end_str);
+                
+                ds_string result = ds_builder_to_string(sb);
+                ds_builder_release(&sb);
+                
+                return make_string_ds(result);
+            }
+            
+        case VAL_ITERATOR:
+            return make_string("Iterator");
+            
+        case VAL_NATIVE:
+            return make_string("native function");
+            
+        case VAL_BOUND_METHOD:
+            return make_string("bound method");
+            
+        default:
+            return make_string("unknown");
+    }
+}
+
+// Global Value class storage  
+value_t* global_value_class = NULL;
+
 // Initialize all built-in functions
 void builtins_init(slate_vm* vm) {
     // Initialize random seed once
@@ -1721,6 +1927,27 @@ void builtins_init(slate_vm* vm) {
     // LocalDate static functions
     register_builtin(vm, "LocalDate_now", builtin_local_date_now, 0, 0);
     register_builtin(vm, "LocalDate_of", builtin_local_date_of, 3, 3);
+    
+    // Create the Value class - the ultimate superclass of all values
+    do_object value_proto = do_create(NULL);
+    
+    // Add methods to Value prototype
+    value_t value_to_string_method = make_native(builtin_value_to_string);
+    do_set(value_proto, "toString", &value_to_string_method, sizeof(value_t));
+    
+    // Create the Value class
+    value_t value_class = make_class("Value", value_proto);
+    
+    // Value class has no factory (factory = NULL) - cannot be instantiated directly
+    value_class.as.class->factory = NULL;
+    
+    // Store in globals (though it shouldn't be called directly)
+    do_set(vm->globals, "Value", &value_class, sizeof(value_t));
+    
+    // Store a global reference for use in make_value functions
+    static value_t value_class_storage;
+    value_class_storage = vm_retain(value_class);
+    global_value_class = &value_class_storage;
 }
 
 // Built-in function implementations

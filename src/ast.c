@@ -62,6 +62,19 @@ ast_string* ast_create_string(const char* value, int line, int column) {
     return node;
 }
 
+ast_template_literal* ast_create_template_literal(template_part* parts, size_t part_count, int line, int column) {
+    ast_template_literal* node = malloc(sizeof(ast_template_literal));
+    if (!node) return NULL;
+    
+    node->base.type = AST_TEMPLATE_LITERAL;
+    node->base.line = line;
+    node->base.column = column;
+    node->parts = parts;  // Caller owns the parts array
+    node->part_count = part_count;
+    
+    return node;
+}
+
 ast_boolean* ast_create_boolean(int value, int line, int column) {
     ast_boolean* node = malloc(sizeof(ast_boolean));
     if (!node) return NULL;
@@ -430,6 +443,20 @@ void ast_free(ast_node* node) {
         case AST_STRING: {
             ast_string* str_node = (ast_string*)node;
             free(str_node->value);
+            break;
+        }
+        
+        case AST_TEMPLATE_LITERAL: {
+            ast_template_literal* template_node = (ast_template_literal*)node;
+            for (size_t i = 0; i < template_node->part_count; i++) {
+                template_part* part = &template_node->parts[i];
+                if (part->type == TEMPLATE_PART_TEXT) {
+                    free(part->as.text);
+                } else if (part->type == TEMPLATE_PART_EXPRESSION) {
+                    ast_free(part->as.expression);
+                }
+            }
+            free(template_node->parts);
             break;
         }
         

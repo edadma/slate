@@ -4,6 +4,9 @@
 #include <string.h>
 #include <stdbool.h>
 
+// Forward declarations
+void codegen_emit_template_literal(codegen_t* codegen, ast_template_literal* node);
+
 // Debug info functions
 debug_info* debug_info_create(const char* source_code) {
     debug_info* debug = malloc(sizeof(debug_info));
@@ -226,6 +229,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             
         case AST_STRING:
             codegen_emit_string(codegen, (ast_string*)expr);
+            break;
+            
+        case AST_TEMPLATE_LITERAL:
+            codegen_emit_template_literal(codegen, (ast_template_literal*)expr);
             break;
             
         case AST_BOOLEAN:
@@ -498,6 +505,65 @@ void codegen_emit_string(codegen_t* codegen, ast_string* node) {
     
     size_t constant = chunk_add_constant(codegen->chunk, make_string(node->value));
     codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)constant);
+}
+
+void codegen_emit_template_literal(codegen_t* codegen, ast_template_literal* node) {
+    // Emit debug location before processing template
+    codegen_emit_debug_location(codegen, (ast_node*)node);
+    
+    // Desugar to: StringBuilder().append(...).append(...).toString()
+    
+    // 1. Create a new StringBuilder: StringBuilder()
+    size_t sb_constant = chunk_add_constant(codegen->chunk, make_string("StringBuilder"));
+    codegen_emit_op_operand(codegen, OP_GET_GLOBAL, (uint16_t)sb_constant);
+    codegen_emit_op_operand(codegen, OP_CALL, 0); // Call with 0 arguments
+    
+    // 2. Process each part, calling append() for each
+    for (size_t i = 0; i < node->part_count; i++) {
+        // Stack: [StringBuilder]
+        
+        // Duplicate the StringBuilder (for chaining)
+        codegen_emit_op(codegen, OP_DUP);
+        
+        // Get the append method from it
+        size_t append_constant = chunk_add_constant(codegen->chunk, make_string("append"));
+        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)append_constant);
+        codegen_emit_op(codegen, OP_GET_PROPERTY);
+        
+        // Stack: [StringBuilder, StringBuilder.append]
+        
+        // Push the argument for append()
+        if (node->parts[i].type == TEMPLATE_PART_TEXT) {
+            // Static text - push as string
+            size_t text_constant = chunk_add_constant(codegen->chunk, make_string(node->parts[i].as.text));
+            codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)text_constant);
+        } else {
+            // Expression - evaluate it
+            codegen_emit_expression(codegen, node->parts[i].as.expression);
+        }
+        
+        // Stack: [StringBuilder, StringBuilder.append, arg]
+        // Call append with 1 argument (the method already has its receiver bound)
+        codegen_emit_op_operand(codegen, OP_CALL, 1);
+        
+        // Stack: [StringBuilder, StringBuilder] (append returns the StringBuilder for chaining)
+        // Pop the duplicate since append already returns the StringBuilder
+        codegen_emit_op(codegen, OP_POP);
+        
+        // Stack: [StringBuilder] ready for next iteration
+    }
+    
+    // 3. Finally call toString() to get the final string
+    // Stack: [StringBuilder]
+    // Don't duplicate - just get toString method directly
+    size_t tostring_constant = chunk_add_constant(codegen->chunk, make_string("toString"));
+    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)tostring_constant);
+    codegen_emit_op(codegen, OP_GET_PROPERTY);
+    
+    // Stack: [StringBuilder.toString]
+    codegen_emit_op_operand(codegen, OP_CALL, 0); // toString takes no arguments
+    
+    // Stack: [string] - the final result!
 }
 
 void codegen_emit_boolean(codegen_t* codegen, ast_boolean* node) {

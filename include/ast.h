@@ -18,6 +18,7 @@ typedef enum {
     AST_BIGINT,      // Arbitrary precision integer literal
     AST_NUMBER,      // Floating point literal
     AST_STRING,
+    AST_TEMPLATE_LITERAL,  // Template literal with interpolation
     AST_BOOLEAN,
     AST_NULL,
     AST_UNDEFINED,
@@ -129,6 +130,26 @@ typedef struct {
     ast_node base;
     char* value;    // Null-terminated string (we'll use dynamic_string.h later)
 } ast_string;
+
+// Template literal part - either text or expression
+typedef enum {
+    TEMPLATE_PART_TEXT,        // Static text segment
+    TEMPLATE_PART_EXPRESSION   // Interpolated expression (${expr} or $var)
+} template_part_type;
+
+typedef struct {
+    template_part_type type;
+    union {
+        char* text;           // For TEMPLATE_PART_TEXT
+        ast_node* expression; // For TEMPLATE_PART_EXPRESSION
+    } as;
+} template_part;
+
+typedef struct {
+    ast_node base;
+    template_part* parts;    // Array of template parts
+    size_t part_count;       // Number of parts
+} ast_template_literal;
 
 typedef struct {
     ast_node base;
@@ -324,6 +345,7 @@ ast_integer* ast_create_integer(int32_t value, int line, int column);
 ast_bigint* ast_create_bigint(di_int value, int line, int column);
 ast_number* ast_create_number(double value, int line, int column);
 ast_string* ast_create_string(const char* value, int line, int column);
+ast_template_literal* ast_create_template_literal(template_part* parts, size_t part_count, int line, int column);
 ast_boolean* ast_create_boolean(int value, int line, int column);
 ast_null* ast_create_null(int line, int column);
 ast_undefined* ast_create_undefined(int line, int column);

@@ -222,7 +222,7 @@ value_t vm_peek(slate_vm* vm, int distance) { return vm->stack_top[-1 - distance
 value_t make_null(void) {
     value_t value;
     value.type = VAL_NULL;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -230,7 +230,7 @@ value_t make_null(void) {
 value_t make_undefined(void) {
     value_t value;
     value.type = VAL_UNDEFINED;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -239,7 +239,7 @@ value_t make_boolean(int val) {
     value_t value;
     value.type = VAL_BOOLEAN;
     value.as.boolean = val;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -248,7 +248,7 @@ value_t make_int32(int32_t val) {
     value_t value;
     value.type = VAL_INT32;
     value.as.int32 = val;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -257,7 +257,7 @@ value_t make_bigint(di_int big) {
     value_t value;
     value.type = VAL_BIGINT;
     value.as.bigint = big;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -266,7 +266,7 @@ value_t make_number(double val) {
     value_t value;
     value.type = VAL_NUMBER;
     value.as.number = val;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -311,7 +311,7 @@ value_t make_object(do_object object) {
     value_t value;
     value.type = VAL_OBJECT;
     value.as.object = object;
-    value.class = NULL; // Regular objects don't have a class yet
+    value.class = global_value_class; // Objects inherit from Value
     value.debug = NULL;
     return value;
 }
@@ -330,7 +330,7 @@ value_t make_class(const char* name, do_object properties) {
     value_t value;
     value.type = VAL_CLASS;
     value.as.class = cls;
-    value.class = NULL; // Classes themselves don't have a class
+    value.class = global_value_class; // Classes inherit from Value
     value.debug = NULL;
     return value;
 }
@@ -368,7 +368,7 @@ value_t make_function(function_t* function) {
     value_t value;
     value.type = VAL_FUNCTION;
     value.as.function = function;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -377,7 +377,7 @@ value_t make_closure(closure_t* closure) {
     value_t value;
     value.type = VAL_CLOSURE;
     value.as.closure = closure;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -386,7 +386,7 @@ value_t make_native(native_t func) {
     value_t value;
     value.type = VAL_NATIVE;
     value.as.native = func;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -404,7 +404,7 @@ value_t make_bound_method(value_t receiver, native_t method_func) {
     value_t value;
     value.type = VAL_BOUND_METHOD;
     value.as.bound_method = method;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -422,7 +422,7 @@ value_t make_buffer_builder(db_builder builder) {
     value_t value;
     value.type = VAL_BUFFER_BUILDER;
     value.as.builder = builder;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }
@@ -431,7 +431,7 @@ value_t make_buffer_reader(db_reader reader) {
     value_t value;
     value.type = VAL_BUFFER_READER;
     value.as.reader = reader;
-    value.class = NULL;
+    value.class = global_value_class;
     value.debug = NULL;
     return value;
 }

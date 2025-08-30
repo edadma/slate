@@ -81,6 +81,11 @@ void lexer_init(lexer_t* lexer, const char* source) {
     lexer->at_line_start = 1;  // We start at the beginning of a line
     lexer->pending_dedents = 0;
     lexer->brace_depth = 0;  // Not inside any braces initially
+    
+    // Initialize template literal state stack
+    lexer->template_stack = NULL;
+    lexer->template_stack_depth = 0;
+    lexer->template_stack_capacity = 0;
 }
 
 void lexer_cleanup(lexer_t* lexer) {
@@ -88,11 +93,20 @@ void lexer_cleanup(lexer_t* lexer) {
         free(lexer->indent_stack);
         lexer->indent_stack = NULL;
     }
+    if (lexer->template_stack) {
+        free(lexer->template_stack);
+        lexer->template_stack = NULL;
+    }
 }
 
 static int is_at_end(lexer_t* lexer) {
     return *lexer->current == '\0';
 }
+
+// Forward declarations for template literal functions
+static token_t template_token(lexer_t* lexer);
+static token_t template_text_token(lexer_t* lexer);
+static token_t template_variable_token(lexer_t* lexer);
 
 static char advance(lexer_t* lexer) {
     if (is_at_end(lexer)) return '\0';
@@ -355,175 +369,368 @@ token_t lexer_next_token(lexer_t* lexer) {
         // Same indentation level - continue normally
     }
     
-    skip_whitespace(lexer);
+    // Handle template literal mode before normal token processing
+    lexer_mode_t current_mode = lexer_current_mode(lexer);
     
-    lexer->start = lexer->current;
-    
-    if (is_at_end(lexer)) {
-        // Emit any remaining DEDENTs at EOF
-        if (lexer->indent_count > 1) {
-            lexer->indent_count--;
-            return make_token(lexer, TOKEN_DEDENT);
+    if (current_mode == LEXER_TEMPLATE) {
+        // In template mode, don't skip whitespace - it's part of the text
+        lexer->start = lexer->current;
+        
+        if (is_at_end(lexer)) {
+            return error_token(lexer, "Unterminated template literal");
         }
-        return make_token(lexer, TOKEN_EOF);
-    }
-    
-    char c = advance(lexer);
-    
-    if (is_digit(c)) return number_token(lexer);
-    if (is_alpha(c)) return identifier_token(lexer);
-    
-    switch (c) {
-        case '(': 
-            lexer->brace_depth++;
-            return make_token(lexer, TOKEN_LEFT_PAREN);
-        case ')': 
-            lexer->brace_depth--;
-            return make_token(lexer, TOKEN_RIGHT_PAREN);
-        case '{': 
+        
+        char c = peek(lexer);
+        
+        if (c == '`') {
+            advance(lexer);
+            return template_token(lexer);  // Will handle closing backtick
+        } else if (c == '$') {
+            advance(lexer);
+            if (peek(lexer) == '{') {
+                advance(lexer);
+                // Enter expression mode
+                lexer_push_template_state(lexer, LEXER_TEMPLATE_EXPR, 1);
+                return make_token(lexer, TOKEN_TEMPLATE_EXPR_START);
+            } else if (is_alpha(peek(lexer))) {
+                return template_variable_token(lexer);
+            } else {
+                // $ followed by non-identifier - treat as regular text
+                return template_text_token(lexer);
+            }
+        } else {
+            return template_text_token(lexer);
+        }
+    } else if (current_mode == LEXER_TEMPLATE_EXPR) {
+        // In template expression mode - lex normally but track braces
+        skip_whitespace(lexer);
+        
+        lexer->start = lexer->current;
+        
+        if (is_at_end(lexer)) {
+            return error_token(lexer, "Unterminated template expression");
+        }
+        
+        char c = advance(lexer);
+        
+        // Handle braces specially to track nesting and detect end of expression
+        if (c == '{') {
+            int current_depth = lexer_current_brace_depth(lexer);
+            // Update the current state's brace depth
+            if (lexer->template_stack_depth > 0) {
+                lexer->template_stack[lexer->template_stack_depth - 1].brace_depth = current_depth + 1;
+            }
             lexer->brace_depth++;
             return make_token(lexer, TOKEN_LEFT_BRACE);
-        case '}': 
-            lexer->brace_depth--;
-            return make_token(lexer, TOKEN_RIGHT_BRACE);
-        case '[': 
-            lexer->brace_depth++;
-            return make_token(lexer, TOKEN_LEFT_BRACKET);
-        case ']': 
-            lexer->brace_depth--;
-            return make_token(lexer, TOKEN_RIGHT_BRACKET);
-        case ';': return make_token(lexer, TOKEN_SEMICOLON);
-        case ',': return make_token(lexer, TOKEN_COMMA);
-        case ':': return make_token(lexer, TOKEN_COLON);
-        case '.':
-            if (match(lexer, '.')) {
-                // We have ".."
-                if (match(lexer, '<')) {
-                    // We have "..<" (exclusive range)
-                    return make_token(lexer, TOKEN_RANGE_EXCLUSIVE);
+        } else if (c == '}') {
+            int current_depth = lexer_current_brace_depth(lexer);
+            if (current_depth <= 1) {
+                // This closes the template expression
+                lexer_pop_template_state(lexer);
+                return make_token(lexer, TOKEN_TEMPLATE_EXPR_END);
+            } else {
+                // Regular brace inside expression
+                if (lexer->template_stack_depth > 0) {
+                    lexer->template_stack[lexer->template_stack_depth - 1].brace_depth = current_depth - 1;
                 }
-                // We have ".." (inclusive range)
-                return make_token(lexer, TOKEN_RANGE);
+                lexer->brace_depth--;
+                return make_token(lexer, TOKEN_RIGHT_BRACE);
             }
-            return make_token(lexer, TOKEN_DOT);
-        case '+': 
-            if (match(lexer, '=')) {
-                return make_token(lexer, TOKEN_PLUS_ASSIGN);
-            } else if (match(lexer, '+')) {
-                return make_token(lexer, TOKEN_INCREMENT);
-            }
-            return make_token(lexer, TOKEN_PLUS);
-        case '*': 
-            if (peek(lexer) == '*') {
-                advance(lexer);
-                if (match(lexer, '=')) {
-                    return make_token(lexer, TOKEN_POWER_ASSIGN);
-                }
-                return make_token(lexer, TOKEN_POWER);
-            }
-            return make_token(lexer, match(lexer, '=') ? TOKEN_MULT_ASSIGN : TOKEN_MULTIPLY);
-        case '/': 
-            if (match(lexer, '=')) {
-                return make_token(lexer, TOKEN_DIV_ASSIGN);
-            } else if (match(lexer, '/')) {
-                return make_token(lexer, TOKEN_FLOOR_DIV);
-            }
-            return make_token(lexer, TOKEN_DIVIDE);
-        case '%': 
-            return make_token(lexer, match(lexer, '=') ? TOKEN_MOD_ASSIGN : TOKEN_MOD);
-        case '\n': 
-            // Only track line starts when not inside braces
-            if (lexer->brace_depth == 0) {
-                lexer->at_line_start = 1;
-            }
-            return make_token(lexer, TOKEN_NEWLINE);
+        }
         
-        case '-':
-            if (match(lexer, '>')) {
-                return make_token(lexer, TOKEN_ARROW);
-            } else if (match(lexer, '=')) {
-                return make_token(lexer, TOKEN_MINUS_ASSIGN);
-            } else if (match(lexer, '-')) {
-                return make_token(lexer, TOKEN_DECREMENT);
-            }
-            return make_token(lexer, TOKEN_MINUS);
-            
-        case '!':
-            return make_token(lexer, match(lexer, '=') ? TOKEN_NOT_EQUAL : TOKEN_LOGICAL_NOT);
-            
-        case '=':
-            return make_token(lexer, match(lexer, '=') ? TOKEN_EQUAL : TOKEN_ASSIGN);
-            
-        case '<':
-            if (match(lexer, '=')) {
-                return make_token(lexer, TOKEN_LESS_EQUAL);
-            } else if (match(lexer, '<')) {
-                if (match(lexer, '=')) {
-                    return make_token(lexer, TOKEN_LEFT_SHIFT_ASSIGN);
-                }
-                return make_token(lexer, TOKEN_LEFT_SHIFT);
-            }
-            return make_token(lexer, TOKEN_LESS);
-            
-        case '>':
-            if (match(lexer, '=')) {
-                return make_token(lexer, TOKEN_GREATER_EQUAL);
-            } else if (match(lexer, '>')) {
-                if (match(lexer, '>')) {
-                    if (match(lexer, '=')) {
-                        return make_token(lexer, TOKEN_LOGICAL_RIGHT_SHIFT_ASSIGN);
+        // For other characters in template expression mode, continue with normal lexing
+        // The character `c` is already consumed by advance() above
+        if (is_digit(c)) return number_token(lexer);
+        if (is_alpha(c)) return identifier_token(lexer);
+        
+        // Process non-brace characters with normal switch statement logic
+        switch (c) {
+            case '(': 
+                lexer->brace_depth++;
+                return make_token(lexer, TOKEN_LEFT_PAREN);
+            case ')': 
+                lexer->brace_depth--;
+                return make_token(lexer, TOKEN_RIGHT_PAREN);
+            case '[': 
+                lexer->brace_depth++;
+                return make_token(lexer, TOKEN_LEFT_BRACKET);
+            case ']': 
+                lexer->brace_depth--;
+                return make_token(lexer, TOKEN_RIGHT_BRACKET);
+            case ';': return make_token(lexer, TOKEN_SEMICOLON);
+            case ',': return make_token(lexer, TOKEN_COMMA);
+            case ':': return make_token(lexer, TOKEN_COLON);
+            case '.':
+                if (match(lexer, '.')) {
+                    if (match(lexer, '<')) {
+                        return make_token(lexer, TOKEN_RANGE_EXCLUSIVE);
                     }
-                    return make_token(lexer, TOKEN_LOGICAL_RIGHT_SHIFT);
+                    return make_token(lexer, TOKEN_RANGE);
+                }
+                return make_token(lexer, TOKEN_DOT);
+            case '+': 
+                if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_PLUS_ASSIGN);
+                } else if (match(lexer, '+')) {
+                    return make_token(lexer, TOKEN_INCREMENT);
+                }
+                return make_token(lexer, TOKEN_PLUS);
+            case '*': 
+                if (peek(lexer) == '*') {
+                    advance(lexer);
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_POWER_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_POWER);
+                }
+                return make_token(lexer, match(lexer, '=') ? TOKEN_MULT_ASSIGN : TOKEN_MULTIPLY);
+            case '/': 
+                if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_DIV_ASSIGN);
+                } else if (match(lexer, '/')) {
+                    return make_token(lexer, TOKEN_FLOOR_DIV);
+                }
+                return make_token(lexer, TOKEN_DIVIDE);
+            case '%': 
+                return make_token(lexer, match(lexer, '=') ? TOKEN_MOD_ASSIGN : TOKEN_MOD);
+            case '\n': 
+                if (lexer->brace_depth == 0) {
+                    lexer->at_line_start = 1;
+                }
+                return make_token(lexer, TOKEN_NEWLINE);
+            case '-':
+                if (match(lexer, '>')) {
+                    return make_token(lexer, TOKEN_ARROW);
                 } else if (match(lexer, '=')) {
-                    return make_token(lexer, TOKEN_RIGHT_SHIFT_ASSIGN);
+                    return make_token(lexer, TOKEN_MINUS_ASSIGN);
+                } else if (match(lexer, '-')) {
+                    return make_token(lexer, TOKEN_DECREMENT);
                 }
-                return make_token(lexer, TOKEN_RIGHT_SHIFT);
-            }
-            return make_token(lexer, TOKEN_GREATER);
-            
-        case '&':
-            if (match(lexer, '&')) {
-                if (match(lexer, '=')) {
-                    return make_token(lexer, TOKEN_LOGICAL_AND_ASSIGN);
+                return make_token(lexer, TOKEN_MINUS);
+            case '=': return make_token(lexer, match(lexer, '=') ? TOKEN_EQUAL : TOKEN_ASSIGN);
+            case '!': return make_token(lexer, match(lexer, '=') ? TOKEN_NOT_EQUAL : TOKEN_LOGICAL_NOT);
+            case '<': 
+                if (match(lexer, '<')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_LEFT_SHIFT_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_LEFT_SHIFT);
                 }
-                return make_token(lexer, TOKEN_LOGICAL_AND);
-            } else if (match(lexer, '=')) {
-                return make_token(lexer, TOKEN_BITWISE_AND_ASSIGN);
-            }
-            return make_token(lexer, TOKEN_BITWISE_AND);
-            
-        case '|':
-            if (match(lexer, '|')) {
-                if (match(lexer, '=')) {
-                    return make_token(lexer, TOKEN_LOGICAL_OR_ASSIGN);
+                return make_token(lexer, match(lexer, '=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
+            case '>': 
+                if (match(lexer, '>')) {
+                    if (match(lexer, '>')) {
+                        if (match(lexer, '=')) {
+                            return make_token(lexer, TOKEN_LOGICAL_RIGHT_SHIFT_ASSIGN);
+                        }
+                        return make_token(lexer, TOKEN_LOGICAL_RIGHT_SHIFT);
+                    }
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_RIGHT_SHIFT_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_RIGHT_SHIFT);
                 }
-                return make_token(lexer, TOKEN_LOGICAL_OR);
-            } else if (match(lexer, '=')) {
-                return make_token(lexer, TOKEN_BITWISE_OR_ASSIGN);
-            }
-            return make_token(lexer, TOKEN_BITWISE_OR);
-            
-        case '^': return make_token(lexer, match(lexer, '=') ? TOKEN_BITWISE_XOR_ASSIGN : TOKEN_BITWISE_XOR);
-        case '~': return make_token(lexer, TOKEN_BITWISE_NOT);
+                return make_token(lexer, match(lexer, '=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
+            case '&':
+                if (match(lexer, '&')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_LOGICAL_AND_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_LOGICAL_AND);
+                } else if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_BITWISE_AND_ASSIGN);
+                }
+                return make_token(lexer, TOKEN_BITWISE_AND);
+            case '|':
+                if (match(lexer, '|')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_LOGICAL_OR_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_LOGICAL_OR);
+                } else if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_BITWISE_OR_ASSIGN);
+                }
+                return make_token(lexer, TOKEN_BITWISE_OR);
+            case '^': return make_token(lexer, match(lexer, '=') ? TOKEN_BITWISE_XOR_ASSIGN : TOKEN_BITWISE_XOR);
+            case '~': return make_token(lexer, TOKEN_BITWISE_NOT);
+            case '?':
+                if (match(lexer, '?')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_NULL_COALESCE_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_NULL_COALESCE);
+                } else if (match(lexer, '.')) {
+                    return make_token(lexer, TOKEN_OPTIONAL_CHAIN);
+                }
+                return make_token(lexer, TOKEN_QUESTION);
+            case '"': return string_token(lexer, '"');
+            case '\'': return string_token(lexer, '\'');
+            case '`': return template_token(lexer);
+        }
         
-        case '?':
-            if (match(lexer, '?')) {
-                if (match(lexer, '=')) {
-                    return make_token(lexer, TOKEN_NULL_COALESCE_ASSIGN);
-                }
-                return make_token(lexer, TOKEN_NULL_COALESCE);
-            } else if (match(lexer, '.')) {
-                return make_token(lexer, TOKEN_OPTIONAL_CHAIN);
+        return error_token(lexer, "Unexpected character");
+        
+    } else {
+        // Normal mode - skip whitespace as usual
+        skip_whitespace(lexer);
+        
+        lexer->start = lexer->current;
+        
+        if (is_at_end(lexer)) {
+            // Emit any remaining DEDENTs at EOF
+            if (lexer->indent_count > 1) {
+                lexer->indent_count--;
+                return make_token(lexer, TOKEN_DEDENT);
             }
-            return make_token(lexer, TOKEN_QUESTION);
-            
-        case '"': return string_token(lexer, '"');
-        case '\'': return string_token(lexer, '\'');
+            return make_token(lexer, TOKEN_EOF);
+        }
+        
+        char c = advance(lexer);
+        
+        if (is_digit(c)) return number_token(lexer);
+        if (is_alpha(c)) return identifier_token(lexer);
+        
+        // Continue with switch statement for normal mode tokens
+        switch (c) {
+            case '(': 
+                lexer->brace_depth++;
+                return make_token(lexer, TOKEN_LEFT_PAREN);
+            case ')': 
+                lexer->brace_depth--;
+                return make_token(lexer, TOKEN_RIGHT_PAREN);
+            case '{': 
+                lexer->brace_depth++;
+                return make_token(lexer, TOKEN_LEFT_BRACE);
+            case '}': 
+                lexer->brace_depth--;
+                return make_token(lexer, TOKEN_RIGHT_BRACE);
+            case '[': 
+                lexer->brace_depth++;
+                return make_token(lexer, TOKEN_LEFT_BRACKET);
+            case ']': 
+                lexer->brace_depth--;
+                return make_token(lexer, TOKEN_RIGHT_BRACKET);
+            case ';': return make_token(lexer, TOKEN_SEMICOLON);
+            case ',': return make_token(lexer, TOKEN_COMMA);
+            case ':': return make_token(lexer, TOKEN_COLON);
+            case '.':
+                if (match(lexer, '.')) {
+                    // We have ".."
+                    if (match(lexer, '<')) {
+                        // We have "..<" (exclusive range)
+                        return make_token(lexer, TOKEN_RANGE_EXCLUSIVE);
+                    }
+                    // We have ".." (inclusive range)
+                    return make_token(lexer, TOKEN_RANGE);
+                }
+                return make_token(lexer, TOKEN_DOT);
+            case '+': 
+                if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_PLUS_ASSIGN);
+                } else if (match(lexer, '+')) {
+                    return make_token(lexer, TOKEN_INCREMENT);
+                }
+                return make_token(lexer, TOKEN_PLUS);
+            case '*': 
+                if (peek(lexer) == '*') {
+                    advance(lexer);
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_POWER_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_POWER);
+                }
+                return make_token(lexer, match(lexer, '=') ? TOKEN_MULT_ASSIGN : TOKEN_MULTIPLY);
+            case '/': 
+                if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_DIV_ASSIGN);
+                } else if (match(lexer, '/')) {
+                    return make_token(lexer, TOKEN_FLOOR_DIV);
+                }
+                return make_token(lexer, TOKEN_DIVIDE);
+            case '%': 
+                return make_token(lexer, match(lexer, '=') ? TOKEN_MOD_ASSIGN : TOKEN_MOD);
+            case '\n': 
+                // Only track line starts when not inside braces
+                if (lexer->brace_depth == 0) {
+                    lexer->at_line_start = 1;
+                }
+                return make_token(lexer, TOKEN_NEWLINE);
+            case '-':
+                if (match(lexer, '>')) {
+                    return make_token(lexer, TOKEN_ARROW);
+                } else if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_MINUS_ASSIGN);
+                } else if (match(lexer, '-')) {
+                    return make_token(lexer, TOKEN_DECREMENT);
+                }
+                return make_token(lexer, TOKEN_MINUS);
+            case '=': return make_token(lexer, match(lexer, '=') ? TOKEN_EQUAL : TOKEN_ASSIGN);
+            case '!': return make_token(lexer, match(lexer, '=') ? TOKEN_NOT_EQUAL : TOKEN_LOGICAL_NOT);
+            case '<': 
+                if (match(lexer, '<')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_LEFT_SHIFT_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_LEFT_SHIFT);
+                }
+                return make_token(lexer, match(lexer, '=') ? TOKEN_LESS_EQUAL : TOKEN_LESS);
+            case '>': 
+                if (match(lexer, '>')) {
+                    if (match(lexer, '>')) {
+                        // We have ">>>"
+                        if (match(lexer, '=')) {
+                            return make_token(lexer, TOKEN_LOGICAL_RIGHT_SHIFT_ASSIGN);
+                        }
+                        return make_token(lexer, TOKEN_LOGICAL_RIGHT_SHIFT);
+                    }
+                    // We have ">>"
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_RIGHT_SHIFT_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_RIGHT_SHIFT);
+                }
+                return make_token(lexer, match(lexer, '=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
+            case '&':
+                if (match(lexer, '&')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_LOGICAL_AND_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_LOGICAL_AND);
+                } else if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_BITWISE_AND_ASSIGN);
+                }
+                return make_token(lexer, TOKEN_BITWISE_AND);
+            case '|':
+                if (match(lexer, '|')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_LOGICAL_OR_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_LOGICAL_OR);
+                } else if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_BITWISE_OR_ASSIGN);
+                }
+                return make_token(lexer, TOKEN_BITWISE_OR);
+            case '^': return make_token(lexer, match(lexer, '=') ? TOKEN_BITWISE_XOR_ASSIGN : TOKEN_BITWISE_XOR);
+            case '~': return make_token(lexer, TOKEN_BITWISE_NOT);
+            case '?':
+                if (match(lexer, '?')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_NULL_COALESCE_ASSIGN);
+                    }
+                    return make_token(lexer, TOKEN_NULL_COALESCE);
+                } else if (match(lexer, '.')) {
+                    return make_token(lexer, TOKEN_OPTIONAL_CHAIN);
+                }
+                return make_token(lexer, TOKEN_QUESTION);
+            case '"': return string_token(lexer, '"');
+            case '\'': return string_token(lexer, '\'');
+            case '`': return template_token(lexer);
+        }
+        
+        char bad_char = advance(lexer);
+        (void)bad_char; // Suppress unused variable warning
+        return error_token(lexer, "Unexpected character");
     }
-    
-    char bad_char = advance(lexer);
-    (void)bad_char; // Suppress unused variable warning
-    return error_token(lexer, "Unexpected character");
 }
 
 const char* token_type_name(token_type_t type) {
@@ -609,6 +816,12 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_LEFT_BRACKET: return "LEFT_BRACKET";
         case TOKEN_RIGHT_BRACKET: return "RIGHT_BRACKET";
         case TOKEN_ARROW: return "ARROW";
+        case TOKEN_TEMPLATE_START: return "TEMPLATE_START";
+        case TOKEN_TEMPLATE_TEXT: return "TEMPLATE_TEXT";
+        case TOKEN_TEMPLATE_SIMPLE_VAR: return "TEMPLATE_SIMPLE_VAR";
+        case TOKEN_TEMPLATE_EXPR_START: return "TEMPLATE_EXPR_START";
+        case TOKEN_TEMPLATE_EXPR_END: return "TEMPLATE_EXPR_END";
+        case TOKEN_TEMPLATE_END: return "TEMPLATE_END";
         case TOKEN_NEWLINE: return "NEWLINE";
         case TOKEN_INDENT: return "INDENT";
         case TOKEN_DEDENT: return "DEDENT";
@@ -616,4 +829,87 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_ERROR: return "ERROR";
         default: return "UNKNOWN";
     }
+}
+
+// Template literal helper functions
+static token_t template_token(lexer_t* lexer) {
+    lexer_mode_t current_mode = lexer_current_mode(lexer);
+    
+    if (current_mode == LEXER_NORMAL) {
+        // Opening backtick - enter template mode
+        lexer_push_template_state(lexer, LEXER_TEMPLATE, 0);
+        return make_token(lexer, TOKEN_TEMPLATE_START);
+    } else if (current_mode == LEXER_TEMPLATE) {
+        // Closing backtick - exit template mode
+        lexer_pop_template_state(lexer);
+        return make_token(lexer, TOKEN_TEMPLATE_END);
+    }
+    
+    // This shouldn't happen, but handle it gracefully
+    return error_token(lexer, "Unexpected backtick");
+}
+
+static token_t template_text_token(lexer_t* lexer) {
+    // Consume text until we hit $, `, or end of input
+    while (!is_at_end(lexer) && peek(lexer) != '$' && peek(lexer) != '`') {
+        if (peek(lexer) == '\n') {
+            lexer->line++;
+            lexer->column = 1;
+        } else {
+            lexer->column++;
+        }
+        lexer->current++;
+    }
+    
+    return make_token(lexer, TOKEN_TEMPLATE_TEXT);
+}
+
+static token_t template_variable_token(lexer_t* lexer) {
+    // Consume the identifier after $
+    while (!is_at_end(lexer) && is_alnum(peek(lexer))) {
+        advance(lexer);
+    }
+    
+    return make_token(lexer, TOKEN_TEMPLATE_SIMPLE_VAR);
+}
+
+// Template state management functions
+void lexer_push_template_state(lexer_t* lexer, lexer_mode_t mode, int brace_depth) {
+    // Expand capacity if needed
+    if (lexer->template_stack_depth >= lexer->template_stack_capacity) {
+        int new_capacity = lexer->template_stack_capacity == 0 ? 8 : lexer->template_stack_capacity * 2;
+        template_lexer_state* new_stack = realloc(lexer->template_stack, 
+            new_capacity * sizeof(template_lexer_state));
+        if (!new_stack) {
+            // Handle allocation failure - for now, just return without pushing
+            return;
+        }
+        lexer->template_stack = new_stack;
+        lexer->template_stack_capacity = new_capacity;
+    }
+    
+    // Push new state onto stack
+    lexer->template_stack[lexer->template_stack_depth].mode = mode;
+    lexer->template_stack[lexer->template_stack_depth].brace_depth = brace_depth;
+    lexer->template_stack_depth++;
+}
+
+void lexer_pop_template_state(lexer_t* lexer) {
+    if (lexer->template_stack_depth > 0) {
+        lexer->template_stack_depth--;
+    }
+}
+
+lexer_mode_t lexer_current_mode(lexer_t* lexer) {
+    if (lexer->template_stack_depth > 0) {
+        return lexer->template_stack[lexer->template_stack_depth - 1].mode;
+    }
+    return LEXER_NORMAL;
+}
+
+int lexer_current_brace_depth(lexer_t* lexer) {
+    if (lexer->template_stack_depth > 0) {
+        return lexer->template_stack[lexer->template_stack_depth - 1].brace_depth;
+    }
+    return 0;
 }
