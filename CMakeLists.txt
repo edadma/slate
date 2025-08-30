@@ -6,6 +6,11 @@ set(CMAKE_C_STANDARD 11)
 # Include directories
 include_directories(include)
 include_directories(deps/cargs/include)
+include_directories(deps/dynamic_string.h)
+include_directories(deps/dynamic_array.h)
+include_directories(deps/dynamic_object.h)
+include_directories(deps/dynamic_int.h)
+include_directories(deps/stb_ds.h)
 
 # Main executable
 add_executable(slate

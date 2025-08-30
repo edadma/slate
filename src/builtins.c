@@ -9,7 +9,7 @@
 #include <time.h>
 
 // Include dynamic_string for ds_builder functions (implementation in library_impl.c)
-#include "/home/ed/CLionProjects/dynamic_string.h/dynamic_string.h"
+#include "dynamic_string.h"
 
 // Include datetime for date/time functions
 #include "datetime.h"

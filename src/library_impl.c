@@ -6,7 +6,7 @@
 #define DI_IMPLEMENTATION
 
 // Include the libraries once here
-#include "/home/ed/CLionProjects/dynamic_array.h/dynamic_array.h"
-#include "/home/ed/CLionProjects/dynamic_int.h/dynamic_int.h"
-#include "/home/ed/CLionProjects/dynamic_object.h/dynamic_object.h"
-#include "/home/ed/CLionProjects/dynamic_string.h/dynamic_string.h"
+#include "dynamic_array.h"
+#include "dynamic_int.h"
+#include "dynamic_object.h"
+#include "dynamic_string.h"
