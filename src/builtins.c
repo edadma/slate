@@ -1333,7 +1333,7 @@ static value_t builtin_value_to_string(slate_vm* vm, int arg_count, value_t* arg
                 ds_builder sb = ds_builder_create();
                 ds_string bracket_open = ds_new("[");
                 ds_builder_append_string(sb, bracket_open);
-                ds_release(bracket_open);
+                ds_release(&bracket_open);
                 
                 da_array array = receiver.as.array;
                 size_t count = da_length(array);
@@ -1342,7 +1342,7 @@ static value_t builtin_value_to_string(slate_vm* vm, int arg_count, value_t* arg
                     if (i > 0) {
                         ds_string separator = ds_new(", ");
                         ds_builder_append_string(sb, separator);
-                        ds_release(separator);
+                        ds_release(&separator);
                     }
                     
                     value_t* element = (value_t*)da_get(array, i);
@@ -1354,7 +1354,7 @@ static value_t builtin_value_to_string(slate_vm* vm, int arg_count, value_t* arg
                 
                 ds_string bracket_close = ds_new("]");
                 ds_builder_append_string(sb, bracket_close);
-                ds_release(bracket_close);
+                ds_release(&bracket_close);
                 ds_string result = ds_builder_to_string(sb);
                 ds_builder_release(&sb);
                 
@@ -1367,13 +1367,13 @@ static value_t builtin_value_to_string(slate_vm* vm, int arg_count, value_t* arg
                 ds_builder sb = ds_builder_create();
                 ds_string brace_open = ds_new("{");
                 ds_builder_append_string(sb, brace_open);
-                ds_release(brace_open);
+                ds_release(&brace_open);
                 
                 // TODO: Implement object iteration when available
                 // For now, return a placeholder
                 ds_string placeholder = ds_new("...}");
                 ds_builder_append_string(sb, placeholder);
-                ds_release(placeholder);
+                ds_release(&placeholder);
                 
                 ds_string result = ds_builder_to_string(sb);
                 ds_builder_release(&sb);
@@ -1388,11 +1388,11 @@ static value_t builtin_value_to_string(slate_vm* vm, int arg_count, value_t* arg
                 ds_builder sb = ds_builder_create();
                 ds_string prefix = ds_new("StringBuilder(\"");
                 ds_builder_append_string(sb, prefix);
-                ds_release(prefix);
+                ds_release(&prefix);
                 ds_builder_append_string(sb, content);
                 ds_string suffix = ds_new("\")");
                 ds_builder_append_string(sb, suffix);
-                ds_release(suffix);
+                ds_release(&suffix);
                 
                 ds_string result = ds_builder_to_string(sb);
                 ds_builder_release(&sb);
@@ -1439,11 +1439,11 @@ static value_t builtin_value_to_string(slate_vm* vm, int arg_count, value_t* arg
                 if (range->exclusive) {
                     ds_string range_op = ds_new("..<");
                     ds_builder_append_string(sb, range_op);
-                    ds_release(range_op);
+                    ds_release(&range_op);
                 } else {
                     ds_string range_op = ds_new("..");
                     ds_builder_append_string(sb, range_op);
-                    ds_release(range_op);
+                    ds_release(&range_op);
                 }
                 
                 // Convert end to string
@@ -1941,6 +1941,9 @@ void builtins_init(slate_vm* vm) {
     // Value class has no factory (factory = NULL) - cannot be instantiated directly
     value_class.as.class->factory = NULL;
     
+    // Value class should have no parent class (it's the root class)
+    value_class.class = NULL;
+    
     // Store in globals (though it shouldn't be called directly)
     do_set(vm->globals, "Value", &value_class, sizeof(value_t));
     
@@ -1948,6 +1951,12 @@ void builtins_init(slate_vm* vm) {
     static value_t value_class_storage;
     value_class_storage = vm_retain(value_class);
     global_value_class = &value_class_storage;
+    
+    // Now that Value class is created, set up proper inheritance chain
+    // Array class should inherit from Value class
+    if (global_array_class && global_array_class->type == VAL_CLASS) {
+        global_array_class->class = &value_class_storage;
+    }
 }
 
 // Built-in function implementations
