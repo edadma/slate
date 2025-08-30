@@ -248,7 +248,7 @@ value_t make_int32(int32_t val) {
     value_t value;
     value.type = VAL_INT32;
     value.as.int32 = val;
-    value.class = global_value_class;
+    value.class = global_int_class; // All integers have Int class
     value.debug = NULL;
     return value;
 }
@@ -257,7 +257,7 @@ value_t make_bigint(di_int big) {
     value_t value;
     value.type = VAL_BIGINT;
     value.as.bigint = big;
-    value.class = global_value_class;
+    value.class = global_int_class; // All integers have Int class
     value.debug = NULL;
     return value;
 }

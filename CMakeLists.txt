@@ -31,22 +31,22 @@ option(BUILD_TESTS "Build unit tests" ON)
 
 if (BUILD_TESTS)
     # Download Unity if not present
-    if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/unity")
+    if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/devdeps/unity")
         file(DOWNLOAD
                 "https://raw.githubusercontent.com/ThrowTheSwitch/Unity/master/src/unity.c"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tests/unity/unity.c")
+                "${CMAKE_CURRENT_SOURCE_DIR}/devdeps/unity/unity.c")
         file(DOWNLOAD
                 "https://raw.githubusercontent.com/ThrowTheSwitch/Unity/master/src/unity.h"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tests/unity/unity.h")
+                "${CMAKE_CURRENT_SOURCE_DIR}/devdeps/unity/unity.h")
         file(DOWNLOAD
                 "https://raw.githubusercontent.com/ThrowTheSwitch/Unity/master/src/unity_internals.h"
-                "${CMAKE_CURRENT_SOURCE_DIR}/tests/unity/unity_internals.h")
+                "${CMAKE_CURRENT_SOURCE_DIR}/devdeps/unity/unity_internals.h")
     endif ()
 
-    include_directories(tests/unity)
+    include_directories(devdeps/unity)
 
     add_executable(slate_tests
-            tests/unity/unity.c
+            devdeps/unity/unity.c
             tests/test_main.c
             tests/test_lexer.c
             tests/test_parser.c

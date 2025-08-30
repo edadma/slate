@@ -153,5 +153,6 @@ extern value_t* global_string_class;
 extern value_t* global_array_class;
 extern value_t* global_string_builder_class;
 extern value_t* global_buffer_class;
+extern value_t* global_int_class;
 
 #endif // SLATE_BUILTINS_H
