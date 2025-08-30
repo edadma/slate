@@ -940,25 +940,50 @@ ast_node* parse_primary(parser_t* parser) {
     }
     
     if (parser_match(parser, TOKEN_INTEGER)) {
-        // Parse as integer - check for overflow to int32_t
+        // Extract token string
         char buffer[256];
         size_t len = parser->previous.length < 255 ? parser->previous.length : 255;
         memcpy(buffer, parser->previous.start, len);
         buffer[len] = '\0';
         
-        // Try to parse as int64 first to detect int32 overflow
-        char* endptr;
-        errno = 0;
-        long long value = strtoll(buffer, &endptr, 10);
-        
-        if (errno == ERANGE || value < INT32_MIN || value > INT32_MAX) {
-            // Too large for int32, create as floating point for now
-            // TODO: In future, create BigInt AST node here
-            double dval = strtod(buffer, NULL);
-            return (ast_node*)ast_create_number(dval, parser->previous.line, parser->previous.column);
+        // Check if this is a hexadecimal literal
+        if (buffer[0] == '0' && (buffer[1] == 'x' || buffer[1] == 'X')) {
+            // Hexadecimal literal - parse with dynamic int
+            di_int big_value = di_from_string(buffer + 2, 16);
+            if (big_value == NULL) {
+                parser_error(parser, "Invalid hexadecimal literal");
+                return NULL;
+            }
+            
+            // Check if it fits in 32-bit range
+            int32_t int32_val;
+            if (di_to_int32(big_value, &int32_val)) {
+                // Fits in int32 - create integer AST node and release the BigInt
+                di_release(&big_value);
+                return (ast_node*)ast_create_integer(int32_val, parser->previous.line, parser->previous.column);
+            } else {
+                // Too large for int32 - create BigInt AST node (transfers ownership)
+                return (ast_node*)ast_create_bigint(big_value, parser->previous.line, parser->previous.column);
+            }
         } else {
-            // Fits in int32 - create integer AST node
-            return (ast_node*)ast_create_integer((int32_t)value, parser->previous.line, parser->previous.column);
+            // Regular decimal integer - use original logic
+            char* endptr;
+            errno = 0;
+            long long value = strtoll(buffer, &endptr, 10);
+            
+            if (errno == ERANGE || value < INT32_MIN || value > INT32_MAX) {
+                // Too large for int32, create as BigInt
+                di_int big_value = di_from_string(buffer, 10);
+                if (big_value == NULL) {
+                    // Fallback to double for very large numbers
+                    double dval = strtod(buffer, NULL);
+                    return (ast_node*)ast_create_number(dval, parser->previous.line, parser->previous.column);
+                }
+                return (ast_node*)ast_create_bigint(big_value, parser->previous.line, parser->previous.column);
+            } else {
+                // Fits in int32 - create integer AST node
+                return (ast_node*)ast_create_integer((int32_t)value, parser->previous.line, parser->previous.column);
+            }
         }
     }
     

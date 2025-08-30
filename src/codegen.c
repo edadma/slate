@@ -216,6 +216,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_integer(codegen, (ast_integer*)expr);
             break;
             
+        case AST_BIGINT:
+            codegen_emit_bigint(codegen, (ast_bigint*)expr);
+            break;
+            
         case AST_NUMBER:
             codegen_emit_number(codegen, (ast_number*)expr);
             break;
@@ -459,6 +463,16 @@ void codegen_emit_integer(codegen_t* codegen, ast_integer* node) {
     codegen_emit_debug_location(codegen, (ast_node*)node);
     
     size_t constant = chunk_add_constant(codegen->chunk, make_int32(node->value));
+    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)constant);
+}
+
+void codegen_emit_bigint(codegen_t* codegen, ast_bigint* node) {
+    // Emit debug location before pushing the value
+    codegen_emit_debug_location(codegen, (ast_node*)node);
+    
+    // Retain the BigInt value when transferring from AST to VM
+    di_int retained_value = di_retain(node->value);
+    size_t constant = chunk_add_constant(codegen->chunk, make_bigint(retained_value));
     codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)constant);
 }
 

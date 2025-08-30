@@ -16,6 +16,10 @@ int is_alnum(char c) {
     return is_alpha(c) || is_digit(c);
 }
 
+int is_hex_digit(char c) {
+    return is_digit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
 // Keywords table
 typedef struct {
     const char* keyword;
@@ -219,6 +223,24 @@ static token_t string_token(lexer_t* lexer) {
 static token_t number_token(lexer_t* lexer) {
     int is_float = 0;
     
+    // Check for hexadecimal literals (0x or 0X)
+    // Note: We've already consumed the first digit (0) when this is called
+    if ((lexer->start[0] == '0') && (peek(lexer) == 'x' || peek(lexer) == 'X')) {
+        advance(lexer); // Consume 'x' or 'X'
+        
+        // Must have at least one hex digit after 0x
+        if (!is_hex_digit(peek(lexer))) {
+            return error_token(lexer, "Invalid hexadecimal literal");
+        }
+        
+        while (is_hex_digit(peek(lexer))) {
+            advance(lexer);
+        }
+        
+        return make_token(lexer, TOKEN_INTEGER);
+    }
+    
+    // Regular decimal number parsing
     while (is_digit(peek(lexer))) {
         advance(lexer);
     }

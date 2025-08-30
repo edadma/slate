@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Include dynamic_int.h for BigInt support
+#include "/home/ed/CLionProjects/dynamic_int.h/dynamic_int.h"
+
 // Forward declarations
 typedef struct value value_t;
 typedef struct bit_object bit_object;
@@ -12,6 +15,7 @@ typedef struct bit_object bit_object;
 typedef enum {
     // Literals
     AST_INTEGER,     // 32-bit integer literal
+    AST_BIGINT,      // Arbitrary precision integer literal
     AST_NUMBER,      // Floating point literal
     AST_STRING,
     AST_BOOLEAN,
@@ -103,6 +107,11 @@ typedef struct {
     ast_node base;
     int32_t value;
 } ast_integer;
+
+typedef struct {
+    ast_node base;
+    di_int value; // Arbitrary precision integer
+} ast_bigint;
 
 typedef struct {
     ast_node base;
@@ -290,6 +299,7 @@ typedef struct {
 
 // AST creation functions
 ast_integer* ast_create_integer(int32_t value, int line, int column);
+ast_bigint* ast_create_bigint(di_int value, int line, int column);
 ast_number* ast_create_number(double value, int line, int column);
 ast_string* ast_create_string(const char* value, int line, int column);
 ast_boolean* ast_create_boolean(int value, int line, int column);

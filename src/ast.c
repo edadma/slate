@@ -26,6 +26,18 @@ ast_integer* ast_create_integer(int32_t value, int line, int column) {
     return node;
 }
 
+ast_bigint* ast_create_bigint(di_int value, int line, int column) {
+    ast_bigint* node = malloc(sizeof(ast_bigint));
+    if (!node) return NULL;
+    
+    node->base.type = AST_BIGINT;
+    node->base.line = line;
+    node->base.column = column;
+    node->value = value;
+    
+    return node;
+}
+
 ast_number* ast_create_number(double value, int line, int column) {
     ast_number* node = malloc(sizeof(ast_number));
     if (!node) return NULL;
@@ -382,6 +394,12 @@ void ast_free(ast_node* node) {
             // No additional cleanup needed
             break;
             
+        case AST_BIGINT: {
+            ast_bigint* big_node = (ast_bigint*)node;
+            di_release(&big_node->value); // Free the dynamic integer
+            break;
+        }
+            
         case AST_STRING: {
             ast_string* str_node = (ast_string*)node;
             free(str_node->value);
@@ -558,6 +576,7 @@ const char* ast_node_type_name(ast_node_type type) {
     switch (type) {
         case AST_INTEGER: return "INTEGER";
         case AST_NUMBER: return "NUMBER";
+        case AST_BIGINT: return "BIGINT";
         case AST_STRING: return "STRING";
         case AST_BOOLEAN: return "BOOLEAN";
         case AST_NULL: return "NULL";
@@ -614,6 +633,14 @@ void ast_print(ast_node* node, int indent) {
         case AST_NUMBER: {
             ast_number* num_node = (ast_number*)node;
             printf(": %.6g\n", num_node->value);
+            break;
+        }
+        
+        case AST_BIGINT: {
+            ast_bigint* big_node = (ast_bigint*)node;
+            char* str = di_to_string(big_node->value, 10);
+            printf(": %s\n", str ? str : "NULL");
+            if (str) free(str);
             break;
         }
         

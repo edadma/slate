@@ -6,6 +6,10 @@
 #include <limits.h>
 #include <stdio.h>
 
+// Forward declarations
+void test_hexadecimal_literals(void);
+void test_hexadecimal_arithmetic(void);
+
 // Helper function to compile and execute a source string, returning the result value
 static value_t execute_expression(const char* source) {
     lexer_t lexer;
@@ -232,4 +236,55 @@ void test_integers_suite(void) {
     RUN_TEST(test_integer_equality);
     // RUN_TEST(test_large_integer_parsing);  // Uses execute_expression
     RUN_TEST(test_arithmetic_overflow_promotion);
+    // RUN_TEST(test_hexadecimal_literals);
+    // RUN_TEST(test_hexadecimal_arithmetic);
+}
+
+// Test hexadecimal literal parsing and type handling
+void test_hexadecimal_literals(void) {
+    // Test basic hex literals parse correctly
+    value_t result = execute_expression("0x10");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(16, result.as.int32);
+    
+    // Test case insensitive
+    result = execute_expression("0xFF");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(255, result.as.int32);
+    
+    result = execute_expression("0xff");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(255, result.as.int32);
+    
+    // Test zero
+    result = execute_expression("0x0");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
+    
+    // Test large hex that should become BigInt
+    result = execute_expression("0x100000000");
+    TEST_ASSERT_EQUAL_INT(VAL_BIGINT, result.type);
+    
+    // Test hex vs decimal equivalence
+    result = execute_expression("0xFF == 255");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+}
+
+// Test hexadecimal arithmetic operations
+void test_hexadecimal_arithmetic(void) {
+    // Test hex arithmetic
+    value_t result = execute_expression("0xFF + 1");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(256, result.as.int32);
+    
+    // Test hex with decimal mixing
+    result = execute_expression("0x10 * 10");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(160, result.as.int32);
+    
+    // Test type function with hex
+    result = execute_expression("type(0xFF)");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("int32", result.as.string);
 }

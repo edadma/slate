@@ -213,8 +213,8 @@ void test_large_arithmetic() {
     char large_expr[128];
     sprintf(large_expr, "%lld + %lld", (long long)INT32_MAX + 1000LL, (long long)INT32_MAX + 2000LL);
     value_t result = execute_expression(large_expr);
-    // Should be double for now (until BigInt literal parsing)
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+    // Should now be BigInt (with enhanced BigInt literal parsing)
+    TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
     vm_release(result);
 }
 
