@@ -431,6 +431,10 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             codegen_emit_while(codegen, (ast_while*)stmt);
             break;
             
+        case AST_DO_WHILE:
+            codegen_emit_do_while(codegen, (ast_do_while*)stmt);
+            break;
+            
         case AST_LOOP:
             codegen_emit_infinite_loop(codegen, (ast_loop*)stmt);
             break;
@@ -858,6 +862,41 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     // Patch exit jump
     codegen_patch_jump(codegen, exit_jump);
     codegen_emit_op(codegen, OP_POP); // Pop condition
+    
+    // End loop context and patch break statements
+    codegen_pop_loop(codegen);
+}
+
+void codegen_emit_do_while(codegen_t* codegen, ast_do_while* node) {
+    size_t loop_start = codegen->chunk->count;
+    
+    // Begin loop context for break and continue statements
+    // For do-while, continue should jump to the condition check (after body)
+    // We'll adjust this after we know where the condition starts
+    codegen_push_loop(codegen, loop_start);
+    
+    // Generate body first (do-while executes body at least once)
+    codegen_emit_statement(codegen, node->body);
+    
+    // Update loop context for continue statements (they should jump to condition check)
+    loop_context_t* current_loop = codegen_current_loop(codegen);
+    if (current_loop) {
+        // For do-while, continues should jump to the condition check, not the body start
+        current_loop->loop_start = codegen->chunk->count;
+    }
+    
+    // Generate condition
+    codegen_emit_expression(codegen, node->condition);
+    
+    // Jump to exit if condition is false  
+    size_t exit_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
+    codegen_emit_op(codegen, OP_POP); // Pop condition when continuing loop
+    
+    // Jump back to start of loop body (unconditional backward jump)
+    codegen_emit_loop(codegen, loop_start);
+    
+    // Patch the exit jump
+    codegen_patch_jump(codegen, exit_jump);
     
     // End loop context and patch break statements
     codegen_pop_loop(codegen);

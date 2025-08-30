@@ -31,6 +31,7 @@ static keyword_entry_t keywords[] = {
     {"def", TOKEN_DEF},
     {"function", TOKEN_FUNCTION},
     {"if", TOKEN_IF},
+    {"elif", TOKEN_ELIF},
     {"else", TOKEN_ELSE},
     {"while", TOKEN_WHILE},
     {"loop", TOKEN_LOOP},

@@ -3322,6 +3322,15 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             break;
         }
 
+        case OP_LOOP: {
+            uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            
+            // Jump backward by the specified offset
+            vm->ip -= offset;
+            break;
+        }
+
         case OP_SET_DEBUG_LOCATION: {
             uint16_t constant_index = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;

@@ -240,6 +240,113 @@ void test_while_loop_edge_cases(void) {
     vm_release(result);
 }
 
+// Test basic do-while loops
+void test_basic_do_while_loops(void) {
+    value_t result;
+
+    // Basic do-while that executes once
+    result = run_while_test("var x = 5\n"
+                            "do\n"
+                            "    x = x - 1\n"
+                            "while x > 10\n"  // Condition is false from start
+                            "x");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(4, result.as.int32); // Should execute body once
+    vm_release(result);
+
+    // Do-while with multiple iterations
+    result = run_while_test("var count = 0\n"
+                            "do\n"
+                            "    count = count + 1\n"
+                            "while count < 3\n"
+                            "count");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
+    vm_release(result);
+
+    // Single-line do-while
+    result = run_while_test("var i = 10\n"
+                            "do i = i + 5 while i < 20\n"
+                            "i");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(20, result.as.int32);
+    vm_release(result);
+}
+
+// Test do-while with break and continue
+void test_do_while_break_continue(void) {
+    value_t result;
+
+    // Do-while with break
+    result = run_while_test("var sum = 0\n"
+                            "var i = 0\n"
+                            "do\n"
+                            "    i = i + 1\n"
+                            "    if i == 5 then break\n"
+                            "    sum = sum + i\n"
+                            "while i < 10\n"
+                            "sum");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(10, result.as.int32); // 1+2+3+4 = 10
+    vm_release(result);
+
+    // Do-while with continue
+    result = run_while_test("var sum = 0\n"
+                            "var i = 0\n"
+                            "do\n"
+                            "    i = i + 1\n"
+                            "    if i == 3 then continue\n"
+                            "    sum = sum + i\n"
+                            "while i < 5\n"
+                            "sum");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(12, result.as.int32); // 1+2+4+5 = 12 (skip 3)
+    vm_release(result);
+}
+
+// Test do-while edge cases
+void test_do_while_edge_cases(void) {
+    value_t result;
+
+    // Do-while that executes exactly once (condition always false)
+    result = run_while_test("var executed = 0\n"
+                            "do\n"
+                            "    executed = executed + 1\n"
+                            "while false\n"
+                            "executed");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
+    vm_release(result);
+
+    // Nested do-while loops
+    result = run_while_test("var total = 0\n"
+                            "var outer = 0\n"
+                            "do\n"
+                            "    outer = outer + 1\n"
+                            "    var inner = 0\n"
+                            "    do\n"
+                            "        inner = inner + 1\n"
+                            "        total = total + 1\n"
+                            "    while inner < 2\n"
+                            "while outer < 3\n"
+                            "total");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(6, result.as.int32); // 3 outer * 2 inner = 6
+    vm_release(result);
+
+    // Do-while with complex condition
+    result = run_while_test("var x = 1\n"
+                            "var y = 5\n"
+                            "do\n"
+                            "    x = x * 2\n"
+                            "    y = y - 1\n"
+                            "while x < 8 and y > 2\n"
+                            "x + y");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(10, result.as.int32); // x=8, y=2 -> 8+2=10
+    vm_release(result);
+}
+
 // Test suite runner
 void test_while_loops_suite(void) {
     RUN_TEST(test_basic_while_loops);
@@ -248,4 +355,7 @@ void test_while_loops_suite(void) {
     RUN_TEST(test_single_line_while_loops_with_do);
     RUN_TEST(test_while_syntax_variations);
     RUN_TEST(test_while_loop_edge_cases);
+    RUN_TEST(test_basic_do_while_loops);
+    RUN_TEST(test_do_while_break_continue);
+    RUN_TEST(test_do_while_edge_cases);
 }

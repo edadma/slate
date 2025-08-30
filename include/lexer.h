@@ -20,6 +20,7 @@ typedef enum {
     TOKEN_DEF,           // def
     TOKEN_FUNCTION,      // function
     TOKEN_IF,            // if
+    TOKEN_ELIF,          // elif
     TOKEN_ELSE,          // else
     TOKEN_WHILE,         // while
     TOKEN_LOOP,          // loop

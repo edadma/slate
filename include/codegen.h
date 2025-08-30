@@ -100,6 +100,7 @@ void codegen_emit_block(codegen_t* codegen, ast_block* node);
 void codegen_emit_block_expression(codegen_t* codegen, ast_block* node);
 void codegen_emit_if(codegen_t* codegen, ast_if* node);
 void codegen_emit_while(codegen_t* codegen, ast_while* node);
+void codegen_emit_do_while(codegen_t* codegen, ast_do_while* node);
 void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node);
 void codegen_emit_break(codegen_t* codegen, ast_break* node);
 void codegen_emit_continue(codegen_t* codegen, ast_continue* node);

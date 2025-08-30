@@ -359,6 +359,10 @@ ast_node* parse_def_declaration(parser_t* parser) {
 
 // Parse statement
 ast_node* parse_statement(parser_t* parser) {
+    if (parser_match(parser, TOKEN_DO)) {
+        return parse_do_while_statement(parser);
+    }
+    
     if (parser_match(parser, TOKEN_WHILE)) {
         return parse_while_statement(parser);
     }
@@ -461,17 +465,73 @@ ast_node* parse_if_expression(parser_t* parser) {
         return NULL;
     }
     
-    // Skip optional newlines before checking for 'else'
+    // Skip optional newlines before checking for 'elif' or 'else'
     while (parser_match(parser, TOKEN_NEWLINE));
     
-    // Check for 'else' clause
+    // Handle elif clauses by chaining them as nested if-else
+    while (parser_match(parser, TOKEN_ELIF)) {
+        // Parse elif condition
+        ast_node* elif_condition = parse_expression(parser);
+        ast_node* elif_then = NULL;
+        
+        // Parse elif 'then' clause
+        if (parser_match(parser, TOKEN_THEN)) {
+            if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+                // Multi-line elif then
+                elif_then = parse_indented_block(parser);
+            } else {
+                // Single-line elif then
+                elif_then = parse_expression(parser);
+            }
+        } else if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+            // Multi-line elif without 'then'
+            elif_then = parse_indented_block(parser);
+        } else {
+            parser_error_at_current(parser, "Expected 'then' or indented block after elif condition.");
+            return NULL;
+        }
+        
+        // Skip newlines before checking for more elif/else
+        while (parser_match(parser, TOKEN_NEWLINE));
+        
+        // Create a nested if for the elif, and set it as the else clause
+        // This will be the else clause of the current if, or the else of a previous elif
+        ast_node* nested_if = (ast_node*)ast_create_if(elif_condition, elif_then, NULL,
+                                                       parser->previous.line, parser->previous.column);
+        
+        if (else_expr == NULL) {
+            else_expr = nested_if;
+        } else {
+            // Find the deepest else clause and attach the new elif there
+            ast_if* current = (ast_if*)else_expr;
+            while (current->else_stmt && current->else_stmt->type == AST_IF) {
+                current = (ast_if*)current->else_stmt;
+            }
+            current->else_stmt = nested_if;
+        }
+    }
+    
+    // Check for final 'else' clause
     if (parser_match(parser, TOKEN_ELSE)) {
+        ast_node* final_else = NULL;
         if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
             // Multi-line else
-            else_expr = parse_indented_block(parser);
+            final_else = parse_indented_block(parser);
         } else {
             // Single-line else
-            else_expr = parse_expression(parser);
+            final_else = parse_expression(parser);
+        }
+        
+        if (else_expr == NULL) {
+            // No elif clauses, direct else
+            else_expr = final_else;
+        } else {
+            // Find the deepest elif and attach the final else
+            ast_if* current = (ast_if*)else_expr;
+            while (current->else_stmt && current->else_stmt->type == AST_IF) {
+                current = (ast_if*)current->else_stmt;
+            }
+            current->else_stmt = final_else;
         }
     }
     
@@ -544,6 +604,77 @@ ast_node* parse_while_statement(parser_t* parser) {
     
     return (ast_node*)ast_create_while(condition, body,
                                       parser->previous.line, parser->previous.column);
+}
+
+// Parse do-while statement
+ast_node* parse_do_while_statement(parser_t* parser) {
+    int do_line = parser->previous.line;
+    int do_column = parser->previous.column;
+    
+    ast_node* body = NULL;
+    
+    // Parse body
+    if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+        // Multi-line form: do\n<indent>statements
+        // Skip optional newline before indent
+        parser_match(parser, TOKEN_NEWLINE);
+        
+        if (!parser_match(parser, TOKEN_INDENT)) {
+            parser_error_at_current(parser, "Expected indented block.");
+            return NULL;
+        }
+        
+        // Parse statements until we hit a DEDENT
+        ast_node** statements = NULL;
+        size_t statement_count = 0;
+        size_t statement_capacity = 0;
+        
+        while (!parser_check(parser, TOKEN_DEDENT) && !parser_check(parser, TOKEN_EOF)) {
+            // Skip newlines between statements
+            while (parser_match(parser, TOKEN_NEWLINE));
+            
+            if (parser_check(parser, TOKEN_DEDENT)) break;
+            
+            ast_node* stmt = parse_declaration(parser);
+            
+            if (statement_count >= statement_capacity) {
+                size_t new_capacity = statement_capacity == 0 ? 8 : statement_capacity * 2;
+                statements = realloc(statements, sizeof(ast_node*) * new_capacity);
+                statement_capacity = new_capacity;
+            }
+            
+            statements[statement_count++] = stmt;
+            
+            // Skip optional trailing newlines
+            while (parser_match(parser, TOKEN_NEWLINE));
+        }
+        
+        parser_consume(parser, TOKEN_DEDENT, "Expected dedent after block.");
+        
+        if (statement_count == 0) {
+            // Empty block
+            body = (ast_node*)ast_create_null(parser->previous.line, parser->previous.column);
+        } else if (statement_count == 1) {
+            // Single statement
+            body = statements[0];
+            free(statements);
+        } else {
+            // Multiple statements - create block
+            body = (ast_node*)ast_create_block(statements, statement_count, parser->previous.line, parser->previous.column);
+        }
+    } else {
+        // Single-line form: do expression while condition
+        body = (ast_node*)ast_create_expression_stmt(parse_expression(parser),
+                                                     parser->current.line, parser->current.column);
+    }
+    
+    // Consume 'while' keyword
+    parser_consume(parser, TOKEN_WHILE, "Expected 'while' after do body");
+    
+    // Parse condition (no parentheses required)
+    ast_node* condition = parse_expression(parser);
+    
+    return (ast_node*)ast_create_do_while(body, condition, do_line, do_column);
 }
 
 // Parse infinite loop statement

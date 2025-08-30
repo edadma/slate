@@ -674,6 +674,225 @@ void test_logical_operators(void) {
     vm_release(result);
 }
 
+// Test basic elif functionality
+void test_basic_elif(void) {
+    value_t result;
+
+    // Basic elif - first condition true
+    result = run_conditional_test("var x = 10\n"
+                                  "if x > 15 then \"huge\" elif x > 5 then \"big\" else \"small\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("big", result.as.string);
+    vm_release(result);
+
+    // Basic elif - elif condition true
+    result = run_conditional_test("var x = 3\n"
+                                  "if x > 10 then \"huge\" elif x > 1 then \"medium\" else \"small\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("medium", result.as.string);
+    vm_release(result);
+
+    // Basic elif - falls to else
+    result = run_conditional_test("var x = 0\n"
+                                  "if x > 10 then \"huge\" elif x > 1 then \"medium\" else \"small\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("small", result.as.string);
+    vm_release(result);
+
+    // Single-line elif without else
+    result = run_conditional_test("var x = 7\n"
+                                  "if x > 10 then \"huge\" elif x > 5 then \"big\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("big", result.as.string);
+    vm_release(result);
+}
+
+// Test multiple elif clauses
+void test_multiple_elif(void) {
+    value_t result;
+
+    // Multiple elif clauses - first elif matches
+    result = run_conditional_test("var score = 85\n"
+                                  "if score >= 90 then \"A\"\n"
+                                  "elif score >= 80 then \"B\"\n"
+                                  "elif score >= 70 then \"C\"\n"
+                                  "elif score >= 60 then \"D\"\n"
+                                  "else \"F\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("B", result.as.string);
+    vm_release(result);
+
+    // Multiple elif clauses - middle elif matches
+    result = run_conditional_test("var score = 75\n"
+                                  "if score >= 90 then \"A\"\n"
+                                  "elif score >= 80 then \"B\"\n"
+                                  "elif score >= 70 then \"C\"\n"
+                                  "elif score >= 60 then \"D\"\n"
+                                  "else \"F\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("C", result.as.string);
+    vm_release(result);
+
+    // Multiple elif clauses - last elif matches
+    result = run_conditional_test("var score = 65\n"
+                                  "if score >= 90 then \"A\"\n"
+                                  "elif score >= 80 then \"B\"\n"
+                                  "elif score >= 70 then \"C\"\n"
+                                  "elif score >= 60 then \"D\"\n"
+                                  "else \"F\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("D", result.as.string);
+    vm_release(result);
+
+    // Multiple elif clauses - falls to else
+    result = run_conditional_test("var score = 45\n"
+                                  "if score >= 90 then \"A\"\n"
+                                  "elif score >= 80 then \"B\"\n"
+                                  "elif score >= 70 then \"C\"\n"
+                                  "elif score >= 60 then \"D\"\n"
+                                  "else \"F\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("F", result.as.string);
+    vm_release(result);
+}
+
+// Test elif with different syntax variations
+void test_elif_syntax_variations(void) {
+    value_t result;
+
+    // Mixed single-line and multi-line
+    result = run_conditional_test("var x = 8\n"
+                                  "if x > 10 then \"huge\"\n"
+                                  "elif x > 5 then\n"
+                                  "    \"big\"\n"
+                                  "else \"small\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("big", result.as.string);
+    vm_release(result);
+
+    // Elif without 'then' keyword (multi-line)
+    result = run_conditional_test("var x = 3\n"
+                                  "if x > 10\n"
+                                  "    \"huge\"\n"
+                                  "elif x > 1\n"
+                                  "    \"medium\"\n"
+                                  "else\n"
+                                  "    \"small\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("medium", result.as.string);
+    vm_release(result);
+
+    // All single-line
+    result = run_conditional_test("var x = 12\n"
+                                  "if x > 15 then \"huge\" elif x > 10 then \"big\" elif x > 5 then \"medium\" else \"small\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("big", result.as.string);
+    vm_release(result);
+}
+
+// Test elif with complex expressions and side effects
+void test_elif_complex_expressions(void) {
+    value_t result;
+
+    // Elif with complex boolean expressions
+    result = run_conditional_test("var x = 5\n"
+                                  "var y = 3\n"
+                                  "if x > 10 and y > 5 then \"both big\"\n"
+                                  "elif x > 3 or y > 1 then \"at least one medium\"\n"
+                                  "else \"both small\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("at least one medium", result.as.string);
+    vm_release(result);
+
+    // Elif with arithmetic in conditions and bodies
+    result = run_conditional_test("var num = 15\n"
+                                  "if num mod 3 == 0 and num mod 5 == 0 then \"FizzBuzz\"\n"
+                                  "elif num mod 3 == 0 then \"Fizz\"\n"
+                                  "elif num mod 5 == 0 then \"Buzz\"\n"
+                                  "else num");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("FizzBuzz", result.as.string);
+    vm_release(result);
+
+    // Elif with variable modification
+    result = run_conditional_test("var count = 0\n"
+                                  "var x = 7\n"
+                                  "if x > 10 then count = count + 3\n"
+                                  "elif x > 5 then count = count + 2\n"
+                                  "elif x > 0 then count = count + 1\n"
+                                  "count");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
+    vm_release(result);
+}
+
+// Test nested elif constructs
+void test_nested_elif(void) {
+    value_t result;
+
+    // Nested if-elif inside elif
+    result = run_conditional_test("var x = 5\n"
+                                  "var y = 8\n"
+                                  "if x > 10 then \"x big\"\n"
+                                  "elif x > 3 then\n"
+                                  "    if y > 10 then \"x medium, y big\"\n"
+                                  "    elif y > 5 then \"x medium, y medium\"\n"
+                                  "    else \"x medium, y small\"\n"
+                                  "else \"x small\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("x medium, y medium", result.as.string);
+    vm_release(result);
+
+    // Elif chain with nested structure
+    result = run_conditional_test("var category = \"B\"\n"
+                                  "var level = 2\n"
+                                  "if category == \"A\" then \"premium\"\n"
+                                  "elif category == \"B\" then\n"
+                                  "    if level > 5 then \"advanced\"\n"
+                                  "    elif level > 2 then \"intermediate\"\n"
+                                  "    else \"basic\"\n"
+                                  "elif category == \"C\" then \"standard\"\n"
+                                  "else \"unknown\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("basic", result.as.string);
+    vm_release(result);
+}
+
+// Test elif edge cases
+void test_elif_edge_cases(void) {
+    value_t result;
+
+    // Single elif without else
+    result = run_conditional_test("var x = 3\n"
+                                  "if x > 10 then \"big\" elif x > 1 then \"medium\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("medium", result.as.string);
+    vm_release(result);
+
+    // Multiple elif without else, none match
+    result = run_conditional_test("var x = 0\n"
+                                  "if x > 10 then \"big\" elif x > 5 then \"medium\" elif x > 1 then \"small\"");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
+
+    // Elif with null and undefined
+    result = run_conditional_test("var x = null\n"
+                                  "if x then \"truthy\" elif x == null then \"is null\" else \"other\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("is null", result.as.string);
+    vm_release(result);
+
+    // Elif with string comparisons
+    result = run_conditional_test("var status = \"pending\"\n"
+                                  "if status == \"complete\" then \"done\"\n"
+                                  "elif status == \"in_progress\" then \"working\"\n"
+                                  "elif status == \"pending\" then \"waiting\"\n"
+                                  "else \"unknown\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("waiting", result.as.string);
+    vm_release(result);
+}
+
 // Test suite runner
 void test_conditionals_suite(void) {
     // Test all implemented single-line syntax variations
@@ -684,6 +903,14 @@ void test_conditionals_suite(void) {
     RUN_TEST(test_comments);
     RUN_TEST(test_comprehensive_syntax_variations);
     RUN_TEST(test_logical_operators);
+
+    // Elif tests
+    RUN_TEST(test_basic_elif);
+    RUN_TEST(test_multiple_elif);
+    RUN_TEST(test_elif_syntax_variations);
+    RUN_TEST(test_elif_complex_expressions);
+    RUN_TEST(test_nested_elif);
+    RUN_TEST(test_elif_edge_cases);
 
     // TODO: Multiline indented block tests disabled due to lexer infinite loops
     RUN_TEST(test_multiline_if_then_blocks);
