@@ -38,6 +38,22 @@ typedef struct {
     size_t break_capacity;
 } loop_context_t;
 
+// Local variable tracking for scope management
+typedef struct {
+    char* name;           // Variable name
+    int depth;           // Scope depth (0 = global)
+    int slot;            // Stack slot index
+    int is_initialized; // Has been initialized
+} local_var_t;
+
+// Scope management state
+typedef struct {
+    local_var_t* locals;       // Array of local variables
+    int local_count;          // Number of locals
+    int local_capacity;       // Capacity of locals array
+    int scope_depth;          // Current scope depth (0 = global)
+} scope_manager_t;
+
 // Code generator state
 typedef struct {
     bytecode_chunk* chunk;
@@ -48,6 +64,8 @@ typedef struct {
     loop_context_t* loop_contexts;  // Array of loop contexts (stack)
     size_t loop_depth;             // Current nesting depth (0 = no loops) 
     size_t loop_capacity;          // Capacity of loop_contexts array
+    // Scope and local variable management
+    scope_manager_t scope;         // Scope and variable tracking
 } codegen_t;
 
 // Debug info functions
@@ -120,6 +138,14 @@ void codegen_emit_loop(codegen_t* codegen, size_t loop_start);
 void codegen_push_loop(codegen_t* codegen, size_t loop_start);
 void codegen_pop_loop(codegen_t* codegen);
 loop_context_t* codegen_current_loop(codegen_t* codegen);
+
+// Scope management for local variables
+void codegen_begin_scope(codegen_t* codegen);
+void codegen_end_scope(codegen_t* codegen);
+int codegen_declare_variable(codegen_t* codegen, const char* name);
+int codegen_resolve_variable(codegen_t* codegen, const char* name, int* is_local);
+void codegen_init_scope_manager(codegen_t* codegen);
+void codegen_cleanup_scope_manager(codegen_t* codegen);
 
 // Error handling
 void codegen_error(codegen_t* codegen, const char* message);

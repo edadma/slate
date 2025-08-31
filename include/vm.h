@@ -109,6 +109,10 @@ typedef enum {
     OP_JUMP_IF_FALSE, // Jump if top of stack is false (operand = offset)
     OP_JUMP_IF_TRUE, // Jump if top of stack is true (operand = offset)
     OP_LOOP, // Loop back (operand = offset)
+    
+    // Scope operations
+    OP_POP_N, // Pop N values from stack and release them (operand = count)
+    OP_POP_N_PRESERVE_TOP, // Pop N values but preserve top value (operand = count)
 
     // Debug operations
     OP_SET_DEBUG_LOCATION, // Set current debug location (operand = constant index to debug info)

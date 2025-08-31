@@ -139,6 +139,9 @@ codegen_t* codegen_create(slate_vm* vm) {
     codegen->loop_depth = 0;
     codegen->loop_capacity = 0;
     
+    // Initialize scope manager
+    codegen_init_scope_manager(codegen);
+    
     return codegen;
 }
 
@@ -159,6 +162,9 @@ codegen_t* codegen_create_with_debug(slate_vm* vm, const char* source_code) {
     codegen->loop_depth = 0;
     codegen->loop_capacity = 0;
     
+    // Initialize scope manager
+    codegen_init_scope_manager(codegen);
+    
     return codegen;
 }
 
@@ -172,6 +178,9 @@ void codegen_destroy(codegen_t* codegen) {
         free(codegen->loop_contexts[i].break_jumps);
     }
     free(codegen->loop_contexts);
+    
+    // Clean up scope manager
+    codegen_cleanup_scope_manager(codegen);
     
     free(codegen);
 }
@@ -371,11 +380,23 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             // Handle assignment target
             if (assign->target->type == AST_IDENTIFIER) {
                 ast_identifier* var = (ast_identifier*)assign->target;
-                size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
                 
-                // Add debug info for the assignment operation
-                chunk_add_debug_info(codegen->chunk, assign->base.line, assign->base.column);
-                codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
+                // Try to resolve as local variable first
+                int is_local;
+                int slot = codegen_resolve_variable(codegen, var->name, &is_local);
+                
+                if (is_local) {
+                    // Local variable assignment with single byte operand
+                    codegen_emit_op(codegen, OP_SET_LOCAL);
+                    chunk_write_byte(codegen->chunk, (uint8_t)slot);
+                } else {
+                    // Global variable assignment
+                    size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
+                    
+                    // Add debug info for the assignment operation
+                    chunk_add_debug_info(codegen->chunk, assign->base.line, assign->base.column);
+                    codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
+                }
             } else {
                 codegen_error(codegen, "Only variable assignments are currently supported");
             }
@@ -592,9 +613,19 @@ void codegen_emit_undefined(codegen_t* codegen, ast_undefined* node) {
 }
 
 void codegen_emit_identifier(codegen_t* codegen, ast_identifier* node) {
-    // For now, treat all identifiers as globals
-    size_t constant = chunk_add_constant(codegen->chunk, make_string(node->name));
-    codegen_emit_op_operand(codegen, OP_GET_GLOBAL, (uint16_t)constant);
+    // Try to resolve as local variable first
+    int is_local;
+    int slot = codegen_resolve_variable(codegen, node->name, &is_local);
+    
+    if (is_local) {
+        // Local variable - use OP_GET_LOCAL with single byte operand
+        codegen_emit_op(codegen, OP_GET_LOCAL);
+        chunk_write_byte(codegen->chunk, (uint8_t)slot);
+    } else {
+        // Global variable - use OP_GET_GLOBAL
+        size_t constant = chunk_add_constant(codegen->chunk, make_string(node->name));
+        codegen_emit_op_operand(codegen, OP_GET_GLOBAL, (uint16_t)constant);
+    }
 }
 
 void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node) {
@@ -758,21 +789,49 @@ void codegen_emit_object(codegen_t* codegen, ast_object_literal* node) {
 
 // Statement emission functions
 void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node) {
-    if (node->initializer) {
-        codegen_emit_expression(codegen, node->initializer);
+    if (codegen->scope.scope_depth == 0) {
+        // Global variable declaration
+        if (node->initializer) {
+            codegen_emit_expression(codegen, node->initializer);
+        } else {
+            codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
+        }
+        
+        // Duplicate the value so we can store it and also set result
+        codegen_emit_op(codegen, OP_DUP);
+        
+        // Define global variable
+        size_t constant = chunk_add_constant(codegen->chunk, make_string(node->name));
+        codegen_emit_op_operand(codegen, OP_DEFINE_GLOBAL, (uint16_t)constant);
+        
+        // Set result register with the initialization value
+        codegen_emit_op(codegen, OP_SET_RESULT);
     } else {
-        codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
+        // Local variable declaration
+        int slot = codegen_declare_variable(codegen, node->name);
+        if (slot < 0) {
+            return; // Error already reported
+        }
+        
+        if (node->initializer) {
+            codegen_emit_expression(codegen, node->initializer);
+        } else {
+            codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
+        }
+        
+        // The pushed value becomes the local variable's storage
+        // The slot number should match the stack position
+        // No OP_SET_LOCAL needed - the value is already on the stack at the correct position
+        
+        // Duplicate the value for the result register  
+        codegen_emit_op(codegen, OP_DUP);
+        
+        // Mark variable as initialized
+        codegen->scope.locals[slot].is_initialized = 1;
+        
+        // Set result register with the initialization value
+        codegen_emit_op(codegen, OP_SET_RESULT);
     }
-    
-    // Duplicate the value so we can store it and also set result
-    codegen_emit_op(codegen, OP_DUP);
-    
-    // Define global variable
-    size_t constant = chunk_add_constant(codegen->chunk, make_string(node->name));
-    codegen_emit_op_operand(codegen, OP_DEFINE_GLOBAL, (uint16_t)constant);
-    
-    // Set result register with the initialization value
-    codegen_emit_op(codegen, OP_SET_RESULT);
 }
 
 void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node) {
@@ -783,11 +842,23 @@ void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node) {
     if (node->target->type == AST_IDENTIFIER) {
         ast_identifier* var = (ast_identifier*)node->target;
         codegen_emit_op(codegen, OP_DUP);
-        size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
         
-        // Add debug info for the assignment operation
-        chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
-        codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
+        // Try to resolve as local variable first
+        int is_local;
+        int slot = codegen_resolve_variable(codegen, var->name, &is_local);
+        
+        if (is_local) {
+            // Local variable assignment with single byte operand
+            codegen_emit_op(codegen, OP_SET_LOCAL);
+            chunk_write_byte(codegen->chunk, (uint8_t)slot);
+        } else {
+            // Global variable assignment
+            size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
+            
+            // Add debug info for the assignment operation
+            chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
+            codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
+        }
     } else {
         codegen_error(codegen, "Only variable assignments are currently supported");
     }
@@ -801,11 +872,20 @@ void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignmen
     }
     
     ast_identifier* var = (ast_identifier*)node->target;
-    size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
+    
+    // Try to resolve as local variable first
+    int is_local;
+    int slot = codegen_resolve_variable(codegen, var->name, &is_local);
     
     // Get the current value of the variable
     chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
-    codegen_emit_op_operand(codegen, OP_GET_GLOBAL, (uint16_t)constant);
+    if (is_local) {
+        codegen_emit_op(codegen, OP_GET_LOCAL);
+        chunk_write_byte(codegen->chunk, (uint8_t)slot);
+    } else {
+        size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
+        codegen_emit_op_operand(codegen, OP_GET_GLOBAL, (uint16_t)constant);
+    }
     
     // Generate code for the right-hand side value
     codegen_emit_expression(codegen, node->value);
@@ -837,7 +917,13 @@ void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignmen
     
     // Store the result back to the variable
     chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
-    codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
+    if (is_local) {
+        codegen_emit_op(codegen, OP_SET_LOCAL);
+        chunk_write_byte(codegen->chunk, (uint8_t)slot);
+    } else {
+        size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
+        codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
+    }
 }
 
 void codegen_emit_expression_stmt(codegen_t* codegen, ast_expression_stmt* node) {
@@ -846,8 +932,53 @@ void codegen_emit_expression_stmt(codegen_t* codegen, ast_expression_stmt* node)
 }
 
 void codegen_emit_block(codegen_t* codegen, ast_block* node) {
+    // Begin new scope for the block
+    codegen_begin_scope(codegen);
+    
     for (size_t i = 0; i < node->statement_count; i++) {
         codegen_emit_statement(codegen, node->statements[i]);
+        if (codegen->had_error) break;
+    }
+    
+    // End scope (this will emit OP_POP_N to clean up local variables)
+    codegen_end_scope(codegen);
+}
+
+// Helper function to emit a node that can be either expression or statement
+void codegen_emit_expression_or_statement(codegen_t* codegen, ast_node* node) {
+    if (!node) {
+        codegen_emit_op(codegen, OP_PUSH_NULL);
+        return;
+    }
+    
+    // Check if this is a statement that should be handled specially
+    switch (node->type) {
+        case AST_BLOCK:
+            // For blocks, we need to handle them as block expressions to get the result
+            codegen_emit_block_expression(codegen, (ast_block*)node);
+            break;
+        case AST_EXPRESSION_STMT:
+            // For expression statements, emit the inner expression directly
+            // This is important for single-line if statements: if true then 42
+            codegen_emit_expression(codegen, ((ast_expression_stmt*)node)->expression);
+            break;
+        case AST_VAR_DECLARATION:
+        case AST_ASSIGNMENT:  
+        case AST_COMPOUND_ASSIGNMENT:
+        case AST_WHILE:
+        case AST_DO_WHILE:
+        case AST_LOOP:
+        case AST_BREAK:
+        case AST_CONTINUE:
+        case AST_RETURN:
+            // These are statements - emit as statements and push null as result
+            codegen_emit_statement(codegen, node);
+            codegen_emit_op(codegen, OP_PUSH_NULL);
+            break;
+        default:
+            // This is an expression - emit it normally
+            codegen_emit_expression(codegen, node);
+            break;
     }
 }
 
@@ -859,8 +990,27 @@ void codegen_emit_if(codegen_t* codegen, ast_if* node) {
     size_t else_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
     codegen_emit_op(codegen, OP_POP); // Pop condition in then branch
     
-    // Generate then branch
-    codegen_emit_expression(codegen, node->then_stmt);
+    // Generate then branch (can be expression or statement)
+    // Use direct dispatch to avoid recursion with codegen_emit_expression_or_statement
+    if (node->then_stmt->type == AST_BLOCK) {
+        codegen_emit_block_expression(codegen, (ast_block*)node->then_stmt);
+    } else if (node->then_stmt->type == AST_EXPRESSION_STMT) {
+        codegen_emit_expression(codegen, ((ast_expression_stmt*)node->then_stmt)->expression);
+    } else if (node->then_stmt->type == AST_VAR_DECLARATION ||
+               node->then_stmt->type == AST_ASSIGNMENT ||
+               node->then_stmt->type == AST_COMPOUND_ASSIGNMENT ||
+               node->then_stmt->type == AST_WHILE ||
+               node->then_stmt->type == AST_DO_WHILE ||
+               node->then_stmt->type == AST_LOOP ||
+               node->then_stmt->type == AST_BREAK ||
+               node->then_stmt->type == AST_CONTINUE ||
+               node->then_stmt->type == AST_RETURN) {
+        codegen_emit_statement(codegen, node->then_stmt);
+        codegen_emit_op(codegen, OP_PUSH_NULL);
+    } else {
+        // Regular expression
+        codegen_emit_expression(codegen, node->then_stmt);
+    }
     
     size_t end_jump = codegen_emit_jump(codegen, OP_JUMP);
     
@@ -868,9 +1018,28 @@ void codegen_emit_if(codegen_t* codegen, ast_if* node) {
     codegen_patch_jump(codegen, else_jump);
     codegen_emit_op(codegen, OP_POP); // Pop condition in else branch
     
-    // Generate else branch if present
+    // Generate else branch if present (can be expression or statement)
     if (node->else_stmt) {
-        codegen_emit_expression(codegen, node->else_stmt);
+        // Use direct dispatch to avoid recursion with codegen_emit_expression_or_statement
+        if (node->else_stmt->type == AST_BLOCK) {
+            codegen_emit_block_expression(codegen, (ast_block*)node->else_stmt);
+        } else if (node->else_stmt->type == AST_EXPRESSION_STMT) {
+            codegen_emit_expression(codegen, ((ast_expression_stmt*)node->else_stmt)->expression);
+        } else if (node->else_stmt->type == AST_VAR_DECLARATION ||
+                   node->else_stmt->type == AST_ASSIGNMENT ||
+                   node->else_stmt->type == AST_COMPOUND_ASSIGNMENT ||
+                   node->else_stmt->type == AST_WHILE ||
+                   node->else_stmt->type == AST_DO_WHILE ||
+                   node->else_stmt->type == AST_LOOP ||
+                   node->else_stmt->type == AST_BREAK ||
+                   node->else_stmt->type == AST_CONTINUE ||
+                   node->else_stmt->type == AST_RETURN) {
+            codegen_emit_statement(codegen, node->else_stmt);
+            codegen_emit_op(codegen, OP_PUSH_NULL);
+        } else {
+            // Regular expression
+            codegen_emit_expression(codegen, node->else_stmt);
+        }
     } else {
         // If no else branch, push null as the result
         codegen_emit_op(codegen, OP_PUSH_NULL);
@@ -887,16 +1056,47 @@ void codegen_emit_block_expression(codegen_t* codegen, ast_block* node) {
         return;
     }
     
+    // Begin new scope for the block expression
+    codegen_begin_scope(codegen);
+    
     // Execute all statements except the last one normally
     for (size_t i = 0; i < node->statement_count - 1; i++) {
         codegen_emit_statement(codegen, node->statements[i]);
+        if (codegen->had_error) break;
     }
     
-    // The last statement must be an expression statement (validated by parser)
-    // Emit its expression directly to leave the value on the stack
-    ast_node* last_stmt = node->statements[node->statement_count - 1];
-    ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
-    codegen_emit_expression(codegen, expr_stmt->expression);
+    if (!codegen->had_error) {
+        // The last statement must be an expression statement (validated by parser)
+        // Emit its expression directly to leave the value on the stack
+        ast_node* last_stmt = node->statements[node->statement_count - 1];
+        ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
+        codegen_emit_expression(codegen, expr_stmt->expression);
+    }
+    
+    // End scope with result preservation
+    // The result is on the stack top and must be preserved during cleanup
+    if (codegen->scope.scope_depth == 0) {
+        codegen_error(codegen, "Cannot end global scope");
+        return;
+    }
+    
+    // Count how many locals need to be popped
+    int locals_to_pop = 0;
+    for (int i = codegen->scope.local_count - 1; i >= 0; i--) {
+        if (codegen->scope.locals[i].depth < codegen->scope.scope_depth) {
+            break; // Found variable from outer scope
+        }
+        locals_to_pop++;
+    }
+    
+    // Use OP_POP_N_PRESERVE_TOP to clean up local variables while preserving the result
+    if (locals_to_pop > 0) {
+        codegen_emit_op(codegen, OP_POP_N_PRESERVE_TOP);
+        chunk_write_byte(codegen->chunk, (uint8_t)locals_to_pop);
+        codegen->scope.local_count -= locals_to_pop;
+    }
+    
+    codegen->scope.scope_depth--;
 }
 
 void codegen_emit_while(codegen_t* codegen, ast_while* node) {
@@ -904,6 +1104,9 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     
     // Begin loop context for break and continue statements
     codegen_push_loop(codegen, loop_start);
+    
+    // Begin scope for the while loop body
+    codegen_begin_scope(codegen);
     
     // Generate condition
     codegen_emit_expression(codegen, node->condition);
@@ -929,6 +1132,9 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     codegen_patch_jump(codegen, exit_jump);
     codegen_emit_op(codegen, OP_POP); // Pop condition
     
+    // End scope for the while loop
+    codegen_end_scope(codegen);
+    
     // End loop context and patch break statements
     codegen_pop_loop(codegen);
 }
@@ -940,6 +1146,9 @@ void codegen_emit_do_while(codegen_t* codegen, ast_do_while* node) {
     // For do-while, continue should jump to the condition check (after body)
     // We'll adjust this after we know where the condition starts
     codegen_push_loop(codegen, loop_start);
+    
+    // Begin scope for the do-while loop body
+    codegen_begin_scope(codegen);
     
     // Generate body first (do-while executes body at least once)
     codegen_emit_statement(codegen, node->body);
@@ -964,6 +1173,9 @@ void codegen_emit_do_while(codegen_t* codegen, ast_do_while* node) {
     // Patch the exit jump
     codegen_patch_jump(codegen, exit_jump);
     
+    // End scope for the do-while loop
+    codegen_end_scope(codegen);
+    
     // End loop context and patch break statements
     codegen_pop_loop(codegen);
 }
@@ -973,6 +1185,9 @@ void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node) {
     
     // Begin loop context for break and continue statements
     codegen_push_loop(codegen, loop_start);
+    
+    // Begin scope for the infinite loop body
+    codegen_begin_scope(codegen);
     
     // Generate body (no condition needed for infinite loop)
     codegen_emit_statement(codegen, node->body);
@@ -986,6 +1201,9 @@ void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node) {
     }
     // Emit backward jump (negative offset) - this creates the infinite loop
     codegen_emit_op_operand(codegen, OP_JUMP, (uint16_t)(-backward_distance));
+    
+    // End scope for the infinite loop
+    codegen_end_scope(codegen);
     
     // End loop context and patch break statements
     codegen_pop_loop(codegen);
@@ -1218,6 +1436,101 @@ void codegen_emit_loop(codegen_t* codegen, size_t loop_start) {
     }
     
     codegen_emit_op_operand(codegen, OP_LOOP, (uint16_t)offset);
+}
+
+// Scope management functions
+void codegen_init_scope_manager(codegen_t* codegen) {
+    codegen->scope.locals = NULL;
+    codegen->scope.local_count = 0;
+    codegen->scope.local_capacity = 0;
+    codegen->scope.scope_depth = 0; // Global scope
+}
+
+void codegen_cleanup_scope_manager(codegen_t* codegen) {
+    // Free local variable names
+    for (int i = 0; i < codegen->scope.local_count; i++) {
+        free(codegen->scope.locals[i].name);
+    }
+    free(codegen->scope.locals);
+}
+
+void codegen_begin_scope(codegen_t* codegen) {
+    codegen->scope.scope_depth++;
+}
+
+void codegen_end_scope(codegen_t* codegen) {
+    if (codegen->scope.scope_depth == 0) {
+        codegen_error(codegen, "Cannot end global scope");
+        return;
+    }
+    
+    // Count how many locals need to be popped
+    int locals_to_pop = 0;
+    for (int i = codegen->scope.local_count - 1; i >= 0; i--) {
+        if (codegen->scope.locals[i].depth < codegen->scope.scope_depth) {
+            break; // Found variable from outer scope
+        }
+        locals_to_pop++;
+    }
+    
+    // Emit OP_POP_N to clean up local variables with proper memory release
+    if (locals_to_pop > 0) {
+        codegen_emit_op(codegen, OP_POP_N);
+        chunk_write_byte(codegen->chunk, (uint8_t)locals_to_pop);
+        codegen->scope.local_count -= locals_to_pop;
+    }
+    
+    codegen->scope.scope_depth--;
+}
+
+int codegen_declare_variable(codegen_t* codegen, const char* name) {
+    // Check if variable already exists in current scope
+    for (int i = codegen->scope.local_count - 1; i >= 0; i--) {
+        local_var_t* local = &codegen->scope.locals[i];
+        if (local->depth < codegen->scope.scope_depth) {
+            break; // Found variable from outer scope, no conflict
+        }
+        if (strcmp(local->name, name) == 0) {
+            codegen_error(codegen, "Variable already declared in this scope");
+            return -1;
+        }
+    }
+    
+    // Grow locals array if needed
+    if (codegen->scope.local_count >= codegen->scope.local_capacity) {
+        int new_capacity = codegen->scope.local_capacity == 0 ? 8 : codegen->scope.local_capacity * 2;
+        local_var_t* new_locals = realloc(codegen->scope.locals, 
+                                          new_capacity * sizeof(local_var_t));
+        if (!new_locals) {
+            codegen_error(codegen, "Out of memory for local variables");
+            return -1;
+        }
+        codegen->scope.locals = new_locals;
+        codegen->scope.local_capacity = new_capacity;
+    }
+    
+    // Add new local variable
+    local_var_t* local = &codegen->scope.locals[codegen->scope.local_count];
+    local->name = strdup(name); // Make a copy of the name
+    local->depth = codegen->scope.scope_depth;
+    local->slot = codegen->scope.local_count; // Stack slot index relative to frame->slots
+    local->is_initialized = 0; // Will be set to 1 after initialization
+    
+    return codegen->scope.local_count++;
+}
+
+int codegen_resolve_variable(codegen_t* codegen, const char* name, int* is_local) {
+    // Search for local variables (from innermost to outermost scope)
+    for (int i = codegen->scope.local_count - 1; i >= 0; i--) {
+        if (strcmp(codegen->scope.locals[i].name, name) == 0) {
+            *is_local = 1;
+            return codegen->scope.locals[i].slot;
+        }
+    }
+    
+    // Not found in local scope, treat as global
+    *is_local = 0;
+    return -1; // Globals are handled differently
 }
 
 // Error handling

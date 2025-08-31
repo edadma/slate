@@ -455,8 +455,8 @@ ast_node* parse_if_expression(parser_t* parser) {
             // Multi-line form with 'then'
             then_expr = parse_indented_block(parser);
         } else {
-            // Single-line form with 'then'
-            then_expr = parse_expression(parser);
+            // Single-line form with 'then' - can be expression or statement
+            then_expr = parse_declaration(parser);
         }
     } else if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
         // Multi-line form without 'then'
@@ -481,8 +481,8 @@ ast_node* parse_if_expression(parser_t* parser) {
                 // Multi-line elif then
                 elif_then = parse_indented_block(parser);
             } else {
-                // Single-line elif then
-                elif_then = parse_expression(parser);
+                // Single-line elif then - can be expression or statement
+                elif_then = parse_declaration(parser);
             }
         } else if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
             // Multi-line elif without 'then'
@@ -519,8 +519,8 @@ ast_node* parse_if_expression(parser_t* parser) {
             // Multi-line else
             final_else = parse_indented_block(parser);
         } else {
-            // Single-line else
-            final_else = parse_expression(parser);
+            // Single-line else - can be expression or statement
+            final_else = parse_declaration(parser);
         }
         
         if (else_expr == NULL) {

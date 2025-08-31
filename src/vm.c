@@ -1582,6 +1582,10 @@ const char* opcode_name(opcode op) {
         return "JUMP_IF_TRUE";
     case OP_LOOP:
         return "LOOP";
+    case OP_POP_N:
+        return "POP_N";
+    case OP_POP_N_PRESERVE_TOP:
+        return "POP_N_PRESERVE_TOP";
     case OP_SET_DEBUG_LOCATION:
         return "SET_DEBUG_LOCATION";
     case OP_CLEAR_DEBUG_LOCATION:
@@ -3226,6 +3230,25 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             break;
         }
 
+        case OP_GET_LOCAL: {
+            uint8_t slot = *vm->ip++;
+            call_frame* frame = &vm->frames[vm->frame_count - 1];
+            vm_push(vm, frame->slots[slot]);
+            break;
+        }
+
+        case OP_SET_LOCAL: {
+            uint8_t slot = *vm->ip++;
+            call_frame* frame = &vm->frames[vm->frame_count - 1];
+            
+            // Release old value first (proper memory management)
+            vm_release(frame->slots[slot]);
+            
+            // Set new value (peek doesn't pop - assignment is expression)
+            frame->slots[slot] = vm_retain(vm_peek(vm, 0));
+            break;
+        }
+
         case OP_GET_PROPERTY: {
             value_t property = vm_pop(vm);
             value_t object = vm_pop(vm);
@@ -3337,6 +3360,34 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             
             // Jump backward by the specified offset
             vm->ip -= offset;
+            break;
+        }
+
+        case OP_POP_N: {
+            uint8_t count = *vm->ip++;
+            
+            // Pop N values from stack and release them (scope cleanup)
+            for (int i = 0; i < count; i++) {
+                value_t value = vm_pop(vm);
+                vm_release(value);  // Critical: release reference-counted values
+            }
+            break;
+        }
+
+        case OP_POP_N_PRESERVE_TOP: {
+            uint8_t count = *vm->ip++;
+            
+            // Save the top value (the result we want to preserve)
+            value_t top_value = vm_pop(vm);
+            
+            // Pop N values from stack and release them (scope cleanup)
+            for (int i = 0; i < count; i++) {
+                value_t value = vm_pop(vm);
+                vm_release(value);  // Critical: release reference-counted values
+            }
+            
+            // Restore the top value
+            vm_push(vm, top_value);
             break;
         }
 
@@ -3662,7 +3713,7 @@ debug_location* debug_location_copy(const debug_location* debug) {
 }
 
 void debug_location_free(debug_location* debug) {
-    if (debug) {
+    if (debug && (uintptr_t)debug > 0x1000) {  // Basic sanity check - valid pointers are usually much higher
         free(debug);
     }
 }
