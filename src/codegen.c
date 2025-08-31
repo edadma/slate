@@ -807,7 +807,7 @@ void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node)
         // Set result register with the initialization value
         codegen_emit_op(codegen, OP_SET_RESULT);
     } else {
-        // Local variable declaration
+        // Local variable declaration - modify declare function to allow re-initialization
         int slot = codegen_declare_variable(codegen, node->name);
         if (slot < 0) {
             return; // Error already reported
@@ -819,15 +819,10 @@ void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node)
             codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
         }
         
-        // The pushed value becomes the local variable's storage
-        // The slot number should match the stack position
-        // No OP_SET_LOCAL needed - the value is already on the stack at the correct position
-        
-        // Duplicate the value for the result register  
+        // Always use SET_LOCAL approach for consistency
         codegen_emit_op(codegen, OP_DUP);
-        
-        // Mark variable as initialized
-        codegen->scope.locals[slot].is_initialized = 1;
+        codegen_emit_op(codegen, OP_SET_LOCAL);
+        chunk_write_byte(codegen->chunk, (uint8_t)slot);
         
         // Set result register with the initialization value
         codegen_emit_op(codegen, OP_SET_RESULT);
@@ -1491,8 +1486,8 @@ int codegen_declare_variable(codegen_t* codegen, const char* name) {
             break; // Found variable from outer scope, no conflict
         }
         if (strcmp(local->name, name) == 0) {
-            codegen_error(codegen, "Variable already declared in this scope");
-            return -1;
+            // Variable already exists - return its slot for re-initialization
+            return local->slot;
         }
     }
     
