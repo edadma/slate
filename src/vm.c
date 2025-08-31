@@ -578,6 +578,12 @@ vm_result vm_execute_function(slate_vm* vm, function_t* function, closure_t* clo
             break;
         }
         
+        case OP_SET_GLOBAL: {
+            vm_result result = op_set_global(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+        
         case OP_SET_RESULT: {
             value_t result = vm_pop(vm);
             vm->result = result;
@@ -1935,6 +1941,12 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_LESS: {
+            vm_result result = op_less(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_RETURN: {
             vm_result result = op_return(vm);
             if (result != VM_OK) return result;
@@ -2001,6 +2013,12 @@ vm_result vm_run(slate_vm* vm) {
 
         case OP_DEFINE_GLOBAL: {
             vm_result result = op_define_global(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_SET_GLOBAL: {
+            vm_result result = op_set_global(vm);
             if (result != VM_OK) return result;
             break;
         }

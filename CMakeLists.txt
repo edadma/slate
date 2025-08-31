@@ -31,10 +31,12 @@ add_executable(slate
         src/opcodes/op_mod.c
         src/opcodes/op_negate.c
         src/opcodes/op_equal.c
+        src/opcodes/op_less.c
         src/opcodes/op_return.c
         src/opcodes/op_get_local.c
         src/opcodes/op_set_local.c
         src/opcodes/op_define_global.c
+        src/opcodes/op_set_global.c
         src/opcodes/op_build_object.c
         deps/cargs/src/cargs.c
 )
@@ -102,10 +104,12 @@ if (BUILD_TESTS)
         src/opcodes/op_mod.c
         src/opcodes/op_negate.c
         src/opcodes/op_equal.c
+        src/opcodes/op_less.c
         src/opcodes/op_return.c
         src/opcodes/op_get_local.c
         src/opcodes/op_set_local.c
         src/opcodes/op_define_global.c
+        src/opcodes/op_set_global.c
         src/opcodes/op_build_object.c
     )
 
