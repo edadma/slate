@@ -110,14 +110,23 @@ static void print_ast(ast_node* node) {
 // Forward declaration
 static void interpret_with_vm(const char* source, slate_vm* vm);
 static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_undefined);
+static void interpret_with_vm_mode_parser(const char* source, slate_vm* vm, int show_undefined, parser_mode_t parser_mode);
 
 static void interpret(const char* source) { interpret_with_vm(source, NULL); }
 
-static void interpret_with_vm(const char* source, slate_vm* vm) {
-    interpret_with_vm_mode(source, vm, 0); // REPL mode - show undefined
+static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_undefined) {
+    interpret_with_vm_mode_parser(source, vm, show_undefined, PARSER_MODE_STRICT);
 }
 
-static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_undefined) {
+static void interpret_with_vm(const char* source, slate_vm* vm) {
+    interpret_with_vm_mode(source, vm, 0); // REPL mode - show undefined  
+}
+
+static void interpret_with_vm_lenient(const char* source, slate_vm* vm) {
+    interpret_with_vm_mode_parser(source, vm, 0, PARSER_MODE_LENIENT);
+}
+
+static void interpret_with_vm_mode_parser(const char* source, slate_vm* vm, int show_undefined, parser_mode_t parser_mode) {
     // Only show "Interpreting:" for file mode, not REPL (REPL handles this itself)
     if (debug_mode && !vm) {
         printf("Interpreting: %s\n", source);
@@ -130,6 +139,7 @@ static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_un
     // Parse
     parser_t parser;
     parser_init(&parser, &lexer);
+    parser_set_mode(&parser, parser_mode);
 
     ast_program* program = parse_program(&parser);
     if (parser.had_error || !program) {
@@ -264,11 +274,34 @@ static void repl_with_args(int argc, char** argv) {
         // Handle empty line
         if (strlen(line) == 0) {
             if (in_continuation) {
-                // Execute accumulated input on empty line (Python style)
-                if (debug_mode) {
-                    printf("Interpreting: %s\n", accumulated_input);
+                // Re-validate in strict mode before execution to catch semantic errors early
+                lexer_t final_lexer;
+                lexer_init(&final_lexer, accumulated_input);
+                
+                parser_t final_parser;
+                parser_init(&final_parser, &final_lexer);
+                parser_set_mode(&final_parser, PARSER_MODE_STRICT);
+                
+                ast_program* final_program = parse_program(&final_parser);
+                
+                if (final_parser.had_error || !final_program) {
+                    // Show proper parser error instead of letting codegen fail
+                    printf("Parse error\n");
+                    lexer_cleanup(&final_lexer);
+                } else {
+                    // Clean up the validation parse
+                    if (final_program) {
+                        ast_free((ast_node*)final_program);
+                    }
+                    lexer_cleanup(&final_lexer);
+                    
+                    // Execute with lenient parsing (for consistency, though strict should work now)
+                    if (debug_mode) {
+                        printf("Interpreting: %s\n", accumulated_input);
+                    }
+                    interpret_with_vm(accumulated_input, vm);  // Use normal strict mode for execution
                 }
-                interpret_with_vm(accumulated_input, vm);
+                
                 accumulated_input[0] = '\0';
                 in_continuation = 0;
                 printf("\n");
@@ -290,6 +323,13 @@ static void repl_with_args(int argc, char** argv) {
 
         parser_t parser;
         parser_init(&parser, &lexer);
+        
+        // Use lenient mode during continuation, strict mode otherwise
+        if (in_continuation) {
+            parser_set_mode(&parser, PARSER_MODE_LENIENT);
+        } else {
+            parser_set_mode(&parser, PARSER_MODE_STRICT);
+        }
 
         // Redirect stderr to capture parser errors
         FILE* old_stderr = stderr;

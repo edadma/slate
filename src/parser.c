@@ -46,9 +46,14 @@ void parser_init(parser_t* parser, lexer_t* lexer) {
     parser->lexer = lexer;
     parser->had_error = 0;
     parser->panic_mode = 0;
+    parser->mode = PARSER_MODE_STRICT;  // Default to strict mode
     
     // Prime the parser with the first token
     parser_advance(parser);
+}
+
+void parser_set_mode(parser_t* parser, parser_mode_t mode) {
+    parser->mode = mode;
 }
 
 // Helper function to get a specific line from source code
@@ -424,16 +429,31 @@ ast_node* parse_indented_block(parser_t* parser) {
     } else {
         ast_node* last_stmt = statements[statement_count - 1];
         if (last_stmt->type != AST_EXPRESSION_STMT) {
-            parser_error(parser, "Block expressions must end with an expression, not a statement");
-            return NULL;
+            // In lenient mode, allow variable declarations with initializers as valid block endings
+            if (parser->mode == PARSER_MODE_LENIENT && last_stmt->type == AST_VAR_DECLARATION) {
+                ast_var_declaration* var_decl = (ast_var_declaration*)last_stmt;
+                if (var_decl->initializer) {
+                    // Variable declaration with initializer is valid - it produces the initialized value
+                    // Continue without error
+                } else {
+                    parser_error(parser, "Block expressions must end with an expression, not a statement");
+                    return NULL;
+                }
+            } else {
+                parser_error(parser, "Block expressions must end with an expression, not a statement");
+                return NULL;
+            }
         }
         
         // If the last expression is a block, validate it recursively
-        ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
-        if (!validate_block_expression(expr_stmt->expression)) {
-            parser_error(parser, "Nested block expressions must ultimately end with a non-block expression");
-            return NULL;
+        if (last_stmt->type == AST_EXPRESSION_STMT) {
+            ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
+            if (!validate_block_expression(expr_stmt->expression, parser->mode)) {
+                parser_error(parser, "Nested block expressions must ultimately end with a non-block expression");
+                return NULL;
+            }
         }
+        // Variable declarations don't need recursive validation
     }
     
     return (ast_node*)ast_create_block(statements, statement_count,
@@ -546,7 +566,7 @@ ast_node* parse_if_expression(parser_t* parser) {
 }
 
 // Validate that a block expression ultimately ends with a non-block expression
-int validate_block_expression(ast_node* expr) {
+int validate_block_expression(ast_node* expr, parser_mode_t mode) {
     if (expr->type != AST_BLOCK) {
         // Non-block expression is valid
         return 1;
@@ -563,12 +583,19 @@ int validate_block_expression(ast_node* expr) {
     // Last statement must be an expression statement
     ast_node* last_stmt = block->statements[block->statement_count - 1];
     if (last_stmt->type != AST_EXPRESSION_STMT) {
+        // In lenient mode, allow variable declarations with initializers
+        if (mode == PARSER_MODE_LENIENT && last_stmt->type == AST_VAR_DECLARATION) {
+            ast_var_declaration* var_decl = (ast_var_declaration*)last_stmt;
+            if (var_decl->initializer) {
+                return 1; // Valid - produces the initialized value
+            }
+        }
         return 0; // Block ends with statement, invalid
     }
     
     // Recursively validate the last expression
     ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
-    return validate_block_expression(expr_stmt->expression);
+    return validate_block_expression(expr_stmt->expression, mode);
 }
 
 
