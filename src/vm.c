@@ -1947,6 +1947,12 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_GREATER: {
+            vm_result result = op_greater(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_RETURN: {
             vm_result result = op_return(vm);
             if (result != VM_OK) return result;
