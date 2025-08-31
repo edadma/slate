@@ -14,5 +14,7 @@ vm_result op_equal(slate_vm* vm);
 vm_result op_return(slate_vm* vm);
 vm_result op_get_local(slate_vm* vm);
 vm_result op_set_local(slate_vm* vm);
+vm_result op_define_global(slate_vm* vm);
+vm_result op_build_object(slate_vm* vm);
 
 #endif // SLATE_OPCODES_H

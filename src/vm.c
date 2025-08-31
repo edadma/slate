@@ -572,6 +572,12 @@ vm_result vm_execute_function(slate_vm* vm, function_t* function, closure_t* clo
             break;
         }
         
+        case OP_DEFINE_GLOBAL: {
+            vm_result result = op_define_global(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+        
         case OP_SET_RESULT: {
             value_t result = vm_pop(vm);
             vm->result = result;
@@ -1993,6 +1999,11 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_DEFINE_GLOBAL: {
+            vm_result result = op_define_global(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
 
         case OP_GET_PROPERTY: {
             value_t property = vm_pop(vm);
@@ -2174,6 +2185,12 @@ vm_result vm_run(slate_vm* vm) {
             free(elements);
             value_t result = make_array(array);
             vm_push(vm, result);
+            break;
+        }
+
+        case OP_BUILD_OBJECT: {
+            vm_result result = op_build_object(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
