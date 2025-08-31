@@ -373,6 +373,10 @@ ast_node* parse_statement(parser_t* parser) {
         return parse_while_statement(parser);
     }
     
+    if (parser_match(parser, TOKEN_FOR)) {
+        return parse_for_statement(parser);
+    }
+    
     if (parser_match(parser, TOKEN_LOOP)) {
         return parse_loop_statement(parser);
     }
@@ -632,6 +636,78 @@ ast_node* parse_while_statement(parser_t* parser) {
     
     return (ast_node*)ast_create_while(condition, body,
                                       parser->previous.line, parser->previous.column);
+}
+
+// Parse for statement: for [initializer]; [condition]; [increment] [do] body [end for]
+ast_node* parse_for_statement(parser_t* parser) {
+    int for_line = parser->previous.line;
+    int for_column = parser->previous.column;
+    
+    // Parse initializer (optional): var i = 0 or i = 0 or empty
+    ast_node* initializer = NULL;
+    if (!parser_check(parser, TOKEN_SEMICOLON)) {
+        if (parser_match(parser, TOKEN_VAR)) {
+            // For variable declarations in for loops, we need to handle semicolon manually
+            parser_consume(parser, TOKEN_IDENTIFIER, "Expected variable name.");
+            char* name = token_to_string(&parser->previous);
+            ast_node* init_expr = NULL;
+            
+            if (parser_match(parser, TOKEN_ASSIGN)) {
+                init_expr = parse_expression(parser);
+            }
+            
+            initializer = (ast_node*)ast_create_var_declaration(name, init_expr,
+                                                               parser->previous.line, parser->previous.column);
+        } else {
+            // Could be assignment or empty
+            initializer = parse_expression(parser);
+        }
+    }
+    parser_consume(parser, TOKEN_SEMICOLON, "Expected ';' after for loop initializer");
+    
+    // Parse condition (optional): i < 10 or empty (defaults to true)
+    ast_node* condition = NULL;
+    if (!parser_check(parser, TOKEN_SEMICOLON)) {
+        condition = parse_expression(parser);
+    }
+    parser_consume(parser, TOKEN_SEMICOLON, "Expected ';' after for loop condition");
+    
+    // Parse increment (optional): i++ or i += 1 or empty
+    ast_node* increment = NULL;
+    if (!parser_check(parser, TOKEN_DO) && !parser_check(parser, TOKEN_NEWLINE) && 
+        !parser_check(parser, TOKEN_INDENT) && !parser_check(parser, TOKEN_EOF)) {
+        increment = parse_expression(parser);
+    }
+    
+    // Parse body - supports multiple syntax forms
+    ast_node* body = NULL;
+    
+    // Check for 'do' keyword
+    if (parser_match(parser, TOKEN_DO)) {
+        // Could be: 'for ... do expression' or 'for ... do\n<indent>'
+        if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+            // Multi-line form with 'do'
+            body = parse_indented_block(parser);
+        } else {
+            // Single-line form with 'do'
+            body = (ast_node*)ast_create_expression_stmt(parse_expression(parser),
+                                                         parser->current.line, parser->current.column);
+        }
+    } else if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+        // Multi-line form without 'do'
+        body = parse_indented_block(parser);
+    } else {
+        // Single-line form without 'do' (shouldn't happen with C-style syntax but handle it)
+        body = (ast_node*)ast_create_expression_stmt(parse_expression(parser),
+                                                     parser->current.line, parser->current.column);
+    }
+    
+    // Check for optional "end for" marker
+    if (parser_match(parser, TOKEN_END)) {
+        parser_consume(parser, TOKEN_FOR, "Expected 'for' after 'end'");
+    }
+    
+    return (ast_node*)ast_create_for(initializer, condition, increment, body, for_line, for_column);
 }
 
 // Parse do-while statement

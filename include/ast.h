@@ -53,6 +53,7 @@ typedef enum {
     AST_IF,
     AST_WHILE,
     AST_DO_WHILE,
+    AST_FOR,
     AST_LOOP,
     AST_BREAK,
     AST_CONTINUE,
@@ -289,6 +290,15 @@ typedef struct {
     ast_node* body;
 } ast_while;
 
+// For loop node
+typedef struct {
+    ast_node base;
+    ast_node* initializer;  // Variable declaration or assignment (optional)
+    ast_node* condition;    // Loop condition (optional, defaults to true)
+    ast_node* increment;    // Increment expression (optional)
+    ast_node* body;         // Loop body
+} ast_for;
+
 // Do-while loop node
 typedef struct {
     ast_node base;
@@ -370,6 +380,7 @@ ast_compound_assignment* ast_create_compound_assignment(ast_node* target, ast_no
 
 ast_if* ast_create_if(ast_node* condition, ast_node* then_stmt, ast_node* else_stmt, int line, int column);
 ast_while* ast_create_while(ast_node* condition, ast_node* body, int line, int column);
+ast_for* ast_create_for(ast_node* initializer, ast_node* condition, ast_node* increment, ast_node* body, int line, int column);
 ast_do_while* ast_create_do_while(ast_node* body, ast_node* condition, int line, int column);
 ast_loop* ast_create_loop(ast_node* body, int line, int column);
 ast_break* ast_create_break(int line, int column);

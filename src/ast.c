@@ -324,6 +324,21 @@ ast_while* ast_create_while(ast_node* condition, ast_node* body, int line, int c
     return node;
 }
 
+ast_for* ast_create_for(ast_node* initializer, ast_node* condition, ast_node* increment, ast_node* body, int line, int column) {
+    ast_for* node = malloc(sizeof(ast_for));
+    if (!node) return NULL;
+    
+    node->base.type = AST_FOR;
+    node->base.line = line;
+    node->base.column = column;
+    node->initializer = initializer;
+    node->condition = condition;
+    node->increment = increment;
+    node->body = body;
+    
+    return node;
+}
+
 ast_do_while* ast_create_do_while(ast_node* body, ast_node* condition, int line, int column) {
     ast_do_while* node = malloc(sizeof(ast_do_while));
     if (!node) return NULL;
@@ -583,6 +598,15 @@ void ast_free(ast_node* node) {
             break;
         }
         
+        case AST_FOR: {
+            ast_for* for_node = (ast_for*)node;
+            ast_free(for_node->initializer);
+            ast_free(for_node->condition);
+            ast_free(for_node->increment);
+            ast_free(for_node->body);
+            break;
+        }
+        
         case AST_DO_WHILE: {
             ast_do_while* do_while_node = (ast_do_while*)node;
             ast_free(do_while_node->body);
@@ -665,6 +689,7 @@ const char* ast_node_type_name(ast_node_type type) {
         case AST_COMPOUND_ASSIGNMENT: return "COMPOUND_ASSIGNMENT";
         case AST_IF: return "IF";
         case AST_WHILE: return "WHILE";
+        case AST_FOR: return "FOR";
         case AST_DO_WHILE: return "DO_WHILE";
         case AST_LOOP: return "LOOP";
         case AST_BREAK: return "BREAK";

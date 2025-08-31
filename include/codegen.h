@@ -30,12 +30,25 @@ typedef struct {
     debug_info* debug; // Optional debug information (NULL if disabled)
 } bytecode_chunk;
 
+// Loop types for different continue behaviors
+typedef enum {
+    LOOP_WHILE,     // Continue jumps to condition check
+    LOOP_DO_WHILE,  // Continue jumps to condition check  
+    LOOP_FOR,       // Continue jumps to increment section
+    LOOP_INFINITE   // Continue jumps to loop start
+} loop_type_t;
+
 // Individual loop context for nested loop support
 typedef struct {
+    loop_type_t type;           // Type of loop for continue behavior
     size_t loop_start;          // Position for continue jumps
+    size_t continue_target;     // Specific target for continue (may differ from loop_start)
     size_t* break_jumps;        // Break jumps for this loop level
     size_t break_count;
     size_t break_capacity;
+    size_t* continue_jumps;     // Continue jumps for this loop level (for for-loops)
+    size_t continue_jump_count;
+    size_t continue_jump_capacity;
 } loop_context_t;
 
 // Local variable tracking for scope management
@@ -118,6 +131,7 @@ void codegen_emit_block(codegen_t* codegen, ast_block* node);
 void codegen_emit_block_expression(codegen_t* codegen, ast_block* node);
 void codegen_emit_if(codegen_t* codegen, ast_if* node);
 void codegen_emit_while(codegen_t* codegen, ast_while* node);
+void codegen_emit_for(codegen_t* codegen, ast_for* node);
 void codegen_emit_do_while(codegen_t* codegen, ast_do_while* node);
 void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node);
 void codegen_emit_break(codegen_t* codegen, ast_break* node);
@@ -135,7 +149,7 @@ void codegen_patch_jump(codegen_t* codegen, size_t offset);
 void codegen_emit_loop(codegen_t* codegen, size_t loop_start);
 
 // Loop management for break and continue statements (nested support)
-void codegen_push_loop(codegen_t* codegen, size_t loop_start);
+void codegen_push_loop(codegen_t* codegen, loop_type_t type, size_t loop_start);
 void codegen_pop_loop(codegen_t* codegen);
 loop_context_t* codegen_current_loop(codegen_t* codegen);
 

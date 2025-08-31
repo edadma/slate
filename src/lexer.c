@@ -33,6 +33,7 @@ static keyword_entry_t keywords[] = {
     {"if", TOKEN_IF},
     {"elif", TOKEN_ELIF},
     {"else", TOKEN_ELSE},
+    {"for", TOKEN_FOR},
     {"while", TOKEN_WHILE},
     {"loop", TOKEN_LOOP},
     {"do", TOKEN_DO},

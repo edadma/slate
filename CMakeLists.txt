@@ -58,6 +58,7 @@ if (BUILD_TESTS)
             tests/test_vm.c
             tests/test_conditionals.c
             tests/test_while_loops.c
+            tests/test_for_loops.c
             tests/test_infinite_loops.c
             tests/test_builtins.c
             tests/test_buffer_class.c
