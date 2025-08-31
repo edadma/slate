@@ -1628,9 +1628,17 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
         case OP_PUSH_CONSTANT: {
             uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2; // Skip the operand bytes
-
-            // Create value with current debug info
-            value_t val = function->constants[constant];
+            
+            // Get the current executing function for constants
+            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
+            
+            if (constant >= current_func->constant_count) {
+                printf("DEBUG: ERROR - constant index %d >= count %zu\n", constant, current_func->constant_count);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            // Create value with current debug info - use CURRENT function's constants
+            value_t val = current_func->constants[constant];
             if (vm->current_debug) {
                 val.debug = debug_location_copy(vm->current_debug);
             }
@@ -3457,6 +3465,9 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             // Get return value from top of stack
             value_t result = vm_pop(vm);
             
+            // Get frame we're returning from BEFORE decrementing frame_count
+            call_frame* current_frame = &vm->frames[vm->frame_count - 1];  // Frame we're in
+            
             // Restore previous call frame
             vm->frame_count--;
             if (vm->frame_count == 0) {
@@ -3466,12 +3477,8 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 return VM_OK;
             }
             
-            // Get current and previous frame
-            // After decrement: frame_count points to the new active frame count
-            // The frame we're returning FROM is at index frame_count (since we decremented)  
-            // The frame we're returning TO is at index frame_count - 1
+            // Get previous frame (now the active frame)
             call_frame* prev_frame = &vm->frames[vm->frame_count - 1];  // Frame to return to
-            call_frame* current_frame = &vm->frames[vm->frame_count];   // Frame returning from
             
             // Clean up stack (remove local variables and arguments)
             vm->stack_top = current_frame->slots;
