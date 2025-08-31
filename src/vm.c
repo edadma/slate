@@ -3153,7 +3153,10 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
 
             value_t name_val = function->constants[name_constant];
             if (name_val.type != VAL_STRING) {
-                printf("Runtime error: Global variable name must be a string\n");
+                ds_string type_str = value_to_string_representation(vm, name_val);
+                printf("Runtime error: Global variable name must be a string, got %s (type %d)\n", 
+                       type_str, name_val.type);
+                ds_release(&type_str);
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;

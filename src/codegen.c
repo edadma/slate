@@ -116,6 +116,7 @@ size_t chunk_add_constant(bytecode_chunk* chunk, value_t value) {
         chunk->constant_capacity = new_capacity;
     }
     
+    
     chunk->constants[chunk->constant_count] = value;
     return chunk->constant_count++;
 }
@@ -337,19 +338,32 @@ function_t* codegen_compile(codegen_t* codegen, ast_program* program) {
     function_t* function = function_create("main");
     if (!function) return NULL;
     
-    // Transfer ownership of bytecode and constants
-    function->bytecode = codegen->chunk->code;
+    // Transfer bytecode (deep copy)
     function->bytecode_length = codegen->chunk->count;
-    function->constants = codegen->chunk->constants;
-    function->constant_count = codegen->chunk->constant_count;
-    function->debug = codegen->chunk->debug; // Transfer debug info
+    function->bytecode = malloc(function->bytecode_length);
+    if (!function->bytecode) {
+        function_destroy(function);
+        return NULL;
+    }
+    memcpy(function->bytecode, codegen->chunk->code, function->bytecode_length);
     
-    // Clear chunk so it won't be freed
-    codegen->chunk->code = NULL;
-    codegen->chunk->constants = NULL;
-    codegen->chunk->debug = NULL; // Transfer ownership of debug info
-    codegen->chunk->count = 0;
-    codegen->chunk->constant_count = 0;
+    // Transfer constants (deep copy to avoid sharing)
+    function->constant_count = codegen->chunk->constant_count;
+    if (function->constant_count > 0) {
+        function->constants = malloc(sizeof(value_t) * function->constant_count);
+        if (!function->constants) {
+            function_destroy(function);
+            return NULL;
+        }
+        memcpy(function->constants, codegen->chunk->constants, 
+               sizeof(value_t) * function->constant_count);
+    } else {
+        function->constants = NULL;
+    }
+    
+    // Transfer debug info
+    function->debug = codegen->chunk->debug;
+    codegen->chunk->debug = NULL; // Transfer ownership
     
     return function;
 }
