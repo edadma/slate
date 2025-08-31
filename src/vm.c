@@ -3151,6 +3151,14 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
 
+            if (name_constant >= function->constant_count) {
+                printf("Runtime error: Constant index %d out of bounds (max %zu)\n", 
+                       name_constant, function->constant_count - 1);
+                vm->frame_count--;
+                closure_destroy(closure);
+                return VM_RUNTIME_ERROR;
+            }
+
             value_t name_val = function->constants[name_constant];
             if (name_val.type != VAL_STRING) {
                 ds_string type_str = value_to_string_representation(vm, name_val);
