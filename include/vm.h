@@ -409,6 +409,7 @@ extern value_t* global_string_builder_class;
 typedef enum { VM_OK, VM_COMPILE_ERROR, VM_RUNTIME_ERROR, VM_STACK_OVERFLOW, VM_STACK_UNDERFLOW } vm_result;
 
 vm_result vm_execute(slate_vm* vm, function_t* function);
+vm_result vm_execute_function(slate_vm* vm, function_t* function, closure_t* closure);
 vm_result vm_interpret(slate_vm* vm, const char* source);
 
 // Value memory management
@@ -419,6 +420,9 @@ void vm_release(value_t value);
 void vm_push(slate_vm* vm, value_t value);
 value_t vm_pop(slate_vm* vm);
 value_t vm_peek(slate_vm* vm, int distance);
+
+// Function calling helper for builtin methods
+value_t vm_call_function(slate_vm* vm, value_t callable, int arg_count, value_t* args);
 
 // Value creation functions
 value_t make_null(void);
@@ -519,6 +523,7 @@ void debug_location_free(debug_location* debug);
 
 // Value utility functions
 int is_falsy(value_t value);
+int is_truthy(value_t value);
 int is_number(value_t value); // Check if value is numeric (int32, bigint, or number)
 int values_equal(value_t a, value_t b);
 void print_value(slate_vm* vm, value_t value);
