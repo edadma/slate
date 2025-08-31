@@ -18,6 +18,10 @@ typedef struct {
     int had_error;
     int panic_mode;
     parser_mode_t mode;   // Parsing mode
+    
+    // Simple pushback mechanism (supports up to 2 tokens)
+    token_t pushed_back[2];  // Tokens pushed back
+    int pushback_count;      // Number of tokens pushed back
 } parser_t;
 
 // Parser functions
@@ -36,6 +40,7 @@ int parser_check(parser_t* parser, token_type_t type);
 int parser_match(parser_t* parser, token_type_t type);
 void parser_consume(parser_t* parser, token_type_t type, const char* message);
 void parser_synchronize(parser_t* parser);
+void parser_pushback(parser_t* parser); // Push current token back for re-reading
 
 // Parsing functions (recursive descent)
 

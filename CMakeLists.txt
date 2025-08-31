@@ -73,6 +73,7 @@ if (BUILD_TESTS)
             tests/test_localdate.c
             tests/test_localtime.c
             tests/test_new_operators.c
+            tests/test_functions.c
             deps/cargs/src/cargs.c
             src/lexer.c
             src/parser.c

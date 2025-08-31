@@ -47,6 +47,7 @@ void parser_init(parser_t* parser, lexer_t* lexer) {
     parser->had_error = 0;
     parser->panic_mode = 0;
     parser->mode = PARSER_MODE_STRICT;  // Default to strict mode
+    parser->pushback_count = 0;  // Initialize pushback
     
     // Prime the parser with the first token
     parser_advance(parser);
@@ -145,6 +146,13 @@ void parser_error_at_current(parser_t* parser, const char* message) {
 void parser_advance(parser_t* parser) {
     parser->previous = parser->current;
     
+    // Check if we have pushed back tokens
+    if (parser->pushback_count > 0) {
+        parser->current = parser->pushed_back[parser->pushback_count - 1];
+        parser->pushback_count--;
+        return;
+    }
+    
     for (;;) {
         parser->current = lexer_next_token(parser->lexer);
         if (parser->current.type != TOKEN_ERROR) break;
@@ -170,6 +178,15 @@ void parser_consume(parser_t* parser, token_type_t type, const char* message) {
     }
     
     parser_error_at_current(parser, message);
+}
+
+void parser_pushback(parser_t* parser) {
+    // Push the current token back (support multiple pushbacks)
+    if (parser->pushback_count < 2) {
+        parser->pushed_back[parser->pushback_count] = parser->current;
+        parser->pushback_count++;
+    }
+    parser->current = parser->previous;
 }
 
 void parser_synchronize(parser_t* parser) {
@@ -842,9 +859,31 @@ ast_node* parse_expression_statement(parser_t* parser) {
     return (ast_node*)ast_create_expression_stmt(expr, parser->previous.line, parser->previous.column);
 }
 
+// Parse single-parameter lambda or fallback to assignment
+ast_node* parse_lambda_or_assignment(parser_t* parser) {
+    // Check for single-parameter lambda: IDENTIFIER -> expression
+    if (parser_check(parser, TOKEN_IDENTIFIER)) {
+        parser_advance(parser); // consume identifier
+        
+        if (parser_check(parser, TOKEN_ARROW)) {
+            // This is a single-parameter lambda: x -> expr
+            char* param_name = token_to_string(&parser->previous);
+            char** parameters = malloc(sizeof(char*));
+            parameters[0] = param_name;
+            
+            return parse_arrow_function(parser, parameters, 1);
+        } else {
+            // Not a lambda, push back and parse normally
+            parser_pushback(parser);
+        }
+    }
+    
+    return parse_assignment(parser);
+}
+
 // Parse expression
 ast_node* parse_expression(parser_t* parser) {
-    return parse_assignment(parser);
+    return parse_lambda_or_assignment(parser);
 }
 
 // Parse null coalescing (??)
@@ -1377,42 +1416,74 @@ ast_node* parse_parenthesized_or_arrow(parser_t* parser) {
     size_t param_count = 0;
     size_t param_capacity = 0;
     
-    // First, try to parse as parameter list
+    // Use two-token lookahead to determine parsing strategy
     if (parser_check(parser, TOKEN_IDENTIFIER)) {
-        do {
-            if (!parser_match(parser, TOKEN_IDENTIFIER)) {
-                // Not a parameter list, must be grouped expression
-                // But we need to backtrack - this is complex
-                // For now, let's implement a simpler approach
-                parser_error(parser, "Expected parameter name");
-                return NULL;
-            }
+        parser_advance(parser); // consume first identifier
+        
+        if (parser_check(parser, TOKEN_ARROW)) {
+            // Pattern: (x -> ...) - single-parameter lambda in parentheses
+            char* param_name = token_to_string(&parser->previous);
+            char** parameters = malloc(sizeof(char*));
+            parameters[0] = param_name;
             
+            ast_node* lambda = parse_arrow_function(parser, parameters, 1);
+            parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after lambda expression");
+            return lambda;
+            
+        } else if (parser_check(parser, TOKEN_COMMA) || parser_check(parser, TOKEN_RIGHT_PAREN)) {
+            // Pattern: (x, ...) or (x) - multi-parameter lambda, start building list
             char* param = token_to_string(&parser->previous);
             
-            // Grow parameters array
             if (param_count >= param_capacity) {
                 param_capacity = param_capacity == 0 ? 4 : param_capacity * 2;
                 parameters = realloc(parameters, param_capacity * sizeof(char*));
             }
             parameters[param_count++] = param;
             
-        } while (parser_match(parser, TOKEN_COMMA));
-        
-        parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after parameters");
-        
-        if (parser_check(parser, TOKEN_ARROW)) {
-            // This is definitely an arrow function
-            return parse_arrow_function(parser, parameters, param_count);
-        } else {
-            // This looked like parameters but no arrow - error
-            // Clean up allocated parameters
-            for (size_t i = 0; i < param_count; i++) {
-                free(parameters[i]);
+            // Continue with comma-separated parameter list parsing
+            while (parser_match(parser, TOKEN_COMMA)) {
+                if (!parser_match(parser, TOKEN_IDENTIFIER)) {
+                    // Clean up and error
+                    for (size_t i = 0; i < param_count; i++) {
+                        free(parameters[i]);
+                    }
+                    free(parameters);
+                    parser_error(parser, "Expected parameter name");
+                    return NULL;
+                }
+                
+                char* param = token_to_string(&parser->previous);
+                
+                if (param_count >= param_capacity) {
+                    param_capacity = param_capacity == 0 ? 4 : param_capacity * 2;
+                    parameters = realloc(parameters, param_capacity * sizeof(char*));
+                }
+                parameters[param_count++] = param;
             }
-            free(parameters);
-            parser_error(parser, "Expected '->' after parameter list");
-            return NULL;
+            
+            // Should now be at ')'
+            parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after parameters");
+            
+            if (parser_check(parser, TOKEN_ARROW)) {
+                // This is definitely an arrow function
+                return parse_arrow_function(parser, parameters, param_count);
+            } else {
+                // This looked like parameters but no arrow - error
+                for (size_t i = 0; i < param_count; i++) {
+                    free(parameters[i]);
+                }
+                free(parameters);
+                parser_error(parser, "Expected '->' after parameter list");
+                return NULL;
+            }
+            
+        } else {
+            // This is not a lambda parameter, must be a grouped expression
+            // Push back the identifier and parse as grouped expression
+            parser_pushback(parser);
+            ast_node* expr = parse_expression(parser);
+            parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after expression");
+            return expr;
         }
     } else {
         // Not an identifier, so this must be a grouped expression
