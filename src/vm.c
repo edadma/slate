@@ -596,6 +596,24 @@ vm_result vm_execute_function(slate_vm* vm, function_t* function, closure_t* clo
             break;
         }
         
+        case OP_DIVIDE: {
+            vm_result result = op_divide(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+        
+        case OP_MOD: {
+            vm_result result = op_mod(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+        
+        case OP_POWER: {
+            vm_result result = op_power(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+        
         case OP_NEGATE: {
             vm_result result = op_negate(vm);
             if (result != VM_OK) return result;
@@ -626,6 +644,11 @@ vm_result vm_execute_function(slate_vm* vm, function_t* function, closure_t* clo
         case OP_HALT:
             return VM_OK;
             
+        case OP_CALL: {
+            // For function calls in the first switch context, delegate to vm_run
+            return vm_run(vm);
+        }
+        
         // Add some more essential opcodes based on what a simple lambda might need
         case 37: // Whatever opcode 37 is, let's handle it - might be a debug or simple opcode
             printf("DEBUG: Handling mystery opcode 37 as no-op\n");
@@ -1935,6 +1958,12 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_POWER: {
+            vm_result result = op_power(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_EQUAL: {
             vm_result result = op_equal(vm);
             if (result != VM_OK) return result;
@@ -1949,6 +1978,18 @@ vm_result vm_run(slate_vm* vm) {
 
         case OP_GREATER: {
             vm_result result = op_greater(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_LESS_EQUAL: {
+            vm_result result = op_less_equal(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_GREATER_EQUAL: {
+            vm_result result = op_greater_equal(vm);
             if (result != VM_OK) return result;
             break;
         }
@@ -2130,6 +2171,16 @@ vm_result vm_run(slate_vm* vm) {
                 value_t result = vm_call_function(vm, callable, arg_count, args);
                 vm_push(vm, result);
                 if (args) free(args);
+                break;
+            }
+            
+            // Handle native functions (built-ins)
+            if (callable.type == VAL_NATIVE) {
+                native_t builtin_func = (native_t)callable.as.native;
+                value_t result = builtin_func(vm, arg_count, args);
+                vm_push(vm, result);
+                if (args) free(args);
+                vm_release(callable);
                 break;
             }
             

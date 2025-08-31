@@ -32,13 +32,16 @@ add_executable(slate
         src/opcodes/op_negate.c
         src/opcodes/op_equal.c
         src/opcodes/op_less.c
+        src/opcodes/op_less_equal.c
         src/opcodes/op_greater.c
+        src/opcodes/op_greater_equal.c
         src/opcodes/op_return.c
         src/opcodes/op_get_local.c
         src/opcodes/op_set_local.c
         src/opcodes/op_define_global.c
         src/opcodes/op_set_global.c
         src/opcodes/op_build_object.c
+        src/opcodes/op_power.c
         deps/cargs/src/cargs.c
 )
 
@@ -106,13 +109,16 @@ if (BUILD_TESTS)
         src/opcodes/op_negate.c
         src/opcodes/op_equal.c
         src/opcodes/op_less.c
+        src/opcodes/op_less_equal.c
         src/opcodes/op_greater.c
+        src/opcodes/op_greater_equal.c
         src/opcodes/op_return.c
         src/opcodes/op_get_local.c
         src/opcodes/op_set_local.c
         src/opcodes/op_define_global.c
         src/opcodes/op_set_global.c
         src/opcodes/op_build_object.c
+        src/opcodes/op_power.c
     )
 
     # Link math library for tests executable
