@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "opcodes/opcodes.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -690,23 +691,69 @@ value_t vm_call_function(slate_vm* vm, value_t callable, int arg_count, value_t*
         return make_undefined();
     }
     
-    // For now, just return a hardcoded value to test the array methods infrastructure
-    // TODO: Implement proper function execution
-    if (actual_arg_count >= 1) {
-        // Simple stub logic based on common use cases
-        if (args[0].type == VAL_INT32) {
-            // Heuristic: if called on small arrays, assume it's filter; otherwise map
-            // Better heuristic: just always return true/false for filter-like operations
-            // For demo purposes, return boolean based on > 2 condition
-            return make_boolean(args[0].as.int32 > 2);
-        } else if (args[0].type == VAL_NUMBER) {
-            return make_boolean(args[0].as.number > 2);
-        }
-        // For other types, just return the first argument
-        return args[0];
+    // Use the real VM execution infrastructure for proper closure execution
+    closure_t* closure = NULL;
+    int created_closure = 0;
+    
+    if (callable.type == VAL_CLOSURE) {
+        closure = callable.as.closure;
+    } else if (callable.type == VAL_FUNCTION) {
+        closure = closure_create(func);
+        created_closure = 1;
     }
     
-    return make_undefined();
+    // Set up call frame on the current VM
+    if (vm->frame_count >= vm->frame_capacity) {
+        if (created_closure) closure_destroy(closure);
+        return make_undefined();
+    }
+    
+    // Save current VM state
+    size_t saved_stack_size = vm->stack_top - vm->stack;
+    uint8_t* saved_ip = vm->ip;
+    uint8_t* saved_bytecode = vm->bytecode;
+    size_t saved_frame_count = vm->frame_count;
+    
+    // Push arguments onto VM stack
+    for (int i = 0; i < actual_arg_count; i++) {
+        vm_push(vm, args[i]);
+    }
+    
+    // Set up call frame
+    call_frame* frame = &vm->frames[vm->frame_count++];
+    frame->closure = closure;
+    frame->ip = saved_ip;
+    frame->slots = vm->stack_top - actual_arg_count;
+    
+    // Switch execution context to function
+    vm->ip = func->bytecode;
+    vm->bytecode = func->bytecode;
+    
+    // Execute the function using our core execution loop
+    vm_result result = vm_run(vm);
+    
+    value_t return_value = make_undefined();
+    if (result == VM_OK) {
+        // Get return value from VM result or stack
+        if (vm->stack_top > vm->stack + saved_stack_size) {
+            return_value = vm_pop(vm);
+        } else {
+            return_value = vm->result;
+        }
+    }
+    
+    // Restore VM state
+    vm->stack_top = vm->stack + saved_stack_size;
+    vm->ip = saved_ip;
+    vm->bytecode = saved_bytecode;
+    vm->frame_count = saved_frame_count;
+    
+    // Clean up
+    if (created_closure) {
+        closure_destroy(closure);
+    }
+    
+    return return_value;
 }
 
 // Value creation functions with debug info
@@ -1810,29 +1857,13 @@ const char* opcode_name(opcode op) {
     }
 }
 
-// Basic VM execution (stub for now)
-vm_result vm_execute(slate_vm* vm, function_t* function) {
-    if (!vm || !function)
+// Core VM execution loop - runs until completion
+// Assumes VM is already set up with proper call frames and stack
+vm_result vm_run(slate_vm* vm) {
+    if (!vm)
         return VM_RUNTIME_ERROR;
 
-    // Clear the stack at the start of each execution (important for REPL)
-    vm->stack_top = vm->stack;
-
-    // Set up initial call frame
-    if (vm->frame_count >= vm->frame_capacity) {
-        return VM_STACK_OVERFLOW;
-    }
-
-    call_frame* frame = &vm->frames[vm->frame_count++];
-    closure_t* closure = closure_create(function); // Simple closure wrapper
-    frame->closure = closure;
-    frame->ip = function->bytecode;
-    frame->slots = vm->stack_top;
-
-    vm->bytecode = function->bytecode;
-    vm->ip = function->bytecode;
-
-    // Basic execution loop (simplified)
+    // Main execution loop
     for (;;) {
         vm->current_instruction = vm->ip; // Store instruction start for error reporting
         opcode instruction = (opcode)*vm->ip++;
@@ -1875,24 +1906,19 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             vm_push(vm, make_boolean_with_debug(0, vm->current_debug));
             break;
 
-        case OP_POP: {
-            vm_pop(vm);
-            // Clean pop - no special behavior
+        case OP_POP:
+            vm_release(vm_pop(vm));
             break;
-        }
 
         case OP_DUP: {
-            value_t value = vm_peek(vm, 0);
-            vm_push(vm, value); // vm_push will handle the retain
+            value_t top = vm_peek(vm, 0);
+            vm_push(vm, top);
             break;
         }
 
         case OP_SET_RESULT: {
-            // Pop value from stack and store in result register
-            // Release old result value first
-            vm_release(vm->result);
-            vm->result = vm_pop(vm);
-            // No need to retain - vm_pop transfers ownership
+            value_t result = vm_pop(vm);
+            vm->result = result;
             break;
         }
 
@@ -1981,7 +2007,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 // Find the first non-numeric operand for error location
                 debug_location* error_debug = NULL;
 
-                if (a.type != VAL_NUMBER) {
+                if (!is_number(a)) {
                     // Left operand is the first non-numeric
                     error_debug = a.debug;
                 } else {
@@ -1992,1480 +2018,42 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 vm_runtime_error_with_values(vm, "Cannot add %s and %s", &a, &b, error_debug);
                 vm_release(a);
                 vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
+
+            // Clean up operands
             vm_release(a);
             vm_release(b);
             break;
         }
-
 
         case OP_SUBTRACT: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Handle all numeric type combinations
-            if (is_number(a) && is_number(b)) {
-
-                // int32 - int32 with overflow detection
-                if (a.type == VAL_INT32 && b.type == VAL_INT32) {
-                    int32_t result;
-                    if (di_subtract_overflow_int32(a.as.int32, b.as.int32, &result)) {
-                        vm_push(vm, make_int32_with_debug(result, a.debug));
-                    } else {
-                        // Overflow - promote to BigInt
-                        int64_t big_result = (int64_t)a.as.int32 - (int64_t)b.as.int32;
-                        di_int big = di_from_int64(big_result);
-                        vm_push(vm, make_bigint_with_debug(big, a.debug));
-                    }
-                }
-                // Mixed with floating point - convert to double
-                else {
-                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
-                        : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                                         : a.as.number;
-                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
-                        : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                                         : b.as.number;
-                    vm_push(vm, make_number_with_debug(a_val - b_val, a.debug));
-                }
-            } else {
-                // For subtraction, determine which operand is problematic
-                debug_location* error_debug = NULL;
-                if (!is_number(a) && is_number(b)) {
-                    error_debug = a.debug; // Left operand is problematic
-                } else if (is_number(a) && !is_number(b)) {
-                    error_debug = b.debug; // Right operand is problematic
-                } else {
-                    error_debug = a.debug; // Both problematic, use left
-                }
-
-                vm_runtime_error_with_values(vm, "Cannot subtract %s and %s", &a, &b, error_debug);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_MULTIPLY: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Handle all numeric type combinations
-            if (is_number(a) && is_number(b)) {
-
-                // int32 * int32 with overflow detection
-                if (a.type == VAL_INT32 && b.type == VAL_INT32) {
-                    int32_t result;
-                    if (di_multiply_overflow_int32(a.as.int32, b.as.int32, &result)) {
-                        vm_push(vm, make_int32_with_debug(result, a.debug));
-                    } else {
-                        // Overflow - promote to BigInt
-                        int64_t big_result = (int64_t)a.as.int32 * (int64_t)b.as.int32;
-                        di_int big = di_from_int64(big_result);
-                        vm_push(vm, make_bigint_with_debug(big, a.debug));
-                    }
-                }
-                // BigInt * BigInt
-                else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
-                    di_int result = di_mul(a.as.bigint, b.as.bigint);
-                    vm_push(vm, make_bigint_with_debug(result, a.debug));
-                }
-                // int32 * BigInt
-                else if (a.type == VAL_INT32 && b.type == VAL_BIGINT) {
-                    di_int result = di_mul_i32(b.as.bigint, a.as.int32);
-                    vm_push(vm, make_bigint_with_debug(result, a.debug));
-                }
-                // BigInt * int32
-                else if (a.type == VAL_BIGINT && b.type == VAL_INT32) {
-                    di_int result = di_mul_i32(a.as.bigint, b.as.int32);
-                    vm_push(vm, make_bigint_with_debug(result, a.debug));
-                }
-                // Mixed with floating point - convert to double
-                else {
-                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
-                        : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                                         : a.as.number;
-                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
-                        : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                                         : b.as.number;
-                    vm_push(vm, make_number_with_debug(a_val * b_val, a.debug));
-                }
-            } else {
-                // Find the first non-numeric operand for error location
-                debug_location* error_debug = NULL;
-                if (!is_number(a) && is_number(b)) {
-                    error_debug = a.debug; // Left operand is problematic
-                } else if (is_number(a) && !is_number(b)) {
-                    error_debug = b.debug; // Right operand is problematic
-                } else {
-                    error_debug = a.debug; // Both problematic, use left
-                }
-
-                vm_runtime_error_with_values(vm, "Cannot multiply %s and %s", &a, &b, error_debug);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
+            vm_result result = op_subtract(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
         case OP_DIVIDE: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Handle all numeric type combinations
-            if (is_number(a) && is_number(b)) {
-
-                // Check for division by zero
-                bool is_zero = false;
-                if (b.type == VAL_INT32 && b.as.int32 == 0)
-                    is_zero = true;
-                else if (b.type == VAL_BIGINT && di_is_zero(b.as.bigint))
-                    is_zero = true;
-                else if (b.type == VAL_NUMBER && b.as.number == 0)
-                    is_zero = true;
-
-                if (is_zero) {
-                    vm_runtime_error_with_values(vm, "Division by zero", &a, &b, b.debug);
-                    vm_release(a);
-                    vm_release(b);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-
-                // Division always produces floating point result for simplicity
-                // (matches Python 3 behavior: 5 / 2 = 2.5)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
-                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                                     : a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
-                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                                     : b.as.number;
-                vm_push(vm, make_number_with_debug(a_val / b_val, a.debug));
-            } else {
-                // Find the first non-numeric operand for error location
-                debug_location* error_debug = NULL;
-                if (!is_number(a) && is_number(b)) {
-                    error_debug = a.debug; // Left operand is problematic
-                } else if (is_number(a) && !is_number(b)) {
-                    error_debug = b.debug; // Right operand is problematic
-                } else {
-                    error_debug = a.debug; // Both problematic, use left
-                }
-
-                vm_runtime_error_with_values(vm, "Cannot divide %s and %s", &a, &b, error_debug);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
+            vm_result result = op_divide(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
         case OP_MOD: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Handle all numeric type combinations
-            if (is_number(a) && is_number(b)) {
-
-                // Check for modulo by zero
-                bool is_zero = false;
-                if (b.type == VAL_INT32 && b.as.int32 == 0)
-                    is_zero = true;
-                else if (b.type == VAL_BIGINT && di_is_zero(b.as.bigint))
-                    is_zero = true;
-                else if (b.type == VAL_NUMBER && b.as.number == 0)
-                    is_zero = true;
-
-                if (is_zero) {
-                    vm_runtime_error_with_values(vm, "Modulo by zero", &a, &b, b.debug);
-                    vm_release(a);
-                    vm_release(b);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-
-                // int32 % int32
-                if (a.type == VAL_INT32 && b.type == VAL_INT32) {
-                    // No overflow possible with modulo
-                    vm_push(vm, make_int32_with_debug(a.as.int32 % b.as.int32, a.debug));
-                }
-                // BigInt % BigInt
-                else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
-                    di_int result = di_mod(a.as.bigint, b.as.bigint);
-                    vm_push(vm, make_bigint_with_debug(result, a.debug));
-                }
-                // int32 % BigInt
-                else if (a.type == VAL_INT32 && b.type == VAL_BIGINT) {
-                    di_int a_big = di_from_int32(a.as.int32);
-                    di_int result = di_mod(a_big, b.as.bigint);
-                    di_release(&a_big);
-                    vm_push(vm, make_bigint_with_debug(result, a.debug));
-                }
-                // BigInt % int32
-                else if (a.type == VAL_BIGINT && b.type == VAL_INT32) {
-                    di_int b_big = di_from_int32(b.as.int32);
-                    di_int result = di_mod(a.as.bigint, b_big);
-                    di_release(&b_big);
-                    vm_push(vm, make_bigint_with_debug(result, a.debug));
-                }
-                // Mixed with floating point - use fmod
-                else {
-                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
-                        : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                                         : a.as.number;
-                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
-                        : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                                         : b.as.number;
-                    vm_push(vm, make_number_with_debug(fmod(a_val, b_val), a.debug));
-                }
-            } else {
-                // Find the first non-numeric operand for error location
-                debug_location* error_debug = NULL;
-                if (!is_number(a) && is_number(b)) {
-                    error_debug = a.debug; // Left operand is problematic
-                } else if (is_number(a) && !is_number(b)) {
-                    error_debug = b.debug; // Right operand is problematic
-                } else {
-                    error_debug = a.debug; // Both problematic, use left
-                }
-
-                vm_runtime_error_with_values(vm, "Cannot compute modulo of %s and %s", &a, &b, error_debug);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_POWER: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Handle all numeric type combinations for power operations
-            if (is_number(a) && is_number(b)) {
-
-                // Convert to double for power calculation (always returns float)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
-                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                                     : a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
-                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                                     : b.as.number;
-
-                vm_push(vm, make_number_with_debug(pow(a_val, b_val), a.debug));
-            } else {
-                // Find the first non-numeric operand for error location
-                debug_location* error_debug = NULL;
-                if (!is_number(a) && is_number(b)) {
-                    error_debug = a.debug; // Left operand is problematic
-                } else if (is_number(a) && !is_number(b)) {
-                    error_debug = b.debug; // Right operand is problematic
-                } else {
-                    error_debug = a.debug; // Both problematic, use left
-                }
-
-                vm_runtime_error_with_values(vm, "Cannot compute power of %s and %s", &a, &b, error_debug);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_NEGATE: {
-            value_t a = vm_pop(vm);
-            if (a.type == VAL_INT32) {
-                // Check for int32 overflow on negation
-                if (a.as.int32 == INT32_MIN) {
-                    // INT32_MIN negation overflows - promote to BigInt
-                    di_int big = di_from_int64(-((int64_t)INT32_MIN));
-                    vm_push(vm, make_bigint_with_debug(big, a.debug));
-                } else {
-                    vm_push(vm, make_int32_with_debug(-a.as.int32, a.debug));
-                }
-            } else if (a.type == VAL_BIGINT) {
-                di_int negated = di_negate(a.as.bigint);
-                vm_push(vm, make_bigint_with_debug(negated, a.debug));
-            } else if (a.type == VAL_NUMBER) {
-                vm_push(vm, make_number_with_debug(-a.as.number, a.debug));
-            } else {
-                vm_runtime_error_with_values(vm, "Cannot negate %s", &a, NULL, NULL);
-                vm_release(a);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            break;
-        }
-
-        case OP_NOT: {
-            value_t a = vm_pop(vm);
-            int result = is_falsy(a);
-            vm_push(vm, make_boolean_with_debug(result, a.debug));
-            vm_release(a);
+            vm_result result = op_mod(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
         case OP_EQUAL: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-            int result = values_equal(a, b);
-            vm_push(vm, make_boolean(result));
-            vm_release(a);
-            vm_release(b);
+            vm_result result = op_equal(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
-        case OP_NOT_EQUAL: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-            int result = !values_equal(a, b);
-            vm_push(vm, make_boolean(result));
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_LESS: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Handle all numeric type combinations for comparison
-            if (is_number(a) && is_number(b)) {
-
-                // Convert both to double for comparison (simple but works)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
-                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                                     : a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
-                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                                     : b.as.number;
-
-                vm_push(vm, make_boolean(a_val < b_val));
-            } else {
-                vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_LESS_EQUAL: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Handle all numeric type combinations for comparison
-            if (is_number(a) && is_number(b)) {
-
-                // Convert both to double for comparison (simple but works)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
-                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                                     : a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
-                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                                     : b.as.number;
-
-                vm_push(vm, make_boolean(a_val <= b_val));
-            } else {
-                vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_GREATER: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Handle all numeric type combinations for comparison
-            if (is_number(a) && is_number(b)) {
-
-                // Convert both to double for comparison (simple but works)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
-                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                                     : a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
-                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                                     : b.as.number;
-
-                vm_push(vm, make_boolean(a_val > b_val));
-            } else {
-                vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_GREATER_EQUAL: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Handle all numeric type combinations for comparison
-            if (is_number(a) && is_number(b)) {
-
-                // Convert both to double for comparison (simple but works)
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
-                    : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                                     : a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
-                    : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                                     : b.as.number;
-
-                vm_push(vm, make_boolean(a_val >= b_val));
-            } else {
-                vm_runtime_error_with_values(vm, "Can only compare numbers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_AND: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Logical AND: if a is falsy, return a, otherwise return b
-            if (is_falsy(a)) {
-                vm_push(vm, a);
-                vm_release(b);
-            } else {
-                vm_push(vm, b);
-                vm_release(a);
-            }
-            break;
-        }
-
-        case OP_OR: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            // Logical OR: if a is truthy, return a, otherwise return b
-            if (is_falsy(a)) {
-                vm_push(vm, b);
-                vm_release(a);
-            } else {
-                vm_push(vm, a);
-                vm_release(b);
-            }
-            break;
-        }
-        
-        case OP_NULL_COALESCE: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-            
-            // Null coalescing: if a is null or undefined, return b, otherwise return a
-            if (a.type == VAL_NULL || a.type == VAL_UNDEFINED) {
-                vm_push(vm, b);
-                vm_release(a);
-            } else {
-                vm_push(vm, a);
-                vm_release(b);
-            }
-            break;
-        }
-        
-        case OP_IN: {
-            value_t obj = vm_pop(vm);
-            value_t prop = vm_pop(vm);
-            
-            // Check if property exists in object
-            if (obj.type != VAL_OBJECT) {
-                vm_release(obj);
-                vm_release(prop);
-                vm_runtime_error_with_values(vm, "Cannot use 'in' operator on non-object", &prop, &obj, obj.debug);
-                return VM_RUNTIME_ERROR;
-            }
-            
-            // For now, only support string properties
-            if (prop.type != VAL_STRING) {
-                vm_release(obj);
-                vm_release(prop);
-                vm_runtime_error_with_values(vm, "Property name for 'in' operator must be a string", &prop, &obj, prop.debug);
-                return VM_RUNTIME_ERROR;
-            }
-            
-            // Check if property exists
-            bool exists = do_get(obj.as.object, prop.as.string) != NULL;
-            
-            // Clean up
-            vm_release(obj);
-            vm_release(prop);
-            
-            // Push result
-            vm_push(vm, make_boolean(exists));
-            break;
-        }
-
-        case OP_INSTANCEOF: {
-            value_t class_constructor = vm_pop(vm);
-            value_t value = vm_pop(vm);
-            
-            // Right operand must be a class constructor/function
-            if (class_constructor.type != VAL_CLASS && class_constructor.type != VAL_FUNCTION && 
-                class_constructor.type != VAL_CLOSURE && class_constructor.type != VAL_NATIVE) {
-                vm_release(class_constructor);
-                vm_release(value);
-                vm_runtime_error_with_values(vm, "Right operand of 'instanceof' must be a class constructor", &value, &class_constructor, class_constructor.debug);
-                return VM_RUNTIME_ERROR;
-            }
-            
-            bool is_instance = false;
-            
-            // Check if the value has a class and if it matches the constructor
-            if (value.class != NULL) {
-                // Compare the value's class with the provided class constructor
-                // Need to compare class identity, not just addresses
-                is_instance = values_equal(*value.class, class_constructor);
-            }
-            
-            // Clean up
-            vm_release(class_constructor);
-            vm_release(value);
-            
-            // Push result
-            vm_push(vm, make_boolean(is_instance));
-            break;
-        }
-
-        case OP_BITWISE_AND: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
-                vm_push(vm, make_int32_with_debug(a.as.int32 & b.as.int32, a.debug));
-            } else {
-                vm_runtime_error_with_values(vm, "Bitwise AND requires integers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_BITWISE_OR: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
-                vm_push(vm, make_int32_with_debug(a.as.int32 | b.as.int32, a.debug));
-            } else {
-                vm_runtime_error_with_values(vm, "Bitwise OR requires integers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_BITWISE_XOR: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
-                vm_push(vm, make_int32_with_debug(a.as.int32 ^ b.as.int32, a.debug));
-            } else {
-                vm_runtime_error_with_values(vm, "Bitwise XOR requires integers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_BITWISE_NOT: {
-            value_t a = vm_pop(vm);
-
-            if (a.type == VAL_INT32) {
-                vm_push(vm, make_int32_with_debug(~a.as.int32, a.debug));
-            } else {
-                vm_runtime_error_with_values(vm, "Bitwise NOT requires integer", &a, NULL, NULL);
-                vm_release(a);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            break;
-        }
-
-        case OP_LEFT_SHIFT: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
-                vm_push(vm, make_int32_with_debug(a.as.int32 << b.as.int32, a.debug));
-            } else {
-                vm_runtime_error_with_values(vm, "Left shift requires integers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_RIGHT_SHIFT: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
-                // Arithmetic right shift (sign-extending)
-                vm_push(vm, make_int32_with_debug(a.as.int32 >> b.as.int32, a.debug));
-            } else {
-                vm_runtime_error_with_values(vm, "Arithmetic right shift requires integers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_LOGICAL_RIGHT_SHIFT: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            if (a.type == VAL_INT32 && b.type == VAL_INT32) {
-                // Logical right shift (zero-filling)
-                // Cast to unsigned to ensure zero-fill behavior
-                uint32_t unsigned_a = (uint32_t)a.as.int32;
-                uint32_t result = unsigned_a >> b.as.int32;
-                vm_push(vm, make_int32_with_debug((int32_t)result, a.debug));
-            } else {
-                vm_runtime_error_with_values(vm, "Logical right shift requires integers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_FLOOR_DIV: {
-            value_t b = vm_pop(vm);
-            value_t a = vm_pop(vm);
-
-            if ((a.type == VAL_INT32 || a.type == VAL_NUMBER) && (b.type == VAL_INT32 || b.type == VAL_NUMBER)) {
-
-                // Convert to doubles for division
-                double a_val = (a.type == VAL_INT32) ? (double)a.as.int32 : a.as.number;
-                double b_val = (b.type == VAL_INT32) ? (double)b.as.int32 : b.as.number;
-
-                if (b_val == 0) {
-                    vm_runtime_error_with_values(vm, "Division by zero", &a, &b, NULL);
-                    vm_release(a);
-                    vm_release(b);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-
-                // Floor division - truncate towards negative infinity
-                double result = floor(a_val / b_val);
-
-                // If result fits in int32, return as int32
-                if (result >= INT32_MIN && result <= INT32_MAX) {
-                    vm_push(vm, make_int32_with_debug((int32_t)result, a.debug));
-                } else {
-                    vm_push(vm, make_number_with_debug(result, a.debug));
-                }
-            } else {
-                vm_runtime_error_with_values(vm, "Floor division requires numbers", &a, &b, NULL);
-                vm_release(a);
-                vm_release(b);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            vm_release(b);
-            break;
-        }
-
-        case OP_INCREMENT: {
-            value_t a = vm_pop(vm);
-
-            if (a.type == VAL_INT32) {
-                // Check for overflow
-                if (a.as.int32 == INT32_MAX) {
-                    // Overflow - promote to BigInt
-                    di_int big = di_from_int64((int64_t)a.as.int32 + 1);
-                    vm_push(vm, make_bigint_with_debug(big, a.debug));
-                } else {
-                    vm_push(vm, make_int32_with_debug(a.as.int32 + 1, a.debug));
-                }
-            } else if (a.type == VAL_BIGINT) {
-                di_int one = di_from_int64(1);
-                di_int result = di_add(a.as.bigint, one);
-                di_release(&one);
-                vm_push(vm, make_bigint_with_debug(result, a.debug));
-            } else if (a.type == VAL_NUMBER) {
-                vm_push(vm, make_number_with_debug(a.as.number + 1, a.debug));
-            } else {
-                vm_runtime_error_with_values(vm, "Cannot increment %s", &a, NULL, NULL);
-                vm_release(a);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            break;
-        }
-
-        case OP_DECREMENT: {
-            value_t a = vm_pop(vm);
-
-            if (a.type == VAL_INT32) {
-                // Check for underflow
-                if (a.as.int32 == INT32_MIN) {
-                    // Underflow - promote to BigInt
-                    di_int big = di_from_int64((int64_t)a.as.int32 - 1);
-                    vm_push(vm, make_bigint_with_debug(big, a.debug));
-                } else {
-                    vm_push(vm, make_int32_with_debug(a.as.int32 - 1, a.debug));
-                }
-            } else if (a.type == VAL_BIGINT) {
-                di_int one = di_from_int64(1);
-                di_int result = di_sub(a.as.bigint, one);
-                di_release(&one);
-                vm_push(vm, make_bigint_with_debug(result, a.debug));
-            } else if (a.type == VAL_NUMBER) {
-                vm_push(vm, make_number_with_debug(a.as.number - 1, a.debug));
-            } else {
-                vm_runtime_error_with_values(vm, "Cannot decrement %s", &a, NULL, NULL);
-                vm_release(a);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            vm_release(a);
-            break;
-        }
-
-        case OP_BUILD_ARRAY: {
-            uint16_t count = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            // Create new dynamic array for bit_value elements
-            da_array array = da_new(sizeof(value_t));
-
-            // Collect all elements from stack (they're in reverse order)
-            value_t* elements = malloc(sizeof(value_t) * count);
-            for (int i = count - 1; i >= 0; i--) {
-                elements[i] = vm_pop(vm);
-                // Check if trying to store undefined (not a first-class value)
-                if (elements[i].type == VAL_UNDEFINED) {
-                    vm_runtime_error_with_debug(vm, "Cannot store 'undefined' in array - it is not a value");
-                    free(elements);
-                    da_release(&array);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-            }
-
-            // Add elements to array in correct order
-            for (size_t i = 0; i < count; i++) {
-                da_push(array, &elements[i]);
-            }
-            free(elements);
-
-            vm_push(vm, make_array(array));
-            break;
-        }
-
-        case OP_BUILD_OBJECT: {
-            uint16_t pair_count = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            // Create new dynamic object
-            do_object object = do_create(NULL); // NULL release function for now
-            if (!object) {
-                vm_runtime_error_with_debug(vm, "Failed to create object");
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-
-            // Pop key-value pairs from stack (they're in reverse order)
-            for (int i = 0; i < pair_count; i++) {
-                value_t value = vm_pop(vm);
-                value_t key = vm_pop(vm);
-
-                // Check if trying to store undefined (not a first-class value)
-                if (value.type == VAL_UNDEFINED) {
-                    vm_runtime_error_with_debug(vm, "Cannot store 'undefined' in object - it is not a value");
-                    do_release(&object);
-                    vm_release(key);
-                    vm_release(value);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-
-                // Key must be a string
-                if (key.type != VAL_STRING) {
-                    vm_runtime_error_with_debug(vm, "Object key must be a string");
-                    do_release(&object);
-                    vm_release(key);
-                    vm_release(value);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-
-                // Set property in object
-                if (do_set(object, key.as.string, &value, sizeof(value_t)) != 0) {
-                    vm_runtime_error_with_debug(vm, "Failed to set object property");
-                    do_release(&object);
-                    vm_release(key);
-                    vm_release(value);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-
-                // Clean up key (value is now owned by the object)
-                vm_release(key);
-            }
-
-            vm_push(vm, make_object(object));
-            break;
-        }
-
-        case OP_BUILD_RANGE: {
-            uint16_t exclusive = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            // Pop end and start values from stack
-            value_t end = vm_pop(vm);
-            value_t start = vm_pop(vm);
-
-            // Create range object
-            value_t range_value = make_range(start, end, exclusive);
-
-            // Clean up popped values (make_range already retained them)
-            vm_release(start);
-            vm_release(end);
-
-            vm_push(vm, range_value);
-            break;
-        }
-
-        case OP_GET_INDEX: {
-            value_t index = vm_pop(vm);
-            value_t object = vm_pop(vm);
-
-            if (object.type == VAL_ARRAY && index.type == VAL_NUMBER) {
-                int idx = (int)index.as.number;
-                // Check bounds - out of bounds is an error
-                if (idx < 0 || idx >= da_length(object.as.array)) {
-                    printf("Runtime error: Array index %d out of bounds (length: %d)\n", idx,
-                           da_length(object.as.array));
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                value_t* element = (value_t*)da_get(object.as.array, idx);
-                vm_push(vm, *element);
-            } else if (object.type == VAL_STRING && index.type == VAL_NUMBER) {
-                // String indexing
-                int idx = (int)index.as.number;
-                ds_string str = object.as.string;
-                if (idx < 0 || idx >= (int)ds_length(str)) {
-                    printf("Runtime error: String index %d out of bounds (length: %d)\n", idx, (int)ds_length(str));
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                char ch = str[idx]; // ds_string is just char*, can index directly
-                char result[2] = {ch, '\0'};
-                vm_push(vm, make_string(result));
-            } else {
-                printf("Runtime error: Cannot index non-array/string value\n");
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            break;
-        }
-
-        case OP_SET_INDEX: {
-            value_t value = vm_pop(vm);
-            value_t index = vm_pop(vm);
-            value_t object = vm_pop(vm);
-
-            // Check if trying to store undefined (not a first-class value)
-            if (value.type == VAL_UNDEFINED) {
-                vm_runtime_error_with_debug(vm, "Cannot store 'undefined' - it is not a value");
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-
-            if (object.type == VAL_ARRAY && index.type == VAL_NUMBER) {
-                size_t idx = (size_t)index.as.number;
-                // Set element in dynamic array
-                da_set(object.as.array, (int)idx, &value);
-                vm_push(vm, value); // Assignment returns the assigned value
-            } else {
-                printf("Runtime error: Cannot set index on non-array value\n");
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            break;
-        }
-
-        case OP_CALL: {
-            uint16_t arg_count = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            // Pop arguments into temporary array (they're on stack in reverse order)
-            value_t* args = NULL;
-            if (arg_count > 0) {
-                args = malloc(sizeof(value_t) * arg_count);
-                for (int i = arg_count - 1; i >= 0; i--) {
-                    args[i] = vm_pop(vm);
-                    // Check if trying to pass undefined (not a first-class value)
-                    if (args[i].type == VAL_UNDEFINED) {
-                        vm_runtime_error_with_debug(vm, "Cannot pass 'undefined' as argument - it is not a value");
-                        if (args)
-                            free(args);
-                        vm->frame_count--;
-                        closure_destroy(closure);
-                        return VM_RUNTIME_ERROR;
-                    }
-                }
-            }
-
-            // Get the callable value (now on top of stack)
-            value_t callable = vm_pop(vm);
-
-            // Arrays: act as functions from index to value
-            if (callable.type == VAL_ARRAY) {
-                if (arg_count != 1) {
-                    printf("Runtime error: Array indexing requires exactly 1 argument\n");
-                    if (args)
-                        free(args);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                value_t index = args[0];
-                if (index.type != VAL_INT32) {
-                    printf("Runtime error: Array index must be an integer\n");
-                    if (args)
-                        free(args);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                int idx = index.as.int32;
-                // Check bounds - out of bounds is an error
-                if (idx < 0 || idx >= da_length(callable.as.array)) {
-                    printf("Runtime error: Array index %d out of bounds (length: %d)\n", idx,
-                           da_length(callable.as.array));
-                    if (args)
-                        free(args);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                value_t* element = (value_t*)da_get(callable.as.array, idx);
-                vm_push(vm, *element);
-                if (args) {
-                    for (int i = 0; i < arg_count; i++) {
-                        vm_release(args[i]);
-                    }
-                    free(args);
-                }
-            }
-            // Classes: act as constructors if they have a factory function
-            else if (callable.type == VAL_CLASS) {
-                class_t* cls = callable.as.class;
-                
-                // Check if class has a factory function
-                if (cls->factory == NULL) {
-                    printf("Runtime error: Class '%s' has no factory\n", cls->name);
-                    if (args) {
-                        for (int i = 0; i < arg_count; i++) {
-                            vm_release(args[i]);
-                        }
-                        free(args);
-                    }
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                
-                // Call the factory function
-                value_t instance = cls->factory(args, arg_count);
-                vm_push(vm, instance);
-                
-                // Clean up arguments
-                if (args) {
-                    for (int i = 0; i < arg_count; i++) {
-                        vm_release(args[i]);
-                    }
-                    free(args);
-                }
-            }
-            // Strings: act as functions from index to character
-            else if (callable.type == VAL_STRING) {
-                if (arg_count != 1) {
-                    printf("Runtime error: String indexing requires exactly 1 argument\n");
-                    if (args)
-                        free(args);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                value_t index = args[0];
-                if (index.type != VAL_INT32) {
-                    printf("Runtime error: String index must be an integer\n");
-                    if (args)
-                        free(args);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                int idx = index.as.int32;
-                ds_string str = callable.as.string;
-                if (idx < 0 || idx >= (int)ds_length(str)) {
-                    printf("Runtime error: String index %d out of bounds (length: %d)\n", idx, (int)ds_length(str));
-                    if (args)
-                        free(args);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                char ch = str[idx];
-                char result[2] = {ch, '\0'};
-                vm_push(vm, make_string(result));
-                if (args) {
-                    for (int i = 0; i < arg_count; i++) {
-                        vm_release(args[i]);
-                    }
-                    free(args);
-                }
-            }
-            // Objects: act as functions from property name to value
-            else if (callable.type == VAL_OBJECT) {
-                if (arg_count != 1) {
-                    printf("Runtime error: Object property access requires exactly 1 argument\n");
-                    if (args)
-                        free(args);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                value_t key = args[0];
-                if (key.type != VAL_STRING) {
-                    printf("Runtime error: Object key must be a string\n");
-                    if (args)
-                        free(args);
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                // Get property from dynamic object (returns bit_value*)
-                value_t* prop_value = (value_t*)do_get(callable.as.object, key.as.string);
-                if (prop_value) {
-                    vm_push(vm, *prop_value);
-                } else {
-                    // Missing property returns undefined
-                    vm_push(vm, make_undefined());
-                }
-                if (args) {
-                    for (int i = 0; i < arg_count; i++) {
-                        vm_release(args[i]);
-                    }
-                    free(args);
-                }
-            }
-            // Built-in functions
-            else if (callable.type == VAL_NATIVE) {
-                native_t builtin_func = (native_t)callable.as.native;
-                value_t result = builtin_func(vm, arg_count, args);
-                vm_push(vm, result);
-                if (args)
-                    free(args);
-            }
-            // Bound methods
-            else if (callable.type == VAL_BOUND_METHOD) {
-                bound_method_t* bound_method = callable.as.bound_method;
-
-                // Create new argument array with receiver as first argument
-                value_t* method_args = malloc(sizeof(value_t) * (arg_count + 1));
-                method_args[0] = vm_retain(bound_method->receiver); // 'this' context (retain for method call)
-                for (int i = 0; i < arg_count; i++) {
-                    method_args[i + 1] = args[i];
-                }
-
-                // Call the method with receiver as first argument
-                value_t result = bound_method->method(vm, arg_count + 1, method_args);
-                vm_push(vm, result);
-
-                // Release the retained receiver
-                vm_release(method_args[0]);
-
-                if (args)
-                    free(args);
-                free(method_args);
-            }
-            // Functions and closures: user-defined function calls
-            else if (callable.type == VAL_CLOSURE) {
-                closure_t* func_closure = callable.as.closure;
-                function_t* func = func_closure->function;
-                
-                // Check argument count
-                if (arg_count != func->parameter_count) {
-                    printf("Runtime error: Expected %zu arguments but got %d\n", 
-                           func->parameter_count, arg_count);
-                    if (args) {
-                        for (int i = 0; i < arg_count; i++) {
-                            vm_release(args[i]);
-                        }
-                        free(args);
-                    }
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                
-                // Set up new call frame
-                if (vm->frame_count >= vm->frame_capacity) {
-                    if (args) {
-                        for (int i = 0; i < arg_count; i++) {
-                            vm_release(args[i]);
-                        }
-                        free(args);
-                    }
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_STACK_OVERFLOW;
-                }
-                
-                call_frame* frame = &vm->frames[vm->frame_count++];
-                frame->closure = func_closure;
-                frame->ip = vm->ip;  // Save current IP for return
-                
-                // Push arguments onto stack in correct order (they become parameters)
-                if (args) {
-                    for (int i = 0; i < arg_count; i++) {
-                        vm_push(vm, args[i]);
-                    }
-                    free(args);
-                }
-                
-                // Set frame slots to point to where parameters start (after pushing args)
-                frame->slots = vm->stack_top - arg_count;
-                
-                // Switch execution context to function
-                vm->ip = func->bytecode;
-                vm->bytecode = func->bytecode;
-                
-                // NOTE: Arguments are now on stack in correct positions for parameter access
-                // Parameters will be accessed via OP_GET_GLOBAL with name resolution
-            }
-            // VAL_FUNCTION (bare functions without closure wrapper) 
-            else if (callable.type == VAL_FUNCTION) {
-                // For simplicity, just handle VAL_FUNCTION the same as VAL_CLOSURE
-                function_t* func = callable.as.function;
-                
-                // Check argument count
-                if (arg_count != func->parameter_count) {
-                    printf("Runtime error: Expected %zu arguments but got %d\n", 
-                           func->parameter_count, arg_count);
-                    if (args) {
-                        for (int i = 0; i < arg_count; i++) {
-                            vm_release(args[i]);
-                        }
-                        free(args);
-                    }
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                
-                // Set up new call frame with a temporary closure
-                if (vm->frame_count >= vm->frame_capacity) {
-                    if (args) {
-                        for (int i = 0; i < arg_count; i++) {
-                            vm_release(args[i]);
-                        }
-                        free(args);
-                    }
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_STACK_OVERFLOW;
-                }
-                
-                call_frame* frame = &vm->frames[vm->frame_count++];
-                closure_t* temp_closure = closure_create(func);
-                if (!temp_closure) {
-                    printf("Runtime error: Failed to create closure wrapper\n");
-                    if (args) {
-                        for (int i = 0; i < arg_count; i++) {
-                            vm_release(args[i]);
-                        }
-                        free(args);
-                    }
-                    vm->frame_count--;
-                    closure_destroy(closure);
-                    return VM_RUNTIME_ERROR;
-                }
-                
-                frame->closure = temp_closure;
-                frame->ip = vm->ip;  // Save current IP for return
-                
-                // Push arguments onto stack in correct order (they become parameters)
-                if (args) {
-                    for (int i = 0; i < arg_count; i++) {
-                        vm_push(vm, args[i]);
-                    }
-                    free(args);
-                }
-                
-                // Set frame slots to point to where parameters start (after pushing args)
-                frame->slots = vm->stack_top - arg_count;
-                
-                // Switch execution context to function
-                vm->ip = func->bytecode;
-                vm->bytecode = func->bytecode;
-            } else {
-                // Provide specific error for undefined (likely unknown function)
-                if (callable.type == VAL_UNDEFINED) {
-                    printf("Runtime error: Unknown function (undefined variable)\n");
-                } else {
-                    printf("Runtime error: Value is not callable\n");
-                }
-                if (args) {
-                    for (int i = 0; i < arg_count; i++) {
-                        vm_release(args[i]);
-                    }
-                    free(args);
-                }
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            break;
-        }
-
-        case OP_DEFINE_GLOBAL: {
-            // Pop the value to store and the variable name constant
-            value_t value = vm_pop(vm);
-
-            // Note: We allow undefined for variable declarations (var x;)
-            // The restriction on undefined only applies to explicit assignments
-
-            uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            // Get the current executing function from the current frame
-            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
-            value_t name_val = current_func->constants[name_constant];
-            if (name_val.type != VAL_STRING) {
-                printf("Runtime error: Global variable name must be a string\n");
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-
-            // Store in globals object - we need to store a copy of the value
-            value_t* stored_value = malloc(sizeof(value_t));
-            if (!stored_value) {
-                printf("Runtime error: Memory allocation failed\n");
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            *stored_value = value;
-
-            // ds_string can be used directly as char* - no ds_cstr needed
-            // do_set needs key, data pointer, and size
-            do_set(vm->globals, name_val.as.string, stored_value, sizeof(value_t));
-            break;
-        }
-
-        case OP_GET_GLOBAL: {
-            uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            // Get the current executing function from the current frame
-            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
-
-            if (name_constant >= current_func->constant_count) {
-                printf("Runtime error: Constant index %d out of bounds (max %zu)\n", 
-                       name_constant, current_func->constant_count - 1);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-
-            value_t name_val = current_func->constants[name_constant];
-            if (name_val.type != VAL_STRING) {
-                ds_string type_str = value_to_string_representation(vm, name_val);
-                printf("Runtime error: Global variable name must be a string, got %s (type %d)\n", 
-                       type_str, name_val.type);
-                ds_release(&type_str);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-
-            char* name = name_val.as.string;
-            
-            // Check if we're in a function call (frame_count > 1) and look for parameters first
-            if (vm->frame_count > 1) {
-                call_frame* current_frame = &vm->frames[vm->frame_count - 1];
-                function_t* func = current_frame->closure->function;
-                
-                // Check if name matches a parameter
-                for (size_t i = 0; i < func->parameter_count; i++) {
-                    if (strcmp(name, func->parameter_names[i]) == 0) {
-                        // Found parameter - get value from stack slot
-                        // Parameters start at frame->slots and go up
-                        value_t param_value = current_frame->slots[i];
-                        vm_push(vm, param_value);
-                        goto found_variable; // Skip global lookup
-                    }
-                }
-            }
-            
-            // Fall through to global variable lookup
-            value_t* stored_value = (value_t*)do_get(vm->globals, name);
-            if (stored_value) {
-                vm_push(vm, *stored_value);
-            } else {
-                // Create formatted message with dynamic content
-                char error_msg[256];
-                snprintf(error_msg, sizeof(error_msg),
-                         "Undefined variable '%s' (if this is a function call, the function doesn't exist)",
-                         name);
-                vm_runtime_error_with_debug(vm, error_msg);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-            
-            found_variable:
-            break;
-        }
-
-        case OP_SET_GLOBAL: {
-            // Pop the value to store and get the variable name constant
-            value_t value = vm_pop(vm);
-
-            // Check if trying to assign undefined (not a first-class value)
-            if (value.type == VAL_UNDEFINED) {
-                vm_runtime_error_with_debug(vm, "Cannot assign 'undefined' - it is not a value");
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-
-            uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            // Get the current executing function from the current frame
-            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
-            value_t name_val = current_func->constants[name_constant];
-            if (name_val.type != VAL_STRING) {
-                printf("Runtime error: Global variable name must be a string\n");
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
-
-            // Check if variable exists
-            value_t* stored_value = (value_t*)do_get(vm->globals, name_val.as.string);
-            if (stored_value) {
-                // Release the old value first (proper reference counting)
-                vm_release(*stored_value);
-
-                // Update with new value (already popped from stack, so we own it)
-                *stored_value = value;
-            } else {
-                printf("Runtime error: Undefined variable '%s'\n", name_val.as.string);
-                vm->frame_count--;
-                closure_destroy(closure);
-                return VM_RUNTIME_ERROR;
-            }
+        case OP_RETURN: {
+            vm_result result = op_return(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
@@ -3488,21 +2076,96 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             break;
         }
 
+        case OP_GET_GLOBAL: {
+            uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            // Get the current executing function from the current frame
+            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
+            if (name_constant >= current_func->constant_count) {
+                printf("Runtime error: Constant index %d out of bounds (max %zu)\n", 
+                       name_constant, current_func->constant_count - 1);
+                return VM_RUNTIME_ERROR;
+            }
+            value_t name_val = current_func->constants[name_constant];
+            if (name_val.type != VAL_STRING) {
+                printf("Runtime error: Global variable name must be a string\n");
+                return VM_RUNTIME_ERROR;
+            }
+            char* name = name_val.as.string;
+            
+            // Check if we're in a function call and look for parameters first
+            if (vm->frame_count > 0) {
+                call_frame* current_frame = &vm->frames[vm->frame_count - 1];
+                function_t* func = current_frame->closure->function;
+                
+                // Check if name matches a parameter
+                for (size_t i = 0; i < func->parameter_count; i++) {
+                    if (strcmp(name, func->parameter_names[i]) == 0) {
+                        // Found parameter - get value from stack slot
+                        value_t param_value = current_frame->slots[i];
+                        vm_push(vm, param_value);
+                        goto found_variable;
+                    }
+                }
+            }
+            
+            // Fall through to global variable lookup
+            value_t* stored_value = (value_t*)do_get(vm->globals, name);
+            if (stored_value) {
+                vm_push(vm, *stored_value);
+            } else {
+                printf("Runtime error: Undefined variable '%s'\n", name);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            found_variable:
+            break;
+        }
+
+        case OP_MULTIPLY: {
+            value_t b = vm_pop(vm);
+            value_t a = vm_pop(vm);
+            
+            if (is_number(a) && is_number(b)) {
+                if (a.type == VAL_INT32 && b.type == VAL_INT32) {
+                    int64_t result = (int64_t)a.as.int32 * (int64_t)b.as.int32;
+                    if (result >= INT32_MIN && result <= INT32_MAX) {
+                        vm_push(vm, make_int32_with_debug((int32_t)result, a.debug));
+                    } else {
+                        di_int big_result = di_from_int64(result);
+                        vm_push(vm, make_bigint_with_debug(big_result, a.debug));
+                    }
+                } else {
+                    double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
+                        : (a.type == VAL_BIGINT) ? di_to_double(a.as.bigint)
+                                                 : a.as.number;
+                    double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
+                        : (b.type == VAL_BIGINT) ? di_to_double(b.as.bigint)
+                                                 : b.as.number;
+                    vm_push(vm, make_number_with_debug(a_val * b_val, a.debug));
+                }
+            } else {
+                printf("Runtime error: Cannot multiply non-numeric values\n");
+                vm_release(a);
+                vm_release(b);
+                return VM_RUNTIME_ERROR;
+            }
+            vm_release(a);
+            vm_release(b);
+            break;
+        }
+
+
         case OP_GET_PROPERTY: {
             value_t property = vm_pop(vm);
             value_t object = vm_pop(vm);
 
             if (property.type != VAL_STRING) {
                 printf("Runtime error: Property name must be a string\n");
-                vm->frame_count--;
-                closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
 
             const char* prop_name = property.as.string;
-
-            // Check for built-in properties that don't use prototypes yet
-            // (Iterator methods now use prototypes)
 
             // For objects, check own properties first
             if (object.type == VAL_OBJECT) {
@@ -3510,18 +2173,6 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                 if (prop_value) {
                     vm_push(vm, *prop_value);
                     break;
-                }
-            }
-
-            // For classes, check static methods/properties
-            if (object.type == VAL_CLASS) {
-                class_t* cls = object.as.class;
-                if (cls && cls->properties) {
-                    value_t* prop_value = (value_t*)do_get(cls->properties, prop_name);
-                    if (prop_value) {
-                        vm_push(vm, *prop_value);
-                        break;
-                    }
                 }
             }
 
@@ -3538,125 +2189,88 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
                         // If it's a native function, create a bound method
                         if (prop_value->type == VAL_NATIVE) {
                             vm_push(vm, make_bound_method(object, prop_value->as.native));
+                            property_found = true;
                         } else {
                             vm_push(vm, *prop_value);
+                            property_found = true;
                         }
-                        property_found = true;
+                        break;
                     }
                 }
-                // Move up the inheritance chain (will naturally terminate at Value class where class = NULL)
-                if (!property_found) {
-                    current_class = current_class->class;
+                // Move to parent class if any
+                // For now, no inheritance - just break
+                break;
+            }
+            
+            if (!property_found) {
+                printf("Runtime error: Property '%s' not found\n", prop_name);
+                vm_release(object);
+                vm_release(property);
+                return VM_RUNTIME_ERROR;
+            }
+            
+            // Clean up operands
+            vm_release(object);
+            vm_release(property);
+            break;
+        }
+
+        case OP_CALL: {
+            uint16_t arg_count = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+
+            // Pop arguments into temporary array (they're on stack in reverse order)
+            value_t* args = NULL;
+            if (arg_count > 0) {
+                args = malloc(sizeof(value_t) * arg_count);
+                for (int i = arg_count - 1; i >= 0; i--) {
+                    args[i] = vm_pop(vm);
                 }
             }
 
-            // Property not found - return undefined
-            if (!property_found) {
-                vm_push(vm, make_undefined());
-            }
-            break;
-        }
+            // Get the callable value (now on top of stack)
+            value_t callable = vm_pop(vm);
 
-        case OP_JUMP: {
-            uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            // Handle both forward and backward jumps
-            if (offset > 32767) { // If > 2^15-1, treat as negative (backward jump)
-                int16_t backward_offset = (int16_t)offset;
-                vm->ip += backward_offset;
-            } else {
-                vm->ip += offset; // Forward jump
-            }
-            break;
-        }
-
-        case OP_JUMP_IF_FALSE: {
-            uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            value_t condition = vm_peek(vm, 0);
-            if (is_falsy(condition)) {
-                vm->ip += offset;
-            }
-            break;
-        }
-
-        case OP_JUMP_IF_TRUE: {
-            uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            value_t condition = vm_peek(vm, 0);
-            if (!is_falsy(condition)) {
-                vm->ip += offset;
-            }
-            break;
-        }
-
-        case OP_LOOP: {
-            uint16_t offset = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-            
-            // Jump backward by the specified offset
-            vm->ip -= offset;
-            break;
-        }
-
-        case OP_POP_N: {
-            uint8_t count = *vm->ip++;
-            
-            // Pop N values from stack and release them (scope cleanup)
-            for (int i = 0; i < count; i++) {
-                value_t value = vm_pop(vm);
-                vm_release(value);  // Critical: release reference-counted values
-            }
-            break;
-        }
-
-        case OP_POP_N_PRESERVE_TOP: {
-            uint8_t count = *vm->ip++;
-            
-            // Save the top value (the result we want to preserve)
-            value_t top_value = vm_pop(vm);
-            
-            // Pop N values from stack and release them (scope cleanup)
-            for (int i = 0; i < count; i++) {
-                value_t value = vm_pop(vm);
-                vm_release(value);  // Critical: release reference-counted values
+            // Handle bound methods (like array.map)
+            if (callable.type == VAL_BOUND_METHOD) {
+                bound_method_t* bound = callable.as.bound_method;
+                
+                // Prepare arguments: receiver + provided args
+                value_t* full_args = malloc(sizeof(value_t) * (arg_count + 1));
+                full_args[0] = bound->receiver;  // First arg is receiver (the array)
+                for (int i = 0; i < arg_count; i++) {
+                    full_args[i + 1] = args[i];  // Copy user-provided args
+                }
+                
+                // Call the native function
+                value_t result = bound->method(vm, arg_count + 1, full_args);
+                vm_push(vm, result);
+                
+                free(full_args);
+                if (args) free(args);
+                break;
             }
             
-            // Restore the top value
-            vm_push(vm, top_value);
-            break;
-        }
-
-        case OP_SET_DEBUG_LOCATION: {
-            uint16_t constant_index = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            // Read line and column bytes
-            int line = *vm->ip++;
-            int column = *vm->ip++;
-
-            // Get the source text from the constant
-            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
-            value_t source_value = current_func->constants[constant_index];
-            if (source_value.type == VAL_STRING) {
-                // Clean up previous debug location
-                debug_location_free(vm->current_debug);
-
-                // Create new debug location
-                vm->current_debug = debug_location_create(line, column, source_value.as.string);
+            // Handle closures (user functions)
+            if (callable.type == VAL_CLOSURE) {
+                // For now, just call vm_call_function with our existing implementation
+                value_t result = vm_call_function(vm, callable, arg_count, args);
+                vm_push(vm, result);
+                if (args) free(args);
+                break;
             }
-            break;
+            
+            printf("Runtime error: Value is not callable\n");
+            if (args) {
+                for (int i = 0; i < arg_count; i++) {
+                    vm_release(args[i]);
+                }
+                free(args);
+            }
+            vm_release(callable);
+            return VM_RUNTIME_ERROR;
         }
 
-        case OP_CLEAR_DEBUG_LOCATION: {
-            debug_location_free(vm->current_debug);
-            vm->current_debug = NULL;
-            break;
-        }
-        
         case OP_CLOSURE: {
             uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
@@ -3666,8 +2280,6 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             value_t index_val = current_func->constants[constant];
             if (index_val.type != VAL_INT32) {
                 vm_runtime_error_with_debug(vm, "Expected function index in OP_CLOSURE");
-                vm->frame_count--;
-                closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
             
@@ -3676,8 +2288,6 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             function_t* target_func = vm_get_function(vm, func_index);
             if (!target_func) {
                 vm_runtime_error_with_debug(vm, "Invalid function index in OP_CLOSURE");
-                vm->frame_count--;
-                closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
             
@@ -3685,63 +2295,114 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             closure_t* new_closure = closure_create(target_func);
             if (!new_closure) {
                 vm_runtime_error_with_debug(vm, "Failed to create closure");
-                vm->frame_count--;
-                closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
             
-            vm_push(vm, make_closure(new_closure));
+            // Push closure as a value onto the stack
+            value_t closure_val;
+            closure_val.type = VAL_CLOSURE;
+            closure_val.as.closure = new_closure;
+            closure_val.class = NULL;
+            closure_val.debug = NULL;
+            vm_push(vm, closure_val);
+            break;
+        }
+
+        case OP_BUILD_ARRAY: {
+            uint16_t element_count = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            
+            // Create new dynamic array for elements
+            da_array array = da_new(sizeof(value_t));
+            
+            // Collect all elements from stack (they're in reverse order)
+            value_t* elements = malloc(sizeof(value_t) * element_count);
+            for (int i = element_count - 1; i >= 0; i--) {
+                elements[i] = vm_pop(vm);
+                // Check if trying to store undefined (not a first-class value)
+                if (elements[i].type == VAL_UNDEFINED) {
+                    printf("Runtime error: Cannot store 'undefined' in array - it is not a value\n");
+                    free(elements);
+                    da_release(&array);
+                    return VM_RUNTIME_ERROR;
+                }
+            }
+            
+            // Add elements to array in correct order
+            for (uint16_t i = 0; i < element_count; i++) {
+                da_push(array, &elements[i]);
+            }
+            
+            free(elements);
+            value_t result = make_array(array);
+            vm_push(vm, result);
+            break;
+        }
+
+        case OP_SET_DEBUG_LOCATION: {
+            uint16_t constant_index = *vm->ip | (*(vm->ip + 1) << 8);
+            vm->ip += 2;
+            uint8_t line = *vm->ip++;
+            uint8_t column = *vm->ip++;
+            
+            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
+            if (constant_index < current_func->constant_count) {
+                value_t source_val = current_func->constants[constant_index];
+                if (source_val.type == VAL_STRING) {
+                    debug_location_free(vm->current_debug);
+                    vm->current_debug = debug_location_create(line, column, source_val.as.string);
+                }
+            }
             break;
         }
         
-        case OP_RETURN: {
-            // Get return value from top of stack
-            value_t result = vm_pop(vm);
-            
-            // Get frame we're returning from BEFORE decrementing frame_count
-            call_frame* current_frame = &vm->frames[vm->frame_count - 1];  // Frame we're in
-            
-            // Restore previous call frame
-            vm->frame_count--;
-            if (vm->frame_count == 0) {
-                // Returning from main - set result and halt
-                vm->result = result;
-                closure_destroy(closure);
-                return VM_OK;
-            }
-            
-            // Get previous frame (now the active frame)
-            call_frame* prev_frame = &vm->frames[vm->frame_count - 1];  // Frame to return to
-            
-            // Clean up stack (remove local variables and arguments)
-            vm->stack_top = current_frame->slots;
-            
-            // Push return value
-            vm_push(vm, result);
-            
-            // Restore execution context - use the return address saved in the current frame
-            vm->ip = current_frame->ip;  // This has the return address saved during CALL
-            vm->bytecode = prev_frame->closure->function->bytecode;
-            
-            // Don't destroy the closure here - it's owned by the value system
-            // The closure will be cleaned up when the value is released
+        case OP_CLEAR_DEBUG_LOCATION:
+            debug_location_free(vm->current_debug);
+            vm->current_debug = NULL;
             break;
-        }
 
         case OP_HALT:
-            vm->frame_count--;
-            closure_destroy(closure);
             return VM_OK;
 
         default:
-            printf("Unknown instruction: %s\n", opcode_name(instruction));
-            vm->frame_count--;
-            closure_destroy(closure);
+            printf("DEBUG: Unimplemented opcode in vm_run: %d\n", instruction);
             return VM_RUNTIME_ERROR;
         }
     }
 }
 
+// VM execution with setup - clears stack and sets up initial call frame
+vm_result vm_execute(slate_vm* vm, function_t* function) {
+    if (!vm || !function)
+        return VM_RUNTIME_ERROR;
+
+    // Clear the stack at the start of each execution (important for REPL)
+    vm->stack_top = vm->stack;
+
+    // Set up initial call frame
+    if (vm->frame_count >= vm->frame_capacity) {
+        return VM_STACK_OVERFLOW;
+    }
+
+    call_frame* frame = &vm->frames[vm->frame_count++];
+    closure_t* closure = closure_create(function); // Simple closure wrapper
+    frame->closure = closure;
+    frame->ip = function->bytecode;
+    frame->slots = vm->stack_top;
+
+    vm->bytecode = function->bytecode;
+    vm->ip = function->bytecode;
+
+    // Run the VM using the new core execution function
+    vm_result result = vm_run(vm);
+    
+    // Clean up closure if execution completed normally
+    if (result == VM_OK) {
+        closure_destroy(closure);
+    }
+    
+    return result;
+}
 vm_result vm_interpret(slate_vm* vm, const char* source) {
     // This would compile source to bytecode and execute
     // For now, just a stub
