@@ -293,8 +293,12 @@ function_t* codegen_compile_function(codegen_t* parent_codegen, ast_function* fu
             codegen_destroy(func_codegen);
             return NULL;
         }
-        memcpy(function->constants, func_codegen->chunk->constants, 
-               sizeof(value_t) * function->constant_count);
+        // Copy and retain each constant value
+        for (size_t i = 0; i < function->constant_count; i++) {
+            function->constants[i] = func_codegen->chunk->constants[i];
+            // Retain reference-counted values (strings, arrays, objects, etc.)
+            vm_retain(function->constants[i]);
+        }
     }
     
     // Update local count
@@ -347,7 +351,7 @@ function_t* codegen_compile(codegen_t* codegen, ast_program* program) {
     }
     memcpy(function->bytecode, codegen->chunk->code, function->bytecode_length);
     
-    // Transfer constants (deep copy to avoid sharing)
+    // Transfer constants (deep copy with proper retention to avoid sharing)
     function->constant_count = codegen->chunk->constant_count;
     if (function->constant_count > 0) {
         function->constants = malloc(sizeof(value_t) * function->constant_count);
@@ -355,8 +359,12 @@ function_t* codegen_compile(codegen_t* codegen, ast_program* program) {
             function_destroy(function);
             return NULL;
         }
-        memcpy(function->constants, codegen->chunk->constants, 
-               sizeof(value_t) * function->constant_count);
+        // Copy and retain each constant value
+        for (size_t i = 0; i < function->constant_count; i++) {
+            function->constants[i] = codegen->chunk->constants[i];
+            // Retain reference-counted values (strings, arrays, objects, etc.)
+            vm_retain(function->constants[i]);
+        }
     } else {
         function->constants = NULL;
     }

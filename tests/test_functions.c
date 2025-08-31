@@ -49,10 +49,9 @@ void test_lambda_nested_expressions(void) {
 }
 
 void test_lambda_with_string_operations(void) {
-    // Note: String concatenation in functions currently has a bug - only returns right operand
     value_t result = run_code("var greet = name -> 'Hello ' + name; greet('World')");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
-    TEST_ASSERT_EQUAL_STRING("World", result.as.string);  // Should be "Hello World" when bug is fixed
+    TEST_ASSERT_EQUAL_STRING("Hello World", result.as.string);
 }
 
 // Test def syntax for named functions
@@ -82,10 +81,9 @@ void test_def_function_with_complex_expression(void) {
 }
 
 void test_def_function_with_string(void) {
-    // Note: String concatenation in functions currently has a bug - only returns right operand
     value_t result = run_code("def greet(name) = 'Hello ' + name; greet('Slate')");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
-    TEST_ASSERT_EQUAL_STRING("Slate", result.as.string);  // Should be "Hello Slate" when bug is fixed
+    TEST_ASSERT_EQUAL_STRING("Hello Slate", result.as.string);
 }
 
 // Test function scoping and variables

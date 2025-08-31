@@ -3123,7 +3123,9 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
 
-            value_t name_val = function->constants[name_constant];
+            // Get the current executing function from the current frame
+            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
+            value_t name_val = current_func->constants[name_constant];
             if (name_val.type != VAL_STRING) {
                 printf("Runtime error: Global variable name must be a string\n");
                 vm->frame_count--;
@@ -3151,15 +3153,18 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
 
-            if (name_constant >= function->constant_count) {
+            // Get the current executing function from the current frame
+            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
+
+            if (name_constant >= current_func->constant_count) {
                 printf("Runtime error: Constant index %d out of bounds (max %zu)\n", 
-                       name_constant, function->constant_count - 1);
+                       name_constant, current_func->constant_count - 1);
                 vm->frame_count--;
                 closure_destroy(closure);
                 return VM_RUNTIME_ERROR;
             }
 
-            value_t name_val = function->constants[name_constant];
+            value_t name_val = current_func->constants[name_constant];
             if (name_val.type != VAL_STRING) {
                 ds_string type_str = value_to_string_representation(vm, name_val);
                 printf("Runtime error: Global variable name must be a string, got %s (type %d)\n", 
@@ -3224,7 +3229,9 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
             vm->ip += 2;
 
-            value_t name_val = function->constants[name_constant];
+            // Get the current executing function from the current frame
+            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
+            value_t name_val = current_func->constants[name_constant];
             if (name_val.type != VAL_STRING) {
                 printf("Runtime error: Global variable name must be a string\n");
                 vm->frame_count--;
@@ -3419,7 +3426,8 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             int column = *vm->ip++;
 
             // Get the source text from the constant
-            value_t source_value = function->constants[constant_index];
+            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
+            value_t source_value = current_func->constants[constant_index];
             if (source_value.type == VAL_STRING) {
                 // Clean up previous debug location
                 debug_location_free(vm->current_debug);
@@ -3441,7 +3449,8 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             vm->ip += 2;
             
             // Get function index from constants
-            value_t index_val = function->constants[constant];
+            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
+            value_t index_val = current_func->constants[constant];
             if (index_val.type != VAL_INT32) {
                 vm_runtime_error_with_debug(vm, "Expected function index in OP_CLOSURE");
                 vm->frame_count--;
