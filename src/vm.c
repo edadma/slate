@@ -584,6 +584,12 @@ vm_result vm_execute_function(slate_vm* vm, function_t* function, closure_t* clo
             break;
         }
         
+        case OP_NEGATE: {
+            vm_result result = op_negate(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+        
         case OP_RETURN: {
             vm_result result = op_return(vm);
             if (result != VM_OK) return result;
@@ -1893,8 +1899,20 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_MULTIPLY: {
+            vm_result result = op_multiply(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_DIVIDE: {
             vm_result result = op_divide(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_NEGATE: {
+            vm_result result = op_negate(vm);
             if (result != VM_OK) return result;
             break;
         }

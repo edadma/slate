@@ -9,6 +9,7 @@ vm_result op_subtract(slate_vm* vm);
 vm_result op_multiply(slate_vm* vm);
 vm_result op_divide(slate_vm* vm);
 vm_result op_mod(slate_vm* vm);
+vm_result op_negate(slate_vm* vm);
 vm_result op_equal(slate_vm* vm);
 vm_result op_return(slate_vm* vm);
 vm_result op_get_local(slate_vm* vm);

@@ -29,6 +29,7 @@ add_executable(slate
         src/opcodes/op_multiply.c
         src/opcodes/op_divide.c
         src/opcodes/op_mod.c
+        src/opcodes/op_negate.c
         src/opcodes/op_equal.c
         src/opcodes/op_return.c
         src/opcodes/op_get_local.c
@@ -97,6 +98,7 @@ if (BUILD_TESTS)
         src/opcodes/op_multiply.c
         src/opcodes/op_divide.c
         src/opcodes/op_mod.c
+        src/opcodes/op_negate.c
         src/opcodes/op_equal.c
         src/opcodes/op_return.c
         src/opcodes/op_get_local.c
