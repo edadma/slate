@@ -24,11 +24,15 @@ add_executable(slate
         src/library_impl.c
         src/line_editor.c
         src/datetime.c
+        src/opcodes/op_add.c
         src/opcodes/op_subtract.c
+        src/opcodes/op_multiply.c
         src/opcodes/op_divide.c
         src/opcodes/op_mod.c
         src/opcodes/op_equal.c
         src/opcodes/op_return.c
+        src/opcodes/op_get_local.c
+        src/opcodes/op_set_local.c
         deps/cargs/src/cargs.c
 )
 
@@ -88,11 +92,15 @@ if (BUILD_TESTS)
             src/builtins.c
             src/library_impl.c
             src/datetime.c
-            src/opcodes/op_subtract.c
+            src/opcodes/op_add.c
+        src/opcodes/op_subtract.c
+        src/opcodes/op_multiply.c
         src/opcodes/op_divide.c
         src/opcodes/op_mod.c
         src/opcodes/op_equal.c
         src/opcodes/op_return.c
+        src/opcodes/op_get_local.c
+        src/opcodes/op_set_local.c
     )
 
     # Link math library for tests executable
