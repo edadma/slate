@@ -42,6 +42,8 @@ add_executable(slate
         src/opcodes/op_set_global.c
         src/opcodes/op_build_object.c
         src/opcodes/op_power.c
+        src/opcodes/op_build_array.c
+        src/opcodes/op_and.c
         deps/cargs/src/cargs.c
 )
 
@@ -119,6 +121,8 @@ if (BUILD_TESTS)
         src/opcodes/op_set_global.c
         src/opcodes/op_build_object.c
         src/opcodes/op_power.c
+        src/opcodes/op_build_array.c
+        src/opcodes/op_and.c
     )
 
     # Link math library for tests executable

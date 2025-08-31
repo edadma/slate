@@ -649,6 +649,12 @@ vm_result vm_execute_function(slate_vm* vm, function_t* function, closure_t* clo
             return vm_run(vm);
         }
         
+        case OP_AND: {
+            vm_result result = op_and(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+        
         // Add some more essential opcodes based on what a simple lambda might need
         case 37: // Whatever opcode 37 is, let's handle it - might be a debug or simple opcode
             printf("DEBUG: Handling mystery opcode 37 as no-op\n");
@@ -1970,6 +1976,12 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_AND: {
+            vm_result result = op_and(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_LESS: {
             vm_result result = op_less(vm);
             if (result != VM_OK) return result;
@@ -2233,33 +2245,8 @@ vm_result vm_run(slate_vm* vm) {
         }
 
         case OP_BUILD_ARRAY: {
-            uint16_t element_count = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-            
-            // Create new dynamic array for elements
-            da_array array = da_new(sizeof(value_t));
-            
-            // Collect all elements from stack (they're in reverse order)
-            value_t* elements = malloc(sizeof(value_t) * element_count);
-            for (int i = element_count - 1; i >= 0; i--) {
-                elements[i] = vm_pop(vm);
-                // Check if trying to store undefined (not a first-class value)
-                if (elements[i].type == VAL_UNDEFINED) {
-                    printf("Runtime error: Cannot store 'undefined' in array - it is not a value\n");
-                    free(elements);
-                    da_release(&array);
-                    return VM_RUNTIME_ERROR;
-                }
-            }
-            
-            // Add elements to array in correct order
-            for (uint16_t i = 0; i < element_count; i++) {
-                da_push(array, &elements[i]);
-            }
-            
-            free(elements);
-            value_t result = make_array(array);
-            vm_push(vm, result);
+            vm_result result = op_build_array(vm);
+            if (result != VM_OK) return result;
             break;
         }
 

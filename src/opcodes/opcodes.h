@@ -22,5 +22,7 @@ vm_result op_define_global(slate_vm* vm);
 vm_result op_set_global(slate_vm* vm);
 vm_result op_build_object(slate_vm* vm);
 vm_result op_power(slate_vm* vm);
+vm_result op_build_array(slate_vm* vm);
+vm_result op_and(slate_vm* vm);
 
 #endif // SLATE_OPCODES_H
