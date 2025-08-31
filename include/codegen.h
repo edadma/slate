@@ -120,7 +120,8 @@ void codegen_emit_range(codegen_t* codegen, ast_range* node);
 void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node);
 void codegen_emit_array(codegen_t* codegen, ast_array* node);
 void codegen_emit_object(codegen_t* codegen, ast_object_literal* node);
-// Function codegen will be added later with proper design
+void codegen_emit_function(codegen_t* codegen, ast_function* node);
+function_t* codegen_compile_function(codegen_t* parent_codegen, ast_function* func_node);
 
 // Statement code generation
 void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node);

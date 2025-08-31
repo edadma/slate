@@ -3467,8 +3467,11 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             }
             
             // Get current and previous frame
-            call_frame* current_frame = &vm->frames[vm->frame_count]; 
-            call_frame* prev_frame = &vm->frames[vm->frame_count - 1];
+            // After decrement: frame_count points to the new active frame count
+            // The frame we're returning FROM is at index frame_count (since we decremented)  
+            // The frame we're returning TO is at index frame_count - 1
+            call_frame* prev_frame = &vm->frames[vm->frame_count - 1];  // Frame to return to
+            call_frame* current_frame = &vm->frames[vm->frame_count];   // Frame returning from
             
             // Clean up stack (remove local variables and arguments)
             vm->stack_top = current_frame->slots;
@@ -3476,12 +3479,12 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
             // Push return value
             vm_push(vm, result);
             
-            // Restore execution context to previous frame
-            vm->ip = prev_frame->ip;
+            // Restore execution context - use the return address saved in the current frame
+            vm->ip = current_frame->ip;  // This has the return address saved during CALL
             vm->bytecode = prev_frame->closure->function->bytecode;
             
-            // Clean up current frame's closure
-            closure_destroy(closure);
+            // Don't destroy the closure here - it's owned by the value system
+            // The closure will be cleaned up when the value is released
             break;
         }
 
