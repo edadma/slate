@@ -408,8 +408,8 @@ extern value_t* global_string_builder_class;
 // Bytecode execution
 typedef enum { VM_OK, VM_COMPILE_ERROR, VM_RUNTIME_ERROR, VM_STACK_OVERFLOW, VM_STACK_UNDERFLOW } vm_result;
 
+vm_result vm_run(slate_vm* vm);
 vm_result vm_execute(slate_vm* vm, function_t* function);
-vm_result vm_execute_function(slate_vm* vm, function_t* function, closure_t* closure);
 vm_result vm_interpret(slate_vm* vm, const char* source);
 
 // Value memory management
