@@ -75,6 +75,9 @@ add_executable(slate
         src/opcodes/op_pop_n_preserve_top.c
         src/opcodes/op_build_range.c
         src/opcodes/op_jump_if_false.c
+        src/opcodes/op_jump.c
+        src/opcodes/op_or.c
+        src/opcodes/op_not.c
         deps/cargs/src/cargs.c
 )
 
@@ -184,6 +187,9 @@ if (BUILD_TESTS)
         src/opcodes/op_pop_n_preserve_top.c
         src/opcodes/op_build_range.c
         src/opcodes/op_jump_if_false.c
+        src/opcodes/op_jump.c
+        src/opcodes/op_or.c
+        src/opcodes/op_not.c
     )
 
     # Link math library for tests executable

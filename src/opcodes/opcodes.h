@@ -57,5 +57,8 @@ vm_result op_call_method(slate_vm* vm);
 vm_result op_pop_n_preserve_top(slate_vm* vm);
 vm_result op_build_range(slate_vm* vm);
 vm_result op_jump_if_false(slate_vm* vm);
+vm_result op_jump(slate_vm* vm);
+vm_result op_or(slate_vm* vm);
+vm_result op_not(slate_vm* vm);
 
 #endif // SLATE_OPCODES_H

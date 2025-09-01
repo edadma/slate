@@ -1214,6 +1214,18 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_OR: {
+            vm_result result = op_or(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_NOT: {
+            vm_result result = op_not(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_LESS: {
             vm_result result = op_less(vm);
             if (result != VM_OK) return result;
@@ -1316,6 +1328,18 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_JUMP: {
+            vm_result result = op_jump(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_JUMP_IF_FALSE: {
+            vm_result result = op_jump_if_false(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_HALT: {
             vm_result result = op_halt(vm);
             return result;
@@ -1390,12 +1414,6 @@ vm_result vm_run(slate_vm* vm) {
 
         case OP_BUILD_RANGE: {
             vm_result result = op_build_range(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-
-        case OP_JUMP_IF_FALSE: {
-            vm_result result = op_jump_if_false(vm);
             if (result != VM_OK) return result;
             break;
         }
