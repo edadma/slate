@@ -1400,6 +1400,12 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_DECREMENT: {
+            vm_result result = op_decrement(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_IN: {
             vm_result result = op_in(vm);
             if (result != VM_OK) return result;

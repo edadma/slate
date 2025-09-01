@@ -53,6 +53,7 @@ vm_result op_right_shift(slate_vm* vm);
 vm_result op_logical_right_shift(slate_vm* vm);
 vm_result op_floor_div(slate_vm* vm);
 vm_result op_increment(slate_vm* vm);
+vm_result op_decrement(slate_vm* vm);
 vm_result op_in(slate_vm* vm);
 vm_result op_call_method(slate_vm* vm);
 vm_result op_pop_n_preserve_top(slate_vm* vm);

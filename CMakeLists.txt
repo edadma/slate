@@ -71,6 +71,7 @@ add_executable(slate
         src/opcodes/op_logical_right_shift.c
         src/opcodes/op_floor_div.c
         src/opcodes/op_increment.c
+        src/opcodes/op_decrement.c
         src/opcodes/op_in.c
         src/opcodes/op_call_method.c
         src/opcodes/op_pop_n_preserve_top.c
@@ -184,6 +185,7 @@ if (BUILD_TESTS)
         src/opcodes/op_logical_right_shift.c
         src/opcodes/op_floor_div.c
         src/opcodes/op_increment.c
+        src/opcodes/op_decrement.c
         src/opcodes/op_in.c
         src/opcodes/op_call_method.c
         src/opcodes/op_pop_n_preserve_top.c

@@ -16,13 +16,16 @@ vm_result op_logical_right_shift(slate_vm* vm) {
     int32_t a_int = value_to_int(a);
     int32_t b_int = value_to_int(b);
     
-    // Ensure shift amount is reasonable (0-31 for 32-bit integers)
-    if (b_int < 0 || b_int >= 32) {
-        vm_runtime_error_with_debug(vm, "Shift amount out of range");
+    // Handle negative shift amounts as error
+    if (b_int < 0) {
+        vm_runtime_error_with_debug(vm, "Shift amount cannot be negative");
         vm_release(a);
         vm_release(b);
         return VM_RUNTIME_ERROR;
     }
+    
+    // For shift amounts >= 32, take modulo 32 (JavaScript-style behavior)
+    b_int = b_int % 32;
     
     // Logical right shift (zero-filling) - cast to unsigned for proper behavior
     uint32_t a_uint = (uint32_t)a_int;

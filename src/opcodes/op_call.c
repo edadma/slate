@@ -146,6 +146,26 @@ vm_result op_call(slate_vm* vm) {
         return VM_OK;
     }
     
+    // Handle class constructors (classes with factory functions)
+    if (callable.type == VAL_CLASS) {
+        class_t* cls = callable.as.class;
+        if (cls->factory != NULL) {
+            // Call the factory function to create an instance
+            value_t result = cls->factory(args, arg_count);
+            vm_push(vm, result);
+            
+            if (args) {
+                for (int i = 0; i < arg_count; i++) {
+                    vm_release(args[i]);
+                }
+                free(args);
+            }
+            vm_release(callable);
+            return VM_OK;
+        }
+        // If no factory, fall through to error
+    }
+    
     printf("Runtime error: Value is not callable\n");
     if (args) {
         for (int i = 0; i < arg_count; i++) {
