@@ -7,6 +7,7 @@ set(CMAKE_C_STANDARD 11)
 include_directories(include)
 include_directories(src/parser)
 include_directories(src/vm)
+include_directories(src/codegen)
 include_directories(deps/cargs/include)
 include_directories(deps/dynamic_string.h)
 include_directories(deps/dynamic_array.h)
@@ -35,7 +36,20 @@ add_executable(slate
         src/parser/statements.c
         src/parser/expressions.c
         src/ast.c
-        src/codegen.c
+        src/codegen/debug.c
+        src/codegen/chunk.c
+        src/codegen/lifecycle.c
+        src/codegen/functions.c
+        src/codegen/compiler.c
+        src/codegen/expressions.c
+        src/codegen/literals.c
+        src/codegen/operators.c
+        src/codegen/statements.c
+        src/codegen/control_flow.c
+        src/codegen/utilities.c
+        src/codegen/scope.c
+        src/codegen/error.c
+        src/codegen/disassembler.c
         src/vm/lifecycle.c
         src/vm/stack.c
         src/vm/execution.c
@@ -186,7 +200,20 @@ if (BUILD_TESTS)
         src/parser/statements.c
         src/parser/expressions.c
             src/ast.c
-            src/codegen.c
+            src/codegen/debug.c
+        src/codegen/chunk.c
+        src/codegen/lifecycle.c
+        src/codegen/functions.c
+        src/codegen/compiler.c
+        src/codegen/expressions.c
+        src/codegen/literals.c
+        src/codegen/operators.c
+        src/codegen/statements.c
+        src/codegen/control_flow.c
+        src/codegen/utilities.c
+        src/codegen/scope.c
+        src/codegen/error.c
+        src/codegen/disassembler.c
             src/vm/lifecycle.c
         src/vm/stack.c
         src/vm/execution.c
