@@ -172,6 +172,7 @@ if (BUILD_TESTS)
     add_executable(slate_tests
             devdeps/unity/unity.c
             tests/test_main.c
+            tests/test_helpers.c
             tests/test_lexer.c
             src/runtime_error.c
             tests/test_parser.c

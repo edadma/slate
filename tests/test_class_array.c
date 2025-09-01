@@ -1,46 +1,10 @@
 #include "../unity/unity.h"
-#include "../include/vm.h"
-#include "../include/lexer.h"
-#include "../include/parser.h"
-#include "../include/codegen.h"
-#include "../include/builtins.h"
+#include "test_helpers.h"
 #include <string.h>
 
 // Helper function to run code and get result
 static value_t run_code(const char* code) {
-    lexer_t lexer;
-    parser_t parser;
-    
-    lexer_init(&lexer, code);
-    parser_init(&parser, &lexer);
-    
-    ast_program* program = parse_program(&parser);
-    if (parser.had_error || !program) {
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-    
-    slate_vm* vm = vm_create();
-    builtins_init(vm);
-    
-    codegen_t* codegen = codegen_create(vm);
-    function_t* function = codegen_compile(codegen, program);
-    
-    vm_result result = vm_execute(vm, function);
-    
-    value_t return_value = make_null();
-    if (result == VM_OK) {
-        return_value = vm->result;
-        // Retain the result to survive cleanup
-        return_value = vm_retain(return_value);
-    }
-    
-    vm_destroy(vm);
-    codegen_destroy(codegen);
-    ast_free((ast_node*)program);
-    lexer_cleanup(&lexer);
-    
-    return return_value;
+    return test_execute_expression(code);
 }
 
 // ===========================
@@ -238,40 +202,7 @@ void test_array_fill_zero_size(void) {
 
 // Helper function to interpret a single expression and return result (from test_builtins.c)
 static value_t interpret_expression(const char* source) {
-    lexer_t lexer;
-    parser_t parser;
-    
-    lexer_init(&lexer, source);
-    parser_init(&parser, &lexer);
-    
-    ast_program* program = parse_program(&parser);
-    if (parser.had_error || !program) {
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-    
-    slate_vm* vm = vm_create();
-    builtins_init(vm);
-    
-    codegen_t* codegen = codegen_create(vm);
-    function_t* function = codegen_compile(codegen, program);
-    
-    vm_result result = vm_execute(vm, function);
-    
-    value_t return_value = make_null();
-    if (result == VM_OK) {
-        return_value = vm->result;
-        // Retain result before cleanup
-        return_value = vm_retain(return_value);
-    }
-    
-    // Cleanup (don't call function_destroy - codegen owns the function)
-    vm_destroy(vm);
-    codegen_destroy(codegen);
-    ast_free((ast_node*)program);
-    lexer_cleanup(&lexer);
-    
-    return return_value;
+    return test_execute_expression(source);
 }
 
 void test_array_with_strings(void) {

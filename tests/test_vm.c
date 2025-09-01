@@ -1,44 +1,12 @@
 #include <math.h>
 #include <string.h>
-#include "codegen.h"
-#include "lexer.h"
-#include "parser.h"
+#include "test_helpers.h"
 #include "unity.h"
 #include "vm.h"
 
-// Helper function to compile and slate code
+// Use the standardized test helper instead of custom run_code
 value_t run_code(const char* source) {
-    lexer_t lexer;
-    parser_t parser;
-
-    lexer_init(&lexer, source);
-    parser_init(&parser, &lexer);
-
-    ast_program* program = parse_program(&parser);
-    if (parser.had_error || !program) {
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-
-    slate_vm* vm = vm_create();
-    
-    codegen_t* codegen = codegen_create(vm);
-    function_t* function = codegen_compile(codegen, program);
-    vm_result result = vm_execute(vm, function);
-
-    value_t return_value = make_null();
-    if (result == VM_OK) {
-        return_value = vm->result;
-        // Retain strings and other reference-counted types to survive cleanup
-        return_value = vm_retain(return_value);
-    }
-
-    vm_destroy(vm);
-    codegen_destroy(codegen);
-    ast_free((ast_node*)program);
-    lexer_cleanup(&lexer);
-
-    return return_value;
+    return test_execute_expression(source);
 }
 
 // Note: Arithmetic tests moved to test_arithmetic.c for better organization
