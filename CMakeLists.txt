@@ -13,6 +13,7 @@ include_directories(deps/dynamic_int.h)
 include_directories(deps/dynamic_buffer.h)
 include_directories(deps/stb_ds.h)
 include_directories(src/classes/String)
+include_directories(src/classes/Array)
 
 # Main executable
 add_executable(slate
@@ -30,6 +31,9 @@ add_executable(slate
         src/classes/String/factory.c
         src/classes/String/methods.c
         src/classes/String/builder.c
+        src/classes/Array/methods.c
+        src/classes/Array/functional.c
+        src/classes/Array/class.c
         src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c
@@ -151,6 +155,9 @@ if (BUILD_TESTS)
             src/classes/String/factory.c
             src/classes/String/methods.c
             src/classes/String/builder.c
+            src/classes/Array/methods.c
+            src/classes/Array/functional.c
+            src/classes/Array/class.c
             src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c

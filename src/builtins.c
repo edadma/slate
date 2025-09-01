@@ -1,6 +1,7 @@
 #include "builtins.h"
 #include "datetime.h"
 #include "string.h"
+#include "array.h"
 #include <assert.h>
 #include <math.h>
 #include <stdarg.h>
@@ -21,10 +22,6 @@ static int random_initialized = 0;
 // Forward declaration for builtin_value_to_string
 value_t builtin_value_to_string(slate_vm* vm, int arg_count, value_t* args);
 
-// Forward declarations for array functional methods
-static value_t builtin_array_map(slate_vm* vm, int arg_count, value_t* args);
-static value_t builtin_array_filter(slate_vm* vm, int arg_count, value_t* args);
-static value_t builtin_array_flatmap(slate_vm* vm, int arg_count, value_t* args);
 
 // Runtime error handling - exits with non-zero code for now, will throw exception later
 void runtime_error(const char* message, ...) {
@@ -51,8 +48,6 @@ void register_builtin(slate_vm* vm, const char* name, native_t func, int min_arg
 // Global String class storage
 value_t* global_string_class = NULL;
 
-// Global Array class storage
-value_t* global_array_class = NULL;
 
 // Global Range class storage  
 value_t* global_range_class = NULL;
@@ -2093,63 +2088,8 @@ void builtins_init(slate_vm* vm) {
     string_class_storage = vm_retain(string_class);
     global_string_class = &string_class_storage;
 
-    // Create the Array class with its prototype
-    do_object array_proto = do_create(NULL);
-
-    // Add methods to Array prototype
-    value_t array_length_method = make_native(builtin_array_length);
-    do_set(array_proto, "length", &array_length_method, sizeof(value_t));
-
-    value_t array_push_method = make_native(builtin_array_push);
-    do_set(array_proto, "push", &array_push_method, sizeof(value_t));
-
-    value_t array_pop_method = make_native(builtin_array_pop);
-    do_set(array_proto, "pop", &array_pop_method, sizeof(value_t));
-
-    value_t array_is_empty_method = make_native(builtin_array_is_empty);
-    do_set(array_proto, "isEmpty", &array_is_empty_method, sizeof(value_t));
-
-    value_t array_non_empty_method = make_native(builtin_array_non_empty);
-    do_set(array_proto, "nonEmpty", &array_non_empty_method, sizeof(value_t));
-
-    value_t array_index_of_method = make_native(builtin_array_index_of);
-    do_set(array_proto, "indexOf", &array_index_of_method, sizeof(value_t));
-
-    value_t array_contains_method = make_native(builtin_array_contains);
-    do_set(array_proto, "contains", &array_contains_method, sizeof(value_t));
-
-    value_t array_iterator_method = make_native(builtin_iterator);
-    do_set(array_proto, "iterator", &array_iterator_method, sizeof(value_t));
-
-    value_t array_copy_method = make_native(builtin_array_copy);
-    do_set(array_proto, "copy", &array_copy_method, sizeof(value_t));
-
-    value_t array_slice_method = make_native(builtin_array_slice);
-    do_set(array_proto, "slice", &array_slice_method, sizeof(value_t));
-
-    value_t array_reverse_method = make_native(builtin_array_reverse);
-    do_set(array_proto, "reverse", &array_reverse_method, sizeof(value_t));
-
-    // Functional programming methods
-    value_t array_map_method = make_native(builtin_array_map);
-    do_set(array_proto, "map", &array_map_method, sizeof(value_t));
-
-    value_t array_filter_method = make_native(builtin_array_filter);
-    do_set(array_proto, "filter", &array_filter_method, sizeof(value_t));
-
-    value_t array_flatmap_method = make_native(builtin_array_flatmap);
-    do_set(array_proto, "flatMap", &array_flatmap_method, sizeof(value_t));
-
-    // Create the Array class
-    value_t array_class = make_class("Array", array_proto);
-
-    // Store in globals
-    do_set(vm->globals, "Array", &array_class, sizeof(value_t));
-
-    // Store a global reference for use in make_array
-    static value_t array_class_storage;
-    array_class_storage = vm_retain(array_class);
-    global_array_class = &array_class_storage;
+    // Initialize Array class
+    array_class_init(vm);
 
     // Create the Range class with its prototype
     do_object range_proto = do_create(NULL);
@@ -3833,401 +3773,18 @@ value_t builtin_write_file(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: length()
 // Returns the length of the array as an int32
-value_t builtin_array_length(slate_vm* vm, int arg_count, value_t* args) {
-    // When called as a method, args[0] is the receiver (the array)
-    if (arg_count != 1) {
-        runtime_error("length() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("length() can only be called on arrays");
-    }
-    
-    size_t length = da_length(receiver.as.array);
-    return make_int32((int32_t)length);
-}
 
-// Array method: push(element)
-// Adds element to end of array, returns new length
-value_t builtin_array_push(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 2) { // receiver + 1 arg
-        runtime_error("push() takes exactly 1 argument (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    value_t element = args[1];
-    
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("push() can only be called on arrays");
-    }
-    
-    // Add element to array
-    da_push(receiver.as.array, &element);
-    
-    // Return new length
-    size_t length = da_length(receiver.as.array);
-    return make_int32((int32_t)length);
-}
 
-// Array method: pop()
-// Removes and returns last element
-value_t builtin_array_pop(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("pop() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("pop() can only be called on arrays");
-    }
-    
-    da_array array = receiver.as.array;
-    size_t length = da_length(array);
-    
-    if (length == 0) {
-        return make_null(); // Return null for empty array
-    }
-    
-    // Get last element
-    value_t* last_elem = (value_t*)da_get(array, length - 1);
-    value_t result = *last_elem; // Copy the value
-    result = vm_retain(result); // Retain since we're returning it
-    
-    // Remove last element
-    da_remove(array, length - 1, NULL);
-    
-    return result;
-}
 
-// Array method: isEmpty()
-// Returns true if array has no elements
-value_t builtin_array_is_empty(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("isEmpty() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("isEmpty() can only be called on arrays");
-    }
-    
-    bool is_empty = da_is_empty(receiver.as.array);
-    return make_boolean(is_empty);
-}
 
-// Array method: nonEmpty()
-// Returns true if array has at least one element (Scala-inspired)
-value_t builtin_array_non_empty(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("nonEmpty() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("nonEmpty() can only be called on arrays");
-    }
-    
-    bool is_empty = da_is_empty(receiver.as.array);
-    return make_boolean(!is_empty);
-}
 
-// Array method: indexOf(element)
-// Returns first index of element, or -1 if not found
-value_t builtin_array_index_of(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 2) { // receiver + 1 arg
-        runtime_error("indexOf() takes exactly 1 argument (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    value_t element = args[1];
-    
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("indexOf() can only be called on arrays");
-    }
-    
-    da_array array = receiver.as.array;
-    size_t length = da_length(array);
-    
-    // Search for element
-    for (size_t i = 0; i < length; i++) {
-        value_t* elem = (value_t*)da_get(array, i);
-        if (values_equal(*elem, element)) {
-            return make_int32((int32_t)i);
-        }
-    }
-    
-    return make_int32(-1); // Not found
-}
 
-// Array method: contains(element)
-// Returns true if array contains element
-value_t builtin_array_contains(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 2) { // receiver + 1 arg
-        runtime_error("contains() takes exactly 1 argument (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    value_t element = args[1];
-    
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("contains() can only be called on arrays");
-    }
-    
-    da_array array = receiver.as.array;
-    size_t length = da_length(array);
-    
-    // Search for element
-    for (size_t i = 0; i < length; i++) {
-        value_t* elem = (value_t*)da_get(array, i);
-        if (values_equal(*elem, element)) {
-            return make_boolean(true);
-        }
-    }
-    
-    return make_boolean(false); // Not found
-}
 
-// Array method: copy()
-// Returns a copy of the array
-value_t builtin_array_copy(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("copy() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("copy() can only be called on arrays");
-    }
-    
-    // Create a copy using da_copy
-    da_array copy = da_copy(receiver.as.array);
-    return make_array(copy);
-}
 
-// Array method: slice(start, end?)
-// Returns a subset of the array from start to end (exclusive)
-value_t builtin_array_slice(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count < 2 || arg_count > 3) {
-        runtime_error("slice() takes 1 or 2 arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    value_t start_val = args[1];
-    
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("slice() can only be called on arrays");
-    }
-    
-    if (start_val.type != VAL_INT32) {
-        runtime_error("slice() start index must be an integer");
-    }
-    
-    da_array array = receiver.as.array;
-    size_t length = da_length(array);
-    int start = start_val.as.int32;
-    int end = (int)length; // Default to end of array
-    
-    // Handle optional end parameter
-    if (arg_count == 3) {
-        value_t end_val = args[2];
-        if (end_val.type != VAL_INT32) {
-            runtime_error("slice() end index must be an integer");
-        }
-        end = end_val.as.int32;
-    }
-    
-    // Handle negative indices (Python-style)
-    if (start < 0) start += (int)length;
-    if (end < 0) end += (int)length;
-    
-    // Clamp to valid range
-    if (start < 0) start = 0;
-    if (end > (int)length) end = (int)length;
-    if (start > end) start = end;
-    
-    // Create slice using da_slice
-    da_array slice = da_slice(array, start, end);
-    return make_array(slice);
-}
 
-// Array method: reverse()
-// Reverses the array in-place and returns it
-value_t builtin_array_reverse(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("reverse() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("reverse() can only be called on arrays");
-    }
-    
-    // Reverse the array in-place
-    da_reverse(receiver.as.array);
-    
-    // Return the array (for chaining)
-    return vm_retain(receiver);
-}
 
-// Array method: map(function)
-// Returns a new array with the function applied to each element
-// JavaScript-style: function receives (element, index, array) as arguments
-value_t builtin_array_map(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 2) {
-        runtime_error("map() takes exactly 1 argument (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    value_t mapper = args[1];
-    
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("map() can only be called on arrays");
-    }
-    
-    // Check if mapper is callable
-    if (mapper.type != VAL_CLOSURE && mapper.type != VAL_NATIVE && mapper.type != VAL_FUNCTION) {
-        runtime_error("map() requires a function as argument");
-    }
-    
-    da_array input_array = receiver.as.array;
-    size_t length = da_length(input_array);
-    
-    // Create result array
-    da_array result_array = da_new(sizeof(value_t));
-    
-    // Apply function to each element
-    for (size_t i = 0; i < length; i++) {
-        value_t* elem = (value_t*)da_get(input_array, i);
-        if (!elem) continue;
-        
-        // Prepare arguments for callback: (element, index, array)
-        value_t callback_args[3] = {
-            *elem,                      // element
-            make_int32((int32_t)i),     // index
-            receiver                    // array
-        };
-        
-        value_t mapped_value = vm_call_function(vm, mapper, 3, callback_args);
-        
-        // Add mapped value to result array  
-        da_push(result_array, &mapped_value);
-    }
-    
-    return make_array(result_array);
-}
 
-// Array method: filter(predicate)
-// Returns a new array with only elements where predicate returns true
-// JavaScript-style: function receives (element, index, array) as arguments
-value_t builtin_array_filter(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 2) {
-        runtime_error("filter() takes exactly 1 argument (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    value_t predicate = args[1];
-    
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("filter() can only be called on arrays");
-    }
-    
-    // Check if predicate is callable
-    if (predicate.type != VAL_CLOSURE && predicate.type != VAL_NATIVE && predicate.type != VAL_FUNCTION) {
-        runtime_error("filter() requires a function as argument");
-    }
-    
-    da_array input_array = receiver.as.array;
-    size_t length = da_length(input_array);
-    
-    // Create result array
-    da_array result_array = da_new(sizeof(value_t));
-    
-    // Filter elements
-    for (size_t i = 0; i < length; i++) {
-        value_t* elem = (value_t*)da_get(input_array, i);
-        if (!elem) continue;
-        
-        // Prepare arguments for callback: (element, index, array)
-        value_t callback_args[3] = {
-            *elem,                      // element
-            make_int32((int32_t)i),     // index
-            receiver                    // array
-        };
-        
-        value_t result = vm_call_function(vm, predicate, 3, callback_args);
-        
-        // Check if result is truthy
-        if (is_truthy(result)) {
-            // Retain the element and add to result
-            value_t retained = vm_retain(*elem);
-            da_push(result_array, &retained);
-        }
-    }
-    
-    return make_array(result_array);
-}
 
-// Array method: flatMap(function)
-// Maps each element using a mapping function, then flattens the result by one level
-// JavaScript-style: function receives (element, index, array) as arguments
-value_t builtin_array_flatmap(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 2) {
-        runtime_error("flatMap() takes exactly 1 argument (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    value_t mapper = args[1];
-    
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error("flatMap() can only be called on arrays");
-    }
-    
-    // Check if mapper is callable
-    if (mapper.type != VAL_CLOSURE && mapper.type != VAL_NATIVE && mapper.type != VAL_FUNCTION) {
-        runtime_error("flatMap() requires a function as argument");
-    }
-    
-    da_array input_array = receiver.as.array;
-    size_t length = da_length(input_array);
-    
-    // Create result array
-    da_array result_array = da_new(sizeof(value_t));
-    
-    // Apply function to each element and flatten
-    for (size_t i = 0; i < length; i++) {
-        value_t* elem = (value_t*)da_get(input_array, i);
-        if (!elem) continue;
-        
-        // Prepare arguments for callback: (element, index, array)
-        value_t callback_args[3] = {
-            *elem,                      // element
-            make_int32((int32_t)i),     // index
-            receiver                    // array
-        };
-        
-        value_t mapped_value = vm_call_function(vm, mapper, 3, callback_args);
-        
-        // If mapped value is an array, flatten it (add each element)
-        if (mapped_value.type == VAL_ARRAY) {
-            da_array mapped_array = mapped_value.as.array;
-            size_t mapped_length = da_length(mapped_array);
-            
-            for (size_t j = 0; j < mapped_length; j++) {
-                value_t* mapped_elem = (value_t*)da_get(mapped_array, j);
-                if (mapped_elem) {
-                    value_t retained = vm_retain(*mapped_elem);
-                    da_push(result_array, &retained);
-                }
-            }
-        } else {
-            // If not an array, just add the value directly
-            da_push(result_array, &mapped_value);
-        }
-    }
-    
-    return make_array(result_array);
-}
 
 // String method: isEmpty()
 // Returns true if string has no characters
