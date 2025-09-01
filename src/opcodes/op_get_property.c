@@ -50,10 +50,8 @@ vm_result op_get_property(slate_vm* vm) {
     }
     
     if (!property_found) {
-        printf("Runtime error: Property '%s' not found\n", prop_name);
-        vm_release(object);
-        vm_release(property);
-        return VM_RUNTIME_ERROR;
+        // Push undefined for non-existent properties (like JavaScript)
+        vm_push(vm, make_undefined());
     }
     
     // Clean up operands

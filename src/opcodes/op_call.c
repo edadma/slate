@@ -54,6 +54,98 @@ vm_result op_call(slate_vm* vm) {
         return VM_OK;
     }
     
+    // Handle array indexing (arrays are callable with one integer argument)
+    if (callable.type == VAL_ARRAY) {
+        if (arg_count != 1) {
+            printf("Runtime error: Array indexing requires exactly one argument\n");
+            if (args) {
+                for (int i = 0; i < arg_count; i++) {
+                    vm_release(args[i]);
+                }
+                free(args);
+            }
+            vm_release(callable);
+            return VM_RUNTIME_ERROR;
+        }
+        
+        value_t index_val = args[0];
+        if (index_val.type != VAL_INT32) {
+            printf("Runtime error: Array index must be an integer\n");
+            vm_release(args[0]);
+            free(args);
+            vm_release(callable);
+            return VM_RUNTIME_ERROR;
+        }
+        
+        int32_t index = index_val.as.int32;
+        size_t array_length = da_length(callable.as.array);
+        
+        if (index < 0 || index >= array_length) {
+            // Out of bounds - return null as error indicator
+            vm_push(vm, make_null());
+            vm_release(args[0]);
+            free(args);
+            vm_release(callable);
+            return VM_OK;
+        }
+        
+        // Get the element at the index
+        value_t* element = (value_t*)da_get(callable.as.array, index);
+        value_t result = vm_retain(*element);
+        vm_push(vm, result);
+        
+        vm_release(args[0]);
+        free(args);
+        vm_release(callable);
+        return VM_OK;
+    }
+    
+    // Handle string indexing (strings are callable with one integer argument)
+    if (callable.type == VAL_STRING) {
+        if (arg_count != 1) {
+            printf("Runtime error: String indexing requires exactly one argument\n");
+            if (args) {
+                for (int i = 0; i < arg_count; i++) {
+                    vm_release(args[i]);
+                }
+                free(args);
+            }
+            vm_release(callable);
+            return VM_RUNTIME_ERROR;
+        }
+        
+        value_t index_val = args[0];
+        if (index_val.type != VAL_INT32) {
+            printf("Runtime error: String index must be an integer\n");
+            vm_release(args[0]);
+            free(args);
+            vm_release(callable);
+            return VM_RUNTIME_ERROR;
+        }
+        
+        int32_t index = index_val.as.int32;
+        size_t string_length = ds_length(callable.as.string);
+        
+        if (index < 0 || index >= string_length) {
+            // Out of bounds - return null as error indicator
+            vm_push(vm, make_null());
+            vm_release(args[0]);
+            free(args);
+            vm_release(callable);
+            return VM_OK;
+        }
+        
+        // Get the character at the index
+        char ch = callable.as.string[index];
+        char ch_str[2] = {ch, '\0'};
+        vm_push(vm, make_string(ch_str));
+        
+        vm_release(args[0]);
+        free(args);
+        vm_release(callable);
+        return VM_OK;
+    }
+    
     printf("Runtime error: Value is not callable\n");
     if (args) {
         for (int i = 0; i < arg_count; i++) {
