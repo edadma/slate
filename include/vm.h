@@ -17,6 +17,9 @@
 // Include value system
 #include "value.h"
 
+// Include error handling
+#include "error.h"
+
 // Forward declarations
 typedef struct slate_vm slate_vm;
 
@@ -191,6 +194,11 @@ typedef struct slate_vm {
 
     // Memory management
     size_t bytes_allocated; // For GC later
+    
+    // Error handling
+    RunContext context;
+    SlateError error;
+    jmp_buf trap;
 } slate_vm;
 
 // Instruction structure for encoding

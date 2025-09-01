@@ -314,6 +314,9 @@ static void repl_with_args(int argc, char** argv) {
         printf("Failed to create VM\n");
         return;
     }
+    
+    // Set REPL context for error handling
+    vm->context = CTX_REPL;
 
     for (;;) {
         // Show appropriate prompt
@@ -357,7 +360,14 @@ static void repl_with_args(int argc, char** argv) {
                     if (debug_mode) {
                         printf("Interpreting: %s\n", accumulated_input);
                     }
-                    interpret_with_vm(accumulated_input, vm);  // Use normal strict mode for execution
+                    
+                    // Wrap execution in error handling
+                    if (setjmp(vm->trap) == 0) {
+                        interpret_with_vm(accumulated_input, vm);  // Use normal strict mode for execution
+                    } else {
+                        // Error was handled by runtime_error, just continue
+                        // Error message already printed by runtime_error
+                    }
                 }
                 
                 accumulated_input[0] = '\0';
@@ -438,7 +448,15 @@ static void repl_with_args(int argc, char** argv) {
             if (debug_mode) {
                 printf("Interpreting: %s\n", accumulated_input);
             }
-            interpret_with_vm(accumulated_input, vm);
+            
+            // Wrap execution in error handling
+            if (setjmp(vm->trap) == 0) {
+                interpret_with_vm(accumulated_input, vm);
+            } else {
+                // Error was handled by runtime_error, just continue
+                // Error message already printed by runtime_error
+            }
+            
             accumulated_input[0] = '\0';
             printf("\n");
         }
@@ -657,6 +675,7 @@ int main(int argc, char* argv[]) {
     } else if (script_content) {
         // Execute script content directly with result display
         slate_vm* vm = vm_create_with_args(script_argc, script_argv);
+        vm->context = CTX_SCRIPT;  // Set script context for --script option too
         interpret_with_vm_mode(script_content, vm, 1);
         vm_destroy(vm);
     } else if (script_file) {
@@ -664,7 +683,12 @@ int main(int argc, char* argv[]) {
         char* source = read_file(script_file);
         if (source) {
             slate_vm* vm = vm_create_with_args(script_argc, script_argv);
+            vm->context = CTX_SCRIPT;  // Set script context
+            
+            // In script mode, we don't use setjmp because runtime_error will call exit(1)
+            // The error handler will print the error and exit directly
             interpret_with_vm_mode(source, vm, 0); // Hide undefined results
+            
             vm_destroy(vm);
             free(source);
         }

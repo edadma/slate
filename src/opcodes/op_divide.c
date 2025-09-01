@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "runtime_error.h"
 
 vm_result op_divide(slate_vm* vm) {
     value_t b = vm_pop(vm);
@@ -17,10 +18,13 @@ vm_result op_divide(slate_vm* vm) {
             is_zero = true;
 
         if (is_zero) {
-            vm_runtime_error_with_values(vm, "Division by zero", &a, &b, b.debug);
+            // Release values before throwing error
             vm_release(a);
             vm_release(b);
-            return VM_RUNTIME_ERROR;
+            
+            // Throw the error with automatic debug location extraction - this never returns
+            slate_runtime_error_with_debug(vm, ERR_ARITHMETIC, &a, &b, "Division by zero");
+            // No return needed - runtime_error never returns
         }
 
         // Division always produces floating point result for simplicity

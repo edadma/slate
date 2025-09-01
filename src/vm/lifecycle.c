@@ -59,6 +59,15 @@ slate_vm* vm_create(void) {
     // Initialize command line arguments (empty by default)
     vm->argc = 0;
     vm->argv = NULL;
+    
+    // Initialize error handling fields
+    vm->context = CTX_SCRIPT;  // Default to script context
+    vm->error.kind = ERR_NONE;
+    vm->error.file = NULL;
+    vm->error.line = 0;
+    vm->error.column = 0;
+    vm->error.message[0] = '\0';
+    // Note: trap is initialized when needed via setjmp
 
     vm_reset(vm);
     return vm;

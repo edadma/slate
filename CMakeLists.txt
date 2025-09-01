@@ -31,6 +31,7 @@ include_directories(src/classes/LocalTime)
 add_executable(slate
         src/main.c
         src/lexer.c
+        src/runtime_error.c
         src/parser/parser.c
         src/parser/declarations.c
         src/parser/statements.c
@@ -172,6 +173,7 @@ if (BUILD_TESTS)
             devdeps/unity/unity.c
             tests/test_main.c
             tests/test_lexer.c
+            src/runtime_error.c
             tests/test_parser.c
             tests/test_vm.c
             tests/test_conditionals.c

@@ -59,17 +59,25 @@ static value_t execute_expression_allow_errors(const char* source) {
     }
 
     slate_vm* vm = vm_create();
+    vm->context = CTX_TEST;  // Set test context for silent error handling
     
     codegen_t* codegen = codegen_create(vm);
     function_t* function = codegen_compile(codegen, program);
 
-    vm_result result = vm_execute(vm, function);
-
     value_t return_value = make_null();
-    if (result == VM_OK) {
-        return_value = vm->result;
-        // Retain strings and other reference-counted types to survive cleanup
-        return_value = vm_retain(return_value);
+    
+    // Use setjmp to catch errors from runtime_error
+    if (setjmp(vm->trap) == 0) {
+        vm_result result = vm_execute(vm, function);
+        if (result == VM_OK) {
+            return_value = vm->result;
+            // Retain strings and other reference-counted types to survive cleanup
+            return_value = vm_retain(return_value);
+        }
+    } else {
+        // Error occurred - check vm->error for details if needed
+        // For now, return null as before (tests expect null on error)
+        return_value = make_null();
     }
 
     vm_destroy(vm);
