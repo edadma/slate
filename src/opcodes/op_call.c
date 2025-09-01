@@ -62,7 +62,7 @@ vm_result op_call(slate_vm* vm) {
         
         // Check argument count
         if (arg_count != func->parameter_count) {
-            printf("Runtime error: Expected %d arguments but got %d\n", func->parameter_count, arg_count);
+            printf("Runtime error: Expected %zu arguments but got %d\n", func->parameter_count, arg_count);
             if (callable.type == VAL_FUNCTION) {
                 closure_destroy(closure);
             }

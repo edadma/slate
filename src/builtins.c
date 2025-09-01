@@ -1,6 +1,6 @@
 #include "builtins.h"
 #include "datetime.h"
-#include "string.h"
+#include "classes/String/class_string.h"
 #include "array.h"
 #include "buffer.h"
 #include "buffer_builder.h"

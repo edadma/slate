@@ -1,4 +1,4 @@
-#include "string.h"
+#include "class_string.h"
 #include "builtins.h"
 #include "dynamic_string.h"
 #include "dynamic_array.h"

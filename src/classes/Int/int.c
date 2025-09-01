@@ -771,12 +771,14 @@ value_t builtin_int_factorial(slate_vm* vm, int arg_count, value_t* args) {
         return make_int32(1);
     }
     
-    // Convert to BigInt and calculate factorial
-    di_int n_big = (receiver.type == VAL_INT32) ? di_from_int32(receiver.as.int32) : receiver.as.bigint;
-    di_int result = di_factorial(n_big);
+    // Only support VAL_INT32 for factorial
+    if (receiver.type != VAL_INT32) {
+        runtime_error("factorial() only supports 32-bit integers");
+        return make_null();
+    }
     
-    // Clean up temporary value
-    if (receiver.type == VAL_INT32) di_release(&n_big);
+    // Calculate factorial using the int32 value
+    di_int result = di_factorial((uint32_t)receiver.as.int32);
     
     return make_bigint(result);
 }
