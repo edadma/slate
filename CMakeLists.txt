@@ -181,16 +181,19 @@ if (BUILD_TESTS)
             tests/test_builtins.c
             tests/test_buffer_class.c
             tests/test_class_array.c
-            tests/test_integers.c
+            tests/test_class_range.c
+            tests/test_class_iterator.c
+            tests/test_class_object.c
+            tests/test_class_int.c
             tests/test_arithmetic.c
             tests/test_logical.c
             tests/test_break_statements.c
             tests/test_continue_statements.c
             tests/test_nested_loops.c
             tests/test_assignment.c
-            tests/test_string.c
-            tests/test_localdate.c
-            tests/test_localtime.c
+            tests/test_class_string.c
+            tests/test_class_localdate.c
+            tests/test_class_localtime.c
             tests/test_new_operators.c
             tests/test_functions.c
             deps/cargs/src/cargs.c

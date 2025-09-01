@@ -126,6 +126,7 @@ struct iterator {
             value_t end; // End value
             int exclusive; // Whether end is exclusive
             int finished; // Whether iteration is complete
+            int reverse; // 1 if iterating backwards (start > end), 0 if forwards
         } range_iter;
     } data;
 };

@@ -438,7 +438,7 @@ void test_string_builder_capacity_with_content(void) {
 // TEST SUITE FUNCTION
 // =============================================================================
 
-void test_string_suite(void) {
+void test_class_string_suite(void) {
     // String factory tests (new functionality)
     RUN_TEST(test_string_factory_single_codepoint);
     RUN_TEST(test_string_factory_multiple_codepoints);

@@ -224,6 +224,134 @@ void test_buffer_class_vs_functional_api(void) {
     vm_release(array_result);
 }
 
+// =====================================
+// BUFFER TESTS MOVED FROM test_builtins.c
+// =====================================
+
+// Helper function to interpret a single expression and return result (from test_builtins.c)
+static value_t interpret_expression(const char* source) {
+    lexer_t lexer;
+    parser_t parser;
+    
+    lexer_init(&lexer, source);
+    parser_init(&parser, &lexer);
+    
+    ast_program* program = parse_program(&parser);
+    if (parser.had_error || !program) {
+        lexer_cleanup(&lexer);
+        return make_null();
+    }
+    
+    slate_vm* vm = vm_create();
+    
+    codegen_t* codegen = codegen_create(vm);
+    function_t* function = codegen_compile(codegen, program);
+    
+    vm_result result = vm_execute(vm, function);
+    
+    value_t return_value = make_null();
+    if (result == VM_OK) {
+        return_value = vm->result;
+        // Retain result before cleanup
+        return_value = vm_retain(return_value);
+    }
+    
+    // Cleanup (don't call function_destroy - codegen owns the function)
+    vm_destroy(vm);
+    codegen_destroy(codegen);
+    ast_free((ast_node*)program);
+    lexer_cleanup(&lexer);
+    
+    return return_value;
+}
+
+// Test buffer creation from string
+void test_buffer_creation_from_string(void) {
+    value_t result = interpret_expression("Buffer(\"Hello\")");
+    TEST_ASSERT_EQUAL(VAL_BUFFER, result.type);
+    TEST_ASSERT_NOT_NULL(result.as.buffer);
+    TEST_ASSERT_EQUAL(5, db_size(result.as.buffer));
+    vm_release(result);
+}
+
+// Test buffer creation from array
+void test_buffer_creation_from_array(void) {
+    value_t result = interpret_expression("Buffer([72, 101, 108, 108, 111])");
+    TEST_ASSERT_EQUAL(VAL_BUFFER, result.type);
+    TEST_ASSERT_NOT_NULL(result.as.buffer);
+    TEST_ASSERT_EQUAL(5, db_size(result.as.buffer));
+    // Check if it represents "Hello"
+    TEST_ASSERT_EQUAL(72, ((uint8_t*)result.as.buffer)[0]); // 'H'
+    TEST_ASSERT_EQUAL(101, ((uint8_t*)result.as.buffer)[1]); // 'e'
+    vm_release(result);
+}
+
+// Test buffer from hex string
+void test_buffer_from_hex(void) {
+    value_t result = interpret_expression("Buffer.fromHex(\"48656c6c6f\")");
+    TEST_ASSERT_EQUAL(VAL_BUFFER, result.type);
+    TEST_ASSERT_NOT_NULL(result.as.buffer);
+    TEST_ASSERT_EQUAL(5, db_size(result.as.buffer));
+    // Should represent "Hello"
+    TEST_ASSERT_EQUAL(0, memcmp(result.as.buffer, "Hello", 5));
+    vm_release(result);
+}
+
+// Test buffer to hex conversion
+void test_buffer_to_hex(void) {
+    value_t result = interpret_expression("Buffer(\"Hello\").toHex()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("48656c6c6f", result.as.string);
+    vm_release(result);
+}
+
+// Test buffer slicing
+void test_buffer_slice(void) {
+    value_t result = interpret_expression("Buffer(\"Hello\").slice(1, 3).toHex()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("656c6c", result.as.string); // "ell" in hex
+    vm_release(result);
+}
+
+// Test buffer concatenation
+void test_buffer_concat(void) {
+    value_t result = interpret_expression("Buffer(\"Hello\").concat(Buffer(\" World\")).toHex()");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("48656c6c6f20576f726c64", result.as.string); // "Hello World" in hex
+    vm_release(result);
+}
+
+// Test buffer type checking
+void test_buffer_type_checking(void) {
+    value_t result = interpret_expression("type(Buffer(\"test\"))");
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("buffer", result.as.string);
+    vm_release(result);
+}
+
+// Test buffer reader basic functionality  
+void test_buffer_reader_basic(void) {
+    value_t result = interpret_expression("BufferReader(Buffer(\"H\")).readUint8()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(72, result.as.int32); // ASCII 'H'
+    vm_release(result);
+}
+
+// Test buffer reader positioning
+void test_buffer_reader_positioning(void) {
+    // Test remaining bytes
+    value_t result = interpret_expression("BufferReader(Buffer(\"Hello\")).remaining()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(5, result.as.int32);
+    vm_release(result);
+    
+    // Test position
+    result = interpret_expression("BufferReader(Buffer(\"Hello\")).position()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(0, result.as.int32);
+    vm_release(result);
+}
+
 // Test Suite Runner
 void test_buffer_class_suite(void) {
     RUN_TEST(test_buffer_class_constructor_string);
@@ -242,4 +370,15 @@ void test_buffer_class_suite(void) {
     RUN_TEST(test_buffer_class_reader_positioning);
     RUN_TEST(test_buffer_class_comprehensive);
     RUN_TEST(test_buffer_class_vs_functional_api);
+    
+    // Tests moved from test_builtins.c
+    RUN_TEST(test_buffer_creation_from_string);
+    RUN_TEST(test_buffer_creation_from_array);
+    RUN_TEST(test_buffer_from_hex);
+    RUN_TEST(test_buffer_to_hex);
+    RUN_TEST(test_buffer_slice);
+    RUN_TEST(test_buffer_concat);
+    RUN_TEST(test_buffer_type_checking);
+    RUN_TEST(test_buffer_reader_basic);
+    RUN_TEST(test_buffer_reader_positioning);
 }

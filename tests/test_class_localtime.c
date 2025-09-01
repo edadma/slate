@@ -381,7 +381,7 @@ void test_localtime_immutability(void) {
 }
 
 // Main test suite
-void test_localtime_suite(void) {
+void test_class_localtime_suite(void) {
     RUN_TEST(test_localtime_creation);
     RUN_TEST(test_localtime_accessors);
     RUN_TEST(test_localtime_arithmetic);

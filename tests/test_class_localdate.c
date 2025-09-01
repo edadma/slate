@@ -339,7 +339,7 @@ void test_localdate_leap_year_cases(void) {
 }
 
 // LocalDate test suite
-void test_localdate_suite(void) {
+void test_class_localdate_suite(void) {
     RUN_TEST(test_localdate_creation);
     RUN_TEST(test_localdate_factory_syntax);
     RUN_TEST(test_localdate_getters);

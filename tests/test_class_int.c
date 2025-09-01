@@ -225,7 +225,7 @@ void test_arithmetic_overflow_promotion() {
 }
 
 // Test suite function for integration with main test runner
-void test_integers_suite(void) {
+void test_class_int_suite(void) {
     RUN_TEST(test_integer_literals_vs_float_literals);
     RUN_TEST(test_int32_overflow_detection);
     RUN_TEST(test_bigint_creation);

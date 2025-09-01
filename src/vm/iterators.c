@@ -27,6 +27,13 @@ iterator_t* create_range_iterator(value_t start, value_t end, int exclusive) {
     iter->data.range_iter.exclusive = exclusive;
     iter->data.range_iter.finished = 0;
 
+    // Determine if this is a reverse range (start > end)
+    if (start.type == VAL_INT32 && end.type == VAL_INT32) {
+        iter->data.range_iter.reverse = (start.as.int32 > end.as.int32) ? 1 : 0;
+    } else {
+        iter->data.range_iter.reverse = 0; // Default to forward for non-integer ranges
+    }
+
     return iter;
 }
 
@@ -49,10 +56,20 @@ int iterator_has_next(iterator_t* iter) {
         int32_t current = iter->data.range_iter.current.as.int32;
         int32_t end = iter->data.range_iter.end.as.int32;
 
-        if (iter->data.range_iter.exclusive) {
-            return current < end;
+        if (iter->data.range_iter.reverse) {
+            // Reverse range (e.g., 5..1)  
+            if (iter->data.range_iter.exclusive) {
+                return current > end;
+            } else {
+                return current >= end;
+            }
         } else {
-            return current <= end;
+            // Forward range (e.g., 1..5)
+            if (iter->data.range_iter.exclusive) {
+                return current < end;
+            } else {
+                return current <= end;
+            }
         }
     }
     default:
@@ -72,12 +89,18 @@ value_t iterator_next(iterator_t* iter) {
         return element ? vm_retain(*element) : make_null();
     }
     case ITER_RANGE: {
-        // Return current value and increment
+        // Return current value and increment/decrement appropriately
         value_t current = vm_retain(iter->data.range_iter.current);
 
-        // Increment current (for now, only support integers)
+        // Increment or decrement current based on stored direction (for now, only support integers)
         if (iter->data.range_iter.current.type == VAL_INT32) {
-            iter->data.range_iter.current.as.int32++;
+            if (iter->data.range_iter.reverse) {
+                // Reverse range: decrement
+                iter->data.range_iter.current.as.int32--;
+            } else {
+                // Forward range: increment
+                iter->data.range_iter.current.as.int32++;
+            }
         } else {
             iter->data.range_iter.finished = 1;
         }
