@@ -785,9 +785,8 @@ void codegen_emit_ternary(codegen_t* codegen, ast_ternary* node) {
     // Generate condition
     codegen_emit_expression(codegen, node->condition);
     
-    // Jump if false to false branch
+    // Jump if false to false branch (OP_JUMP_IF_FALSE pops the condition automatically)
     size_t false_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
-    codegen_emit_op(codegen, OP_POP); // Pop condition in true branch
     
     // Generate true expression
     codegen_emit_expression(codegen, node->true_expr);
@@ -795,9 +794,8 @@ void codegen_emit_ternary(codegen_t* codegen, ast_ternary* node) {
     // Jump over false branch
     size_t end_jump = codegen_emit_jump(codegen, OP_JUMP);
     
-    // Patch false jump
+    // Patch false jump (no need to pop condition - OP_JUMP_IF_FALSE already did)
     codegen_patch_jump(codegen, false_jump);
-    codegen_emit_op(codegen, OP_POP); // Pop condition in false branch
     
     // Generate false expression
     codegen_emit_expression(codegen, node->false_expr);
@@ -1178,9 +1176,8 @@ void codegen_emit_if(codegen_t* codegen, ast_if* node) {
     // Generate condition
     codegen_emit_expression(codegen, node->condition);
     
-    // Jump if false (condition remains on stack)
+    // Jump if false (OP_JUMP_IF_FALSE pops the condition automatically)
     size_t else_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
-    codegen_emit_op(codegen, OP_POP); // Pop condition in then branch
     
     // Generate then branch (can be expression or statement)
     // Use direct dispatch to avoid recursion with codegen_emit_expression_or_statement
@@ -1206,9 +1203,8 @@ void codegen_emit_if(codegen_t* codegen, ast_if* node) {
     
     size_t end_jump = codegen_emit_jump(codegen, OP_JUMP);
     
-    // Patch else jump
+    // Patch else jump (no need to pop condition - OP_JUMP_IF_FALSE already did)
     codegen_patch_jump(codegen, else_jump);
-    codegen_emit_op(codegen, OP_POP); // Pop condition in else branch
     
     // Generate else branch if present (can be expression or statement)
     if (node->else_stmt) {

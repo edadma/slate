@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 // Include dynamic_int.h for BigInt support
-#include "/home/ed/CLionProjects/dynamic_int.h/dynamic_int.h"
+#include "dynamic_int.h"
 
 // Forward declarations
 typedef struct value value_t;
@@ -14,38 +14,38 @@ typedef struct bit_object bit_object;
 // AST Node types
 typedef enum {
     // Literals
-    AST_INTEGER,     // 32-bit integer literal
-    AST_BIGINT,      // Arbitrary precision integer literal
-    AST_NUMBER,      // Floating point literal
+    AST_INTEGER, // 32-bit integer literal
+    AST_BIGINT, // Arbitrary precision integer literal
+    AST_NUMBER, // Floating point literal
     AST_STRING,
-    AST_TEMPLATE_LITERAL,  // Template literal with interpolation
+    AST_TEMPLATE_LITERAL, // Template literal with interpolation
     AST_BOOLEAN,
     AST_NULL,
     AST_UNDEFINED,
     AST_IDENTIFIER,
     AST_ARRAY,
-    
+
     // Binary operations
     AST_BINARY_OP,
-    
+
     // Ternary conditional
     AST_TERNARY,
-    
-    // Range expressions  
+
+    // Range expressions
     AST_RANGE,
-    
+
     // Unary operations
     AST_UNARY_OP,
-    
+
     // Function expressions
     AST_FUNCTION,
     AST_CALL,
-    
+
     // Object/property access
     AST_MEMBER,
     AST_INDEX,
     AST_OBJECT_LITERAL,
-    
+
     // Statements
     AST_VAR_DECLARATION,
     AST_ASSIGNMENT,
@@ -60,55 +60,55 @@ typedef enum {
     AST_RETURN,
     AST_EXPRESSION_STMT,
     AST_BLOCK,
-    
+
     // Program
     AST_PROGRAM
 } ast_node_type;
 
 // Binary operators
 typedef enum {
-    BIN_ADD,         // +
-    BIN_SUBTRACT,    // -
-    BIN_MULTIPLY,    // *
-    BIN_DIVIDE,      // /
-    BIN_MOD,         // mod
-    BIN_POWER,       // **
-    BIN_EQUAL,       // ==
-    BIN_NOT_EQUAL,   // !=
-    BIN_LESS,        // <
-    BIN_LESS_EQUAL,  // <=
-    BIN_GREATER,     // >
-    BIN_GREATER_EQUAL,// >=
+    BIN_ADD, // +
+    BIN_SUBTRACT, // -
+    BIN_MULTIPLY, // *
+    BIN_DIVIDE, // /
+    BIN_MOD, // mod
+    BIN_POWER, // **
+    BIN_EQUAL, // ==
+    BIN_NOT_EQUAL, // !=
+    BIN_LESS, // <
+    BIN_LESS_EQUAL, // <=
+    BIN_GREATER, // >
+    BIN_GREATER_EQUAL, // >=
     BIN_LOGICAL_AND, // &&
-    BIN_LOGICAL_OR,  // ||
+    BIN_LOGICAL_OR, // ||
     BIN_BITWISE_AND, // &
-    BIN_BITWISE_OR,  // |
+    BIN_BITWISE_OR, // |
     BIN_BITWISE_XOR, // ^
-    BIN_LEFT_SHIFT,  // <<
+    BIN_LEFT_SHIFT, // <<
     BIN_RIGHT_SHIFT, // >> (arithmetic)
     BIN_LOGICAL_RIGHT_SHIFT, // >>> (logical)
-    BIN_FLOOR_DIV,   // //
+    BIN_FLOOR_DIV, // //
     BIN_NULL_COALESCE, // ??
-    BIN_IN,          // in (property existence)
-    BIN_INSTANCEOF   // instanceof (type checking)
+    BIN_IN, // in (property existence)
+    BIN_INSTANCEOF // instanceof (type checking)
 } binary_operator;
 
 // Unary operators
 typedef enum {
-    UN_NEGATE,      // -
-    UN_NOT,         // !
+    UN_NEGATE, // -
+    UN_NOT, // !
     UN_BITWISE_NOT, // ~
-    UN_PRE_INCREMENT,  // ++x
-    UN_PRE_DECREMENT,  // --x
+    UN_PRE_INCREMENT, // ++x
+    UN_PRE_DECREMENT, // --x
     UN_POST_INCREMENT, // x++
-    UN_POST_DECREMENT  // x--
+    UN_POST_DECREMENT // x--
 } unary_operator;
 
 // Base AST node structure
 typedef struct ast_node {
     ast_node_type type;
-    int line;       // Source line number for error reporting
-    int column;     // Source column number for error reporting
+    int line; // Source line number for error reporting
+    int column; // Source column number for error reporting
 } ast_node;
 
 // Literal nodes
@@ -129,32 +129,32 @@ typedef struct {
 
 typedef struct {
     ast_node base;
-    char* value;    // Null-terminated string (we'll use dynamic_string.h later)
+    char* value; // Null-terminated string (we'll use dynamic_string.h later)
 } ast_string;
 
 // Template literal part - either text or expression
 typedef enum {
-    TEMPLATE_PART_TEXT,        // Static text segment
-    TEMPLATE_PART_EXPRESSION   // Interpolated expression (${expr} or $var)
+    TEMPLATE_PART_TEXT, // Static text segment
+    TEMPLATE_PART_EXPRESSION // Interpolated expression (${expr} or $var)
 } template_part_type;
 
 typedef struct {
     template_part_type type;
     union {
-        char* text;           // For TEMPLATE_PART_TEXT
+        char* text; // For TEMPLATE_PART_TEXT
         ast_node* expression; // For TEMPLATE_PART_EXPRESSION
     } as;
 } template_part;
 
 typedef struct {
     ast_node base;
-    template_part* parts;    // Array of template parts
-    size_t part_count;       // Number of parts
+    template_part* parts; // Array of template parts
+    size_t part_count; // Number of parts
 } ast_template_literal;
 
 typedef struct {
     ast_node base;
-    int value;      // 0 for false, 1 for true
+    int value; // 0 for false, 1 for true
 } ast_boolean;
 
 typedef struct {
@@ -169,12 +169,12 @@ typedef struct {
 
 typedef struct {
     ast_node base;
-    char* name;     // Variable/function name
+    char* name; // Variable/function name
 } ast_identifier;
 
 typedef struct {
     ast_node base;
-    ast_node** elements;  // Array of AST nodes
+    ast_node** elements; // Array of AST nodes
     size_t count;
 } ast_array;
 
@@ -197,9 +197,9 @@ typedef struct {
 // Range expression node
 typedef struct {
     ast_node base;
-    ast_node* start;    // Starting value
-    ast_node* end;      // Ending value
-    int exclusive;      // 1 for ..< (exclusive), 0 for .. (inclusive)
+    ast_node* start; // Starting value
+    ast_node* end; // Ending value
+    int exclusive; // 1 for ..< (exclusive), 0 for .. (inclusive)
 } ast_range;
 
 // Unary operation node
@@ -212,16 +212,16 @@ typedef struct {
 // Function definition node
 typedef struct {
     ast_node base;
-    char** parameters;    // Parameter names
+    char** parameters; // Parameter names
     size_t param_count;
-    ast_node* body;       // Block statement or expression
-    int is_expression;    // 1 if body is expression, 0 if block
+    ast_node* body; // Block statement or expression
+    int is_expression; // 1 if body is expression, 0 if block
 } ast_function;
 
 // Function call node
 typedef struct {
     ast_node base;
-    ast_node* function;   // Function expression
+    ast_node* function; // Function expression
     ast_node** arguments; // Argument expressions
     size_t arg_count;
 } ast_call;
@@ -257,22 +257,22 @@ typedef struct {
 typedef struct {
     ast_node base;
     char* name;
-    ast_node* initializer;  // May be NULL
+    ast_node* initializer; // May be NULL
 } ast_var_declaration;
 
 // Assignment node
 typedef struct {
     ast_node base;
-    ast_node* target;       // Identifier, member access, or index access
+    ast_node* target; // Identifier, member access, or index access
     ast_node* value;
 } ast_assignment;
 
-// Compound assignment node  
+// Compound assignment node
 typedef struct {
     ast_node base;
-    ast_node* target;       // Identifier, member access, or index access
-    ast_node* value;        // Right-hand side expression
-    binary_operator op;     // The operation to perform (ADD, SUBTRACT, etc.)
+    ast_node* target; // Identifier, member access, or index access
+    ast_node* value; // Right-hand side expression
+    binary_operator op; // The operation to perform (ADD, SUBTRACT, etc.)
 } ast_compound_assignment;
 
 // If statement node
@@ -280,7 +280,7 @@ typedef struct {
     ast_node base;
     ast_node* condition;
     ast_node* then_stmt;
-    ast_node* else_stmt;    // May be NULL
+    ast_node* else_stmt; // May be NULL
 } ast_if;
 
 // While loop node
@@ -293,10 +293,10 @@ typedef struct {
 // For loop node
 typedef struct {
     ast_node base;
-    ast_node* initializer;  // Variable declaration or assignment (optional)
-    ast_node* condition;    // Loop condition (optional, defaults to true)
-    ast_node* increment;    // Increment expression (optional)
-    ast_node* body;         // Loop body
+    ast_node* initializer; // Variable declaration or assignment (optional)
+    ast_node* condition; // Loop condition (optional, defaults to true)
+    ast_node* increment; // Increment expression (optional)
+    ast_node* body; // Loop body
 } ast_for;
 
 // Do-while loop node
@@ -327,7 +327,7 @@ typedef struct {
 // Return statement node
 typedef struct {
     ast_node base;
-    ast_node* value;        // May be NULL
+    ast_node* value; // May be NULL
 } ast_return;
 
 // Expression statement node
@@ -367,7 +367,8 @@ ast_ternary* ast_create_ternary(ast_node* condition, ast_node* true_expr, ast_no
 ast_range* ast_create_range(ast_node* start, ast_node* end, int exclusive, int line, int column);
 ast_unary_op* ast_create_unary_op(unary_operator op, ast_node* operand, int line, int column);
 
-ast_function* ast_create_function(char** parameters, size_t param_count, ast_node* body, int is_expression, int line, int column);
+ast_function* ast_create_function(char** parameters, size_t param_count, ast_node* body, int is_expression, int line,
+                                  int column);
 ast_call* ast_create_call(ast_node* function, ast_node** arguments, size_t arg_count, int line, int column);
 
 ast_member* ast_create_member(ast_node* object, const char* property, int line, int column);
@@ -376,11 +377,13 @@ ast_object_literal* ast_create_object_literal(object_property* properties, size_
 
 ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int line, int column);
 ast_assignment* ast_create_assignment(ast_node* target, ast_node* value, int line, int column);
-ast_compound_assignment* ast_create_compound_assignment(ast_node* target, ast_node* value, binary_operator op, int line, int column);
+ast_compound_assignment* ast_create_compound_assignment(ast_node* target, ast_node* value, binary_operator op, int line,
+                                                        int column);
 
 ast_if* ast_create_if(ast_node* condition, ast_node* then_stmt, ast_node* else_stmt, int line, int column);
 ast_while* ast_create_while(ast_node* condition, ast_node* body, int line, int column);
-ast_for* ast_create_for(ast_node* initializer, ast_node* condition, ast_node* increment, ast_node* body, int line, int column);
+ast_for* ast_create_for(ast_node* initializer, ast_node* condition, ast_node* increment, ast_node* body, int line,
+                        int column);
 ast_do_while* ast_create_do_while(ast_node* body, ast_node* condition, int line, int column);
 ast_loop* ast_create_loop(ast_node* body, int line, int column);
 ast_break* ast_create_break(int line, int column);
