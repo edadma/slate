@@ -36,8 +36,13 @@ void slate_library_assert_failed(const char* condition, const char* file, int li
 #undef DI_ASSERT
 #endif
 
+#ifdef STBDS_ASSERT
+#undef STBDS_ASSERT
+#endif
+
 // Override all dynamic library assert macros
 #define DS_ASSERT(cond) SLATE_LIBRARY_ASSERT(cond, #cond)
 #define DA_ASSERT(cond) SLATE_LIBRARY_ASSERT(cond, #cond)
 #define DO_ASSERT(cond) SLATE_LIBRARY_ASSERT(cond, #cond)
 #define DI_ASSERT(cond) SLATE_LIBRARY_ASSERT(cond, #cond)
+#define STBDS_ASSERT(cond) SLATE_LIBRARY_ASSERT(cond, #cond)
