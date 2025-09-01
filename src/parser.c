@@ -1377,6 +1377,8 @@ ast_node* parse_primary(parser_t* parser) {
     }
     
     parser_error_at_current(parser, "Expected expression.");
+    // Advance to avoid infinite loop on error
+    parser_advance(parser);
     return NULL;
 }
 

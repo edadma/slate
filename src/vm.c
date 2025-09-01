@@ -1208,6 +1208,12 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_NOT_EQUAL: {
+            vm_result result = op_not_equal(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_AND: {
             vm_result result = op_and(vm);
             if (result != VM_OK) return result;

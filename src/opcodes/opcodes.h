@@ -11,6 +11,7 @@ vm_result op_divide(slate_vm* vm);
 vm_result op_mod(slate_vm* vm);
 vm_result op_negate(slate_vm* vm);
 vm_result op_equal(slate_vm* vm);
+vm_result op_not_equal(slate_vm* vm);
 vm_result op_less(slate_vm* vm);
 vm_result op_less_equal(slate_vm* vm);
 vm_result op_greater(slate_vm* vm);

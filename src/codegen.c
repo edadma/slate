@@ -1279,8 +1279,7 @@ void codegen_emit_block_expression(codegen_t* codegen, ast_block* node) {
     
     // Use OP_POP_N_PRESERVE_TOP to clean up local variables while preserving the result
     if (locals_to_pop > 0) {
-        codegen_emit_op(codegen, OP_POP_N_PRESERVE_TOP);
-        chunk_write_byte(codegen->chunk, (uint8_t)locals_to_pop);
+        codegen_emit_op_operand(codegen, OP_POP_N_PRESERVE_TOP, (uint16_t)locals_to_pop);
         codegen->scope.local_count -= locals_to_pop;
     }
     
@@ -1299,9 +1298,8 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     // Generate condition
     codegen_emit_expression(codegen, node->condition);
     
-    // Jump if false (exit loop)
+    // Jump if false (exit loop) - OP_JUMP_IF_FALSE pops condition automatically
     size_t exit_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
-    codegen_emit_op(codegen, OP_POP); // Pop condition
     
     // Generate body
     codegen_emit_statement(codegen, node->body);
@@ -1316,9 +1314,8 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     // Emit backward jump (negative offset)
     codegen_emit_op_operand(codegen, OP_JUMP, (uint16_t)(-backward_distance));
     
-    // Patch exit jump
+    // Patch exit jump (no need to pop condition - OP_JUMP_IF_FALSE already did)
     codegen_patch_jump(codegen, exit_jump);
-    codegen_emit_op(codegen, OP_POP); // Pop condition
     
     // End scope for the while loop
     codegen_end_scope(codegen);
@@ -1350,9 +1347,8 @@ void codegen_emit_for(codegen_t* codegen, ast_for* node) {
     size_t exit_jump = 0;
     if (node->condition) {
         codegen_emit_expression(codegen, node->condition);
-        // Jump if false (exit loop)
+        // Jump if false (exit loop) - OP_JUMP_IF_FALSE pops condition automatically
         exit_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
-        codegen_emit_op(codegen, OP_POP); // Pop condition
     }
     
     // Emit loop body within inner scope
@@ -1382,10 +1378,9 @@ void codegen_emit_for(codegen_t* codegen, ast_for* node) {
     // Emit backward jump (negative offset)
     codegen_emit_op_operand(codegen, OP_JUMP, (uint16_t)(-backward_distance));
     
-    // Patch exit jump (if condition was present)
+    // Patch exit jump (if condition was present) - no need to pop condition
     if (node->condition) {
         codegen_patch_jump(codegen, exit_jump);
-        codegen_emit_op(codegen, OP_POP); // Pop condition
     }
     
     // END INNER SCOPE (cleans up loop body variables)
@@ -1422,9 +1417,8 @@ void codegen_emit_do_while(codegen_t* codegen, ast_do_while* node) {
     // Generate condition
     codegen_emit_expression(codegen, node->condition);
     
-    // Jump to exit if condition is false  
+    // Jump to exit if condition is false - OP_JUMP_IF_FALSE pops condition automatically
     size_t exit_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
-    codegen_emit_op(codegen, OP_POP); // Pop condition when continuing loop
     
     // Jump back to start of loop body (unconditional backward jump)
     codegen_emit_loop(codegen, loop_start);

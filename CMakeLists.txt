@@ -33,6 +33,7 @@ add_executable(slate
         src/opcodes/op_mod.c
         src/opcodes/op_negate.c
         src/opcodes/op_equal.c
+        src/opcodes/op_not_equal.c
         src/opcodes/op_less.c
         src/opcodes/op_less_equal.c
         src/opcodes/op_greater.c
@@ -145,6 +146,7 @@ if (BUILD_TESTS)
         src/opcodes/op_mod.c
         src/opcodes/op_negate.c
         src/opcodes/op_equal.c
+        src/opcodes/op_not_equal.c
         src/opcodes/op_less.c
         src/opcodes/op_less_equal.c
         src/opcodes/op_greater.c
