@@ -11,6 +11,25 @@ vm_result op_get_property(slate_vm* vm) {
 
     const char* prop_name = property.as.string;
 
+    // For classes, check static properties first (e.g., Buffer.fromHex)
+    if (object.type == VAL_CLASS) {
+        class_t* cls = object.as.class;
+        if (cls && cls->properties) {
+            value_t* prop_value = (value_t*)do_get(cls->properties, prop_name);
+            if (prop_value) {
+                vm_push(vm, *prop_value);
+                vm_release(object);
+                vm_release(property);
+                return VM_OK;
+            }
+        }
+        // If not found in class properties, push undefined
+        vm_push(vm, make_undefined());
+        vm_release(object);
+        vm_release(property);
+        return VM_OK;
+    }
+
     // For objects, check own properties first
     if (object.type == VAL_OBJECT) {
         value_t* prop_value = (value_t*)do_get(object.as.object, prop_name);
