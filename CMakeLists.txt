@@ -6,6 +6,7 @@ set(CMAKE_C_STANDARD 11)
 # Include directories
 include_directories(include)
 include_directories(src/parser)
+include_directories(src/vm)
 include_directories(deps/cargs/include)
 include_directories(deps/dynamic_string.h)
 include_directories(deps/dynamic_array.h)
@@ -35,7 +36,18 @@ add_executable(slate
         src/parser/expressions.c
         src/ast.c
         src/codegen.c
-        src/vm.c
+        src/vm/lifecycle.c
+        src/vm/stack.c
+        src/vm/execution.c
+        src/vm/values.c
+        src/vm/utilities.c
+        src/vm/constants.c
+        src/vm/functions.c
+        src/vm/opcodes.c
+        src/vm/core.c
+        src/vm/iterators.c
+        src/vm/memory.c
+        src/vm/debug.c
         src/value.c
         src/builtins.c
         src/library_impl.c
@@ -175,7 +187,18 @@ if (BUILD_TESTS)
         src/parser/expressions.c
             src/ast.c
             src/codegen.c
-            src/vm.c
+            src/vm/lifecycle.c
+        src/vm/stack.c
+        src/vm/execution.c
+        src/vm/values.c
+        src/vm/utilities.c
+        src/vm/constants.c
+        src/vm/functions.c
+        src/vm/opcodes.c
+        src/vm/core.c
+        src/vm/iterators.c
+        src/vm/memory.c
+        src/vm/debug.c
             src/value.c
             src/builtins.c
             src/library_impl.c
