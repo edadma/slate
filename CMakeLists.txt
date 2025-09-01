@@ -44,6 +44,35 @@ add_executable(slate
         src/opcodes/op_power.c
         src/opcodes/op_build_array.c
         src/opcodes/op_and.c
+        src/opcodes/op_bitwise_and.c
+        src/opcodes/op_push_constant.c
+        src/opcodes/op_get_global.c
+        src/opcodes/op_get_property.c
+        src/opcodes/op_call.c
+        src/opcodes/op_closure.c
+        src/opcodes/op_set_debug_location.c
+        src/opcodes/op_push_null.c
+        src/opcodes/op_push_undefined.c
+        src/opcodes/op_push_true.c
+        src/opcodes/op_push_false.c
+        src/opcodes/op_pop.c
+        src/opcodes/op_dup.c
+        src/opcodes/op_set_result.c
+        src/opcodes/op_clear_debug_location.c
+        src/opcodes/op_halt.c
+        src/opcodes/op_bitwise_or.c
+        src/opcodes/op_bitwise_xor.c
+        src/opcodes/op_bitwise_not.c
+        src/opcodes/op_left_shift.c
+        src/opcodes/op_right_shift.c
+        src/opcodes/op_logical_right_shift.c
+        src/opcodes/op_floor_div.c
+        src/opcodes/op_increment.c
+        src/opcodes/op_in.c
+        src/opcodes/op_call_method.c
+        src/opcodes/op_pop_n_preserve_top.c
+        src/opcodes/op_build_range.c
+        src/opcodes/op_jump_if_false.c
         deps/cargs/src/cargs.c
 )
 
@@ -123,6 +152,35 @@ if (BUILD_TESTS)
         src/opcodes/op_power.c
         src/opcodes/op_build_array.c
         src/opcodes/op_and.c
+        src/opcodes/op_bitwise_and.c
+        src/opcodes/op_push_constant.c
+        src/opcodes/op_get_global.c
+        src/opcodes/op_get_property.c
+        src/opcodes/op_call.c
+        src/opcodes/op_closure.c
+        src/opcodes/op_set_debug_location.c
+        src/opcodes/op_push_null.c
+        src/opcodes/op_push_undefined.c
+        src/opcodes/op_push_true.c
+        src/opcodes/op_push_false.c
+        src/opcodes/op_pop.c
+        src/opcodes/op_dup.c
+        src/opcodes/op_set_result.c
+        src/opcodes/op_clear_debug_location.c
+        src/opcodes/op_halt.c
+        src/opcodes/op_bitwise_or.c
+        src/opcodes/op_bitwise_xor.c
+        src/opcodes/op_bitwise_not.c
+        src/opcodes/op_left_shift.c
+        src/opcodes/op_right_shift.c
+        src/opcodes/op_logical_right_shift.c
+        src/opcodes/op_floor_div.c
+        src/opcodes/op_increment.c
+        src/opcodes/op_in.c
+        src/opcodes/op_call_method.c
+        src/opcodes/op_pop_n_preserve_top.c
+        src/opcodes/op_build_range.c
+        src/opcodes/op_jump_if_false.c
     )
 
     # Link math library for tests executable

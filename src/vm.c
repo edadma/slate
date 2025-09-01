@@ -503,170 +503,6 @@ value_t make_period(period_t* period) {
 
 // Core VM execution function - executes a function with the given closure
 // Assumes the VM is already set up with proper stack state and call frame
-vm_result vm_execute_function(slate_vm* vm, function_t* function, closure_t* closure) {
-    if (!vm || !function || !closure)
-        return VM_RUNTIME_ERROR;
-        
-    // Main execution loop - handle the most common opcodes for simple functions
-    for (;;) {
-        vm->current_instruction = vm->ip;
-        opcode instruction = (opcode)*vm->ip++;
-        
-        switch (instruction) {
-        case OP_PUSH_CONSTANT: {
-            uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-            
-            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
-            if (constant >= current_func->constant_count) {
-                return VM_RUNTIME_ERROR;
-            }
-            
-            value_t val = current_func->constants[constant];
-            if (vm->current_debug) {
-                val.debug = debug_location_copy(vm->current_debug);
-            }
-            vm_push(vm, val);
-            break;
-        }
-        
-        case OP_GET_GLOBAL: {
-            uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-            
-            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
-            if (name_constant >= current_func->constant_count) {
-                return VM_RUNTIME_ERROR;
-            }
-            value_t name_val = current_func->constants[name_constant];
-            if (name_val.type != VAL_STRING) {
-                return VM_RUNTIME_ERROR;
-            }
-            char* name = name_val.as.string;
-            
-            // Check if we're in a function call and look for parameters first
-            if (vm->frame_count > 0) {
-                call_frame* current_frame = &vm->frames[vm->frame_count - 1];
-                function_t* func = current_frame->closure->function;
-                
-                // Check if name matches a parameter
-                for (size_t i = 0; i < func->parameter_count; i++) {
-                    if (strcmp(name, func->parameter_names[i]) == 0) {
-                        // Found parameter - get value from stack slot
-                        value_t param_value = current_frame->slots[i];
-                        vm_push(vm, param_value);
-                        goto found_variable;
-                    }
-                }
-            }
-            
-            // Fall through to global variable lookup
-            value_t* stored_value = (value_t*)do_get(vm->globals, name);
-            if (stored_value) {
-                vm_push(vm, *stored_value);
-            } else {
-                return VM_RUNTIME_ERROR; // Undefined variable
-            }
-            
-            found_variable:
-            break;
-        }
-        
-        case OP_DEFINE_GLOBAL: {
-            vm_result result = op_define_global(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-        
-        case OP_SET_GLOBAL: {
-            vm_result result = op_set_global(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-        
-        case OP_SET_RESULT: {
-            value_t result = vm_pop(vm);
-            vm->result = result;
-            break;
-        }
-        
-        case OP_MULTIPLY: {
-            vm_result result = op_multiply(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-        
-        case OP_DIVIDE: {
-            vm_result result = op_divide(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-        
-        case OP_MOD: {
-            vm_result result = op_mod(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-        
-        case OP_POWER: {
-            vm_result result = op_power(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-        
-        case OP_NEGATE: {
-            vm_result result = op_negate(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-        
-        case OP_RETURN: {
-            vm_result result = op_return(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-        
-        case OP_SET_DEBUG_LOCATION: {
-            // Skip debug location setup for now
-            uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-            uint8_t line = *vm->ip++;
-            uint8_t column = *vm->ip++;
-            // Ignore for now
-            break;
-        }
-        
-        case OP_CLEAR_DEBUG_LOCATION: {
-            // Ignore for now
-            break;
-        }
-        
-        case OP_HALT:
-            return VM_OK;
-            
-        case OP_CALL: {
-            // For function calls in the first switch context, delegate to vm_run
-            return vm_run(vm);
-        }
-        
-        case OP_AND: {
-            vm_result result = op_and(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-        
-        // Add some more essential opcodes based on what a simple lambda might need
-        case 37: // Whatever opcode 37 is, let's handle it - might be a debug or simple opcode
-            printf("DEBUG: Handling mystery opcode 37 as no-op\n");
-            break;
-            
-        default:
-            // For unimplemented opcodes, print debug and return success (for debugging)
-            printf("DEBUG: Unimplemented opcode: %d - treating as successful termination\n", instruction);
-            return VM_OK;
-        }
-    }
-}
 
 // Helper function to call functions from C code (for array methods, etc.)
 value_t vm_call_function(slate_vm* vm, value_t callable, int arg_count, value_t* args) {
@@ -1876,55 +1712,50 @@ vm_result vm_run(slate_vm* vm) {
 
         switch (instruction) {
         case OP_PUSH_CONSTANT: {
-            uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2; // Skip the operand bytes
-            
-            // Get the current executing function for constants
-            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
-            
-            if (constant >= current_func->constant_count) {
-                printf("DEBUG: ERROR - constant index %d >= count %zu\n", constant, current_func->constant_count);
-                return VM_RUNTIME_ERROR;
-            }
-            
-            // Create value with current debug info - use CURRENT function's constants
-            value_t val = current_func->constants[constant];
-            if (vm->current_debug) {
-                val.debug = debug_location_copy(vm->current_debug);
-            }
-            vm_push(vm, val);
+            vm_result result = op_push_constant(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
-        case OP_PUSH_NULL:
-            vm_push(vm, make_null_with_debug(vm->current_debug));
+        case OP_PUSH_NULL: {
+            vm_result result = op_push_null(vm);
+            if (result != VM_OK) return result;
             break;
+        }
 
-        case OP_PUSH_UNDEFINED:
-            vm_push(vm, make_undefined_with_debug(vm->current_debug));
+        case OP_PUSH_UNDEFINED: {
+            vm_result result = op_push_undefined(vm);
+            if (result != VM_OK) return result;
             break;
+        }
 
-        case OP_PUSH_TRUE:
-            vm_push(vm, make_boolean_with_debug(1, vm->current_debug));
+        case OP_PUSH_TRUE: {
+            vm_result result = op_push_true(vm);
+            if (result != VM_OK) return result;
             break;
+        }
 
-        case OP_PUSH_FALSE:
-            vm_push(vm, make_boolean_with_debug(0, vm->current_debug));
+        case OP_PUSH_FALSE: {
+            vm_result result = op_push_false(vm);
+            if (result != VM_OK) return result;
             break;
+        }
 
-        case OP_POP:
-            vm_release(vm_pop(vm));
+        case OP_POP: {
+            vm_result result = op_pop(vm);
+            if (result != VM_OK) return result;
             break;
+        }
 
         case OP_DUP: {
-            value_t top = vm_peek(vm, 0);
-            vm_push(vm, top);
+            vm_result result = op_dup(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
         case OP_SET_RESULT: {
-            value_t result = vm_pop(vm);
-            vm->result = result;
+            vm_result result = op_set_result(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
@@ -2025,48 +1856,8 @@ vm_result vm_run(slate_vm* vm) {
         }
 
         case OP_GET_GLOBAL: {
-            uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-            // Get the current executing function from the current frame
-            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
-            if (name_constant >= current_func->constant_count) {
-                printf("Runtime error: Constant index %d out of bounds (max %zu)\n", 
-                       name_constant, current_func->constant_count - 1);
-                return VM_RUNTIME_ERROR;
-            }
-            value_t name_val = current_func->constants[name_constant];
-            if (name_val.type != VAL_STRING) {
-                printf("Runtime error: Global variable name must be a string\n");
-                return VM_RUNTIME_ERROR;
-            }
-            char* name = name_val.as.string;
-            
-            // Check if we're in a function call and look for parameters first
-            if (vm->frame_count > 0) {
-                call_frame* current_frame = &vm->frames[vm->frame_count - 1];
-                function_t* func = current_frame->closure->function;
-                
-                // Check if name matches a parameter
-                for (size_t i = 0; i < func->parameter_count; i++) {
-                    if (strcmp(name, func->parameter_names[i]) == 0) {
-                        // Found parameter - get value from stack slot
-                        value_t param_value = current_frame->slots[i];
-                        vm_push(vm, param_value);
-                        goto found_variable;
-                    }
-                }
-            }
-            
-            // Fall through to global variable lookup
-            value_t* stored_value = (value_t*)do_get(vm->globals, name);
-            if (stored_value) {
-                vm_push(vm, *stored_value);
-            } else {
-                printf("Runtime error: Undefined variable '%s'\n", name);
-                return VM_RUNTIME_ERROR;
-            }
-            
-            found_variable:
+            vm_result result = op_get_global(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
@@ -2083,164 +1874,20 @@ vm_result vm_run(slate_vm* vm) {
         }
 
         case OP_GET_PROPERTY: {
-            value_t property = vm_pop(vm);
-            value_t object = vm_pop(vm);
-
-            if (property.type != VAL_STRING) {
-                printf("Runtime error: Property name must be a string\n");
-                return VM_RUNTIME_ERROR;
-            }
-
-            const char* prop_name = property.as.string;
-
-            // For objects, check own properties first
-            if (object.type == VAL_OBJECT) {
-                value_t* prop_value = (value_t*)do_get(object.as.object, prop_name);
-                if (prop_value) {
-                    vm_push(vm, *prop_value);
-                    break;
-                }
-            }
-
-            // Check the prototype chain via class - walk up inheritance hierarchy
-            value_t* current_class = object.class;
-            bool property_found = false;
-            
-            while (current_class && current_class->type == VAL_CLASS && !property_found) {
-                // Get the class's prototype properties
-                class_t* cls = current_class->as.class;
-                if (cls && cls->properties) {
-                    value_t* prop_value = (value_t*)do_get(cls->properties, prop_name);
-                    if (prop_value) {
-                        // If it's a native function, create a bound method
-                        if (prop_value->type == VAL_NATIVE) {
-                            vm_push(vm, make_bound_method(object, prop_value->as.native));
-                            property_found = true;
-                        } else {
-                            vm_push(vm, *prop_value);
-                            property_found = true;
-                        }
-                        break;
-                    }
-                }
-                // Move to parent class if any
-                // For now, no inheritance - just break
-                break;
-            }
-            
-            if (!property_found) {
-                printf("Runtime error: Property '%s' not found\n", prop_name);
-                vm_release(object);
-                vm_release(property);
-                return VM_RUNTIME_ERROR;
-            }
-            
-            // Clean up operands
-            vm_release(object);
-            vm_release(property);
+            vm_result result = op_get_property(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
         case OP_CALL: {
-            uint16_t arg_count = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-
-            // Pop arguments into temporary array (they're on stack in reverse order)
-            value_t* args = NULL;
-            if (arg_count > 0) {
-                args = malloc(sizeof(value_t) * arg_count);
-                for (int i = arg_count - 1; i >= 0; i--) {
-                    args[i] = vm_pop(vm);
-                }
-            }
-
-            // Get the callable value (now on top of stack)
-            value_t callable = vm_pop(vm);
-
-            // Handle bound methods (like array.map)
-            if (callable.type == VAL_BOUND_METHOD) {
-                bound_method_t* bound = callable.as.bound_method;
-                
-                // Prepare arguments: receiver + provided args
-                value_t* full_args = malloc(sizeof(value_t) * (arg_count + 1));
-                full_args[0] = bound->receiver;  // First arg is receiver (the array)
-                for (int i = 0; i < arg_count; i++) {
-                    full_args[i + 1] = args[i];  // Copy user-provided args
-                }
-                
-                // Call the native function
-                value_t result = bound->method(vm, arg_count + 1, full_args);
-                vm_push(vm, result);
-                
-                free(full_args);
-                if (args) free(args);
-                break;
-            }
-            
-            // Handle closures (user functions)
-            if (callable.type == VAL_CLOSURE) {
-                // For now, just call vm_call_function with our existing implementation
-                value_t result = vm_call_function(vm, callable, arg_count, args);
-                vm_push(vm, result);
-                if (args) free(args);
-                break;
-            }
-            
-            // Handle native functions (built-ins)
-            if (callable.type == VAL_NATIVE) {
-                native_t builtin_func = (native_t)callable.as.native;
-                value_t result = builtin_func(vm, arg_count, args);
-                vm_push(vm, result);
-                if (args) free(args);
-                vm_release(callable);
-                break;
-            }
-            
-            printf("Runtime error: Value is not callable\n");
-            if (args) {
-                for (int i = 0; i < arg_count; i++) {
-                    vm_release(args[i]);
-                }
-                free(args);
-            }
-            vm_release(callable);
-            return VM_RUNTIME_ERROR;
+            vm_result result = op_call(vm);
+            if (result != VM_OK) return result;
+            break;
         }
 
         case OP_CLOSURE: {
-            uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-            
-            // Get function index from constants
-            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
-            value_t index_val = current_func->constants[constant];
-            if (index_val.type != VAL_INT32) {
-                vm_runtime_error_with_debug(vm, "Expected function index in OP_CLOSURE");
-                return VM_RUNTIME_ERROR;
-            }
-            
-            // Get function from function table
-            size_t func_index = (size_t)index_val.as.int32;
-            function_t* target_func = vm_get_function(vm, func_index);
-            if (!target_func) {
-                vm_runtime_error_with_debug(vm, "Invalid function index in OP_CLOSURE");
-                return VM_RUNTIME_ERROR;
-            }
-            
-            // For now, create a simple closure (no upvalues)
-            closure_t* new_closure = closure_create(target_func);
-            if (!new_closure) {
-                vm_runtime_error_with_debug(vm, "Failed to create closure");
-                return VM_RUNTIME_ERROR;
-            }
-            
-            // Push closure as a value onto the stack
-            value_t closure_val;
-            closure_val.type = VAL_CLOSURE;
-            closure_val.as.closure = new_closure;
-            closure_val.class = NULL;
-            closure_val.debug = NULL;
-            vm_push(vm, closure_val);
+            vm_result result = op_closure(vm);
+            if (result != VM_OK) return result;
             break;
         }
 
@@ -2257,29 +1904,100 @@ vm_result vm_run(slate_vm* vm) {
         }
 
         case OP_SET_DEBUG_LOCATION: {
-            uint16_t constant_index = *vm->ip | (*(vm->ip + 1) << 8);
-            vm->ip += 2;
-            uint8_t line = *vm->ip++;
-            uint8_t column = *vm->ip++;
-            
-            function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
-            if (constant_index < current_func->constant_count) {
-                value_t source_val = current_func->constants[constant_index];
-                if (source_val.type == VAL_STRING) {
-                    debug_location_free(vm->current_debug);
-                    vm->current_debug = debug_location_create(line, column, source_val.as.string);
-                }
-            }
+            vm_result result = op_set_debug_location(vm);
+            if (result != VM_OK) return result;
             break;
         }
         
-        case OP_CLEAR_DEBUG_LOCATION:
-            debug_location_free(vm->current_debug);
-            vm->current_debug = NULL;
+        case OP_CLEAR_DEBUG_LOCATION: {
+            vm_result result = op_clear_debug_location(vm);
+            if (result != VM_OK) return result;
             break;
+        }
 
-        case OP_HALT:
-            return VM_OK;
+        case OP_HALT: {
+            vm_result result = op_halt(vm);
+            return result;
+        }
+
+        // Missing opcodes that were causing test failures
+        case OP_BITWISE_OR: {
+            vm_result result = op_bitwise_or(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_BITWISE_XOR: {
+            vm_result result = op_bitwise_xor(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_BITWISE_NOT: {
+            vm_result result = op_bitwise_not(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_LEFT_SHIFT: {
+            vm_result result = op_left_shift(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_RIGHT_SHIFT: {
+            vm_result result = op_right_shift(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_LOGICAL_RIGHT_SHIFT: {
+            vm_result result = op_logical_right_shift(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_FLOOR_DIV: {
+            vm_result result = op_floor_div(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_INCREMENT: {
+            vm_result result = op_increment(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_IN: {
+            vm_result result = op_in(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_CALL_METHOD: {
+            vm_result result = op_call_method(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_POP_N_PRESERVE_TOP: {
+            vm_result result = op_pop_n_preserve_top(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_BUILD_RANGE: {
+            vm_result result = op_build_range(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_JUMP_IF_FALSE: {
+            vm_result result = op_jump_if_false(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
 
         default:
             printf("DEBUG: Unimplemented opcode in vm_run: %d\n", instruction);
