@@ -1346,12 +1346,30 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_LOOP: {
+            vm_result result = op_loop(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_POP_N: {
+            vm_result result = op_pop_n(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_HALT: {
             vm_result result = op_halt(vm);
             return result;
         }
 
         // Missing opcodes that were causing test failures
+        case OP_BITWISE_AND: {
+            vm_result result = op_bitwise_and(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_BITWISE_OR: {
             vm_result result = op_bitwise_or(vm);
             if (result != VM_OK) return result;
