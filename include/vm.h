@@ -6,19 +6,19 @@
 #include <stdint.h>
 
 // Include dynamic_string.h for proper string handling
-#include "/home/ed/CLionProjects/dynamic_string.h/dynamic_string.h"
+#include "dynamic_string.h"
 
 // Include dynamic library headers directly
-#include "/home/ed/CLionProjects/dynamic_array.h/dynamic_array.h"
-#include "/home/ed/CLionProjects/dynamic_int.h/dynamic_int.h"
-#include "/home/ed/CLionProjects/dynamic_object.h/dynamic_object.h"
-#define DB_IMPLEMENTATION
-#include "/home/ed/CLionProjects/dynamic_buffer.h/dynamic_buffer.h"
+#include "dynamic_array.h"
+#include "dynamic_int.h"
+#include "dynamic_object.h"
+#include "dynamic_buffer.h"
+
+// Include value system
+#include "value.h"
 
 // Forward declarations
-typedef struct value value_t;
 typedef struct slate_vm slate_vm;
-typedef value_t (*native_t)(slate_vm* vm, int arg_count, value_t* args);
 
 // Debug location for values (NULL when debugging disabled)
 typedef struct debug_location {
@@ -122,192 +122,9 @@ typedef enum {
     OP_HALT // Stop execution
 } opcode;
 
-// VM value types
-typedef enum {
-    VAL_NULL,
-    VAL_UNDEFINED,
-    VAL_BOOLEAN,
-    VAL_INT32, // 32-bit integer (MCU-friendly default)
-    VAL_BIGINT, // Arbitrary precision integer
-    VAL_NUMBER, // Floating point (double)
-    VAL_STRING,
-    VAL_STRING_BUILDER, // String builder for constructing strings
-    VAL_ARRAY,
-    VAL_OBJECT,
-    VAL_CLASS, // Class definition (prototype holder)
-    VAL_RANGE, // Range object (1..10, 1..<10)
-    VAL_ITERATOR, // Iterator object for arrays, ranges, etc.
-    VAL_BUFFER, // Byte buffer for binary data
-    VAL_BUFFER_BUILDER, // Buffer builder for constructing buffers
-    VAL_BUFFER_READER, // Buffer reader for parsing buffers
-    VAL_FUNCTION,
-    VAL_CLOSURE,
-    VAL_NATIVE,
-    VAL_BOUND_METHOD,
-    // Date/Time types
-    VAL_LOCAL_DATE, // Date without time zone (2024-12-25)
-    VAL_LOCAL_TIME, // Time without date or time zone (15:30:45)
-    VAL_LOCAL_DATETIME, // Date and time without time zone (2024-12-25T15:30:45)
-    VAL_ZONED_DATETIME, // Date and time with time zone (2024-12-25T15:30:45-05:00[America/New_York])
-    VAL_INSTANT, // Point in time (Unix timestamp with nanoseconds)
-    VAL_DURATION, // Time-based amount (2 hours, 30 minutes)
-    VAL_PERIOD // Date-based amount (2 years, 3 months, 5 days)
-} value_type;
-
-// Forward declaration for range, iterator, bound method, class, and date/time structures
-typedef struct range range_t;
-typedef struct iterator iterator_t;
-typedef struct bound_method bound_method_t;
-typedef struct class class_t;
-typedef struct local_date local_date_t;
-typedef struct local_time local_time_t;
-typedef struct local_datetime local_datetime_t;
-typedef struct zoned_datetime zoned_datetime_t;
-typedef struct instant instant_t;
-typedef struct duration duration_t;
-typedef struct period period_t;
-
-// VM value structure
-typedef struct value {
-    value_type type;
-    union {
-        int boolean;
-        int32_t int32; // 32-bit integer (direct storage)
-        di_int bigint; // Arbitrary precision integer (ref-counted)
-        double number; // Floating point
-        ds_string string; // Using dynamic_string.h!
-        ds_builder string_builder; // String builder (using dynamic_string.h!)
-        da_array array; // Using dynamic_array.h!
-        do_object object; // Using dynamic_object.h!
-        class_t* class; // Class definition pointer
-        range_t* range; // Range object pointer
-        iterator_t* iterator; // Iterator object pointer
-        db_buffer buffer; // Buffer data (using dynamic_buffer.h!)
-        db_builder builder; // Buffer builder handle (reference counted)
-        db_reader reader; // Buffer reader handle (reference counted)
-        struct function* function;
-        struct closure* closure;
-        native_t native; // Native C function pointer
-        bound_method_t* bound_method; // Bound method (method + receiver)
-        // Date/Time types
-        local_date_t* local_date; // Date without time zone
-        local_time_t* local_time; // Time without date or time zone
-        local_datetime_t* local_datetime; // Date and time without time zone
-        zoned_datetime_t* zoned_datetime; // Date and time with time zone
-        instant_t* instant; // Point in time (Unix timestamp)
-        duration_t* duration; // Time-based amount
-        period_t* period; // Date-based amount
-    } as;
-    value_t* class; // For object instances: pointer to their class value (NULL for non-instances)
-    debug_location* debug; // Debug info for error reporting (NULL when disabled)
-} value_t;
-
-// Range structure for range expressions (1..10, 1..<10)
-struct range {
-    int ref_count; // Reference count for memory management
-    value_t start; // Starting value
-    value_t end; // Ending value
-    int exclusive; // 1 for ..< (exclusive), 0 for .. (inclusive)
-};
-
-// Iterator types
-typedef enum {
-    ITER_ARRAY, // Array iterator
-    ITER_RANGE // Range iterator
-} iterator_type;
-
-// Iterator structure for unified iteration over arrays, ranges, etc.
-struct iterator {
-    size_t ref_count; // Reference counting for memory management
-    iterator_type type;
-    union {
-        struct {
-            da_array array; // Array being iterated
-            size_t index; // Current index
-        } array_iter;
-        struct {
-            value_t current; // Current value
-            value_t end; // End value
-            int exclusive; // Whether end is exclusive
-            int finished; // Whether iteration is complete
-        } range_iter;
-    } data;
-};
-
-// Bound method structure (method bound to a specific receiver)
-struct bound_method {
-    int ref_count; // Reference count for memory management
-    value_t receiver; // The object this method is bound to
-    native_t method; // The method function pointer
-};
 
 
-// Class structure (prototype holder for prototypal inheritance)
-struct class {
-    int ref_count; // Reference count for memory management
-    char* name; // Class name
-    do_object properties; // Prototype properties
-    value_t (*factory)(value_t* args, int arg_count); // Factory function for creating instances (NULL if not callable)
-};
 
-// Date/Time structures with reference counting
-
-// Local Date structure (date without time zone)
-struct local_date {
-    int ref_count; // Reference count for memory management
-    int32_t year; // Year (e.g., 2024)
-    uint8_t month; // Month (1-12)
-    uint8_t day; // Day (1-31)
-    uint32_t epoch_day; // Days since 1970-01-01 (cached for performance)
-};
-
-// Local Time structure (time without date or time zone)
-struct local_time {
-    int ref_count; // Reference count for memory management
-    uint8_t hour; // Hour (0-23)
-    uint8_t minute; // Minute (0-59)
-    uint8_t second; // Second (0-59)
-    uint16_t millis; // Milliseconds (0-999)
-    uint32_t nanos; // Nanoseconds (0-999999999, total including millis)
-};
-
-// Local DateTime structure (date and time without time zone)
-struct local_datetime {
-    int ref_count; // Reference count for memory management
-    local_date_t* date; // Date component
-    local_time_t* time; // Time component
-};
-
-// Zoned DateTime structure (date and time with time zone)
-struct zoned_datetime {
-    int ref_count; // Reference count for memory management
-    local_datetime_t* dt; // Local date-time component
-    char* zone_id; // Timezone identifier (e.g., "America/New_York")
-    int16_t offset_minutes; // UTC offset in minutes (e.g., -300 for EST)
-    bool is_dst; // Whether DST is active
-};
-
-// Instant structure (point in time as Unix timestamp)
-struct instant {
-    int ref_count; // Reference count for memory management
-    int64_t epoch_seconds; // Seconds since Unix epoch
-    uint32_t nanos; // Nanosecond adjustment (0-999999999)
-};
-
-// Duration structure (time-based amount)
-struct duration {
-    int ref_count; // Reference count for memory management
-    int64_t seconds; // Total seconds (can be negative)
-    int32_t nanos; // Nanosecond adjustment (0-999999999, sign matches seconds)
-};
-
-// Period structure (date-based amount)
-struct period {
-    int ref_count; // Reference count for memory management
-    int32_t years; // Years (can be negative)
-    int32_t months; // Months (can be negative)
-    int32_t days; // Days (can be negative)
-};
 
 // Function structure
 typedef struct function {
@@ -412,9 +229,6 @@ vm_result vm_run(slate_vm* vm);
 vm_result vm_execute(slate_vm* vm, function_t* function);
 vm_result vm_interpret(slate_vm* vm, const char* source);
 
-// Value memory management
-value_t vm_retain(value_t value);
-void vm_release(value_t value);
 
 // Stack operations
 void vm_push(slate_vm* vm, value_t value);
@@ -427,36 +241,6 @@ value_t vm_call_function(slate_vm* vm, value_t callable, int arg_count, value_t*
 // String conversion helper for opcodes
 ds_string value_to_string_representation(slate_vm* vm, value_t value);
 
-// Value creation functions
-value_t make_null(void);
-value_t make_undefined(void);
-value_t make_boolean(int value);
-value_t make_int32(int32_t value);
-value_t make_bigint(di_int big);
-value_t make_number(double value);
-value_t make_string(const char* value);
-value_t make_string_ds(ds_string str);
-value_t make_string_builder(ds_builder builder);
-value_t make_array(da_array array);
-value_t make_object(do_object object);
-value_t make_class(const char* name, do_object properties);
-value_t make_range(value_t start, value_t end, int exclusive);
-value_t make_iterator(iterator_t* iterator);
-value_t make_buffer(db_buffer buffer);
-value_t make_buffer_builder(db_builder builder);
-value_t make_buffer_reader(db_reader reader);
-value_t make_function(function_t* function);
-value_t make_closure(closure_t* closure);
-value_t make_native(native_t func);
-value_t make_bound_method(value_t receiver, native_t method);
-// Date/Time value factory functions
-value_t make_local_date(local_date_t* date);
-value_t make_local_time(local_time_t* time);
-value_t make_local_datetime(local_datetime_t* datetime);
-value_t make_zoned_datetime(zoned_datetime_t* zdt);
-value_t make_instant(instant_t* instant);
-value_t make_duration(duration_t* duration);
-value_t make_period(period_t* period);
 
 // Iterator creation helpers
 iterator_t* create_array_iterator(da_array array);
@@ -496,28 +280,6 @@ void duration_release(duration_t* duration);
 period_t* period_retain(period_t* period);
 void period_release(period_t* period);
 
-// Value creation functions with debug info
-value_t make_null_with_debug(debug_location* debug);
-value_t make_undefined_with_debug(debug_location* debug);
-value_t make_boolean_with_debug(int value, debug_location* debug);
-value_t make_int32_with_debug(int32_t value, debug_location* debug);
-value_t make_bigint_with_debug(di_int big, debug_location* debug);
-value_t make_number_with_debug(double value, debug_location* debug);
-value_t make_string_with_debug(const char* value, debug_location* debug);
-value_t make_string_ds_with_debug(ds_string str, debug_location* debug);
-value_t make_string_builder_with_debug(ds_builder builder, debug_location* debug);
-value_t make_array_with_debug(da_array array, debug_location* debug);
-value_t make_object_with_debug(do_object object, debug_location* debug);
-value_t make_class_with_debug(const char* name, do_object properties, debug_location* debug);
-value_t make_range_with_debug(value_t start, value_t end, int exclusive, debug_location* debug);
-value_t make_iterator_with_debug(iterator_t* iterator, debug_location* debug);
-value_t make_buffer_with_debug(db_buffer buffer, debug_location* debug);
-value_t make_buffer_builder_with_debug(db_builder builder, debug_location* debug);
-value_t make_buffer_reader_with_debug(db_reader reader, debug_location* debug);
-value_t make_function_with_debug(function_t* function, debug_location* debug);
-value_t make_closure_with_debug(closure_t* closure, debug_location* debug);
-value_t make_builtin_with_debug(void* builtin_func, debug_location* debug);
-value_t make_bound_method_with_debug(value_t receiver, native_t method, debug_location* debug);
 
 // Debug location management
 debug_location* debug_location_create(int line, int column, const char* source_text);
@@ -531,7 +293,6 @@ int is_number(value_t value); // Check if value is numeric (int32, bigint, or nu
 int values_equal(value_t a, value_t b);
 void print_value(slate_vm* vm, value_t value);
 void print_for_builtin(slate_vm* vm, value_t value);
-void free_value(value_t value);
 double value_to_double(value_t value); // Convert numeric values to double
 bool is_int(value_t value); // Check if value represents an integer
 int value_to_int(value_t value); // Convert numeric values to int

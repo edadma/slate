@@ -10,6 +10,7 @@ include_directories(deps/dynamic_string.h)
 include_directories(deps/dynamic_array.h)
 include_directories(deps/dynamic_object.h)
 include_directories(deps/dynamic_int.h)
+include_directories(deps/dynamic_buffer.h)
 include_directories(deps/stb_ds.h)
 
 # Main executable
@@ -20,6 +21,7 @@ add_executable(slate
         src/ast.c
         src/codegen.c
         src/vm.c
+        src/value.c
         src/builtins.c
         src/library_impl.c
         src/line_editor.c
@@ -129,6 +131,7 @@ if (BUILD_TESTS)
             src/ast.c
             src/codegen.c
             src/vm.c
+            src/value.c
             src/builtins.c
             src/library_impl.c
             src/datetime.c
