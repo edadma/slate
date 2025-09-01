@@ -107,96 +107,6 @@ void test_array_constructor_copy_empty_array(void) {
     vm_release(result);
 }
 
-// Test Array(1..5) - inclusive range constructor
-void test_array_constructor_inclusive_range(void) {
-    value_t result = run_code("Array(1..5)");
-    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
-    TEST_ASSERT_NOT_NULL(result.as.array);
-    TEST_ASSERT_EQUAL(5, da_length(result.as.array));
-    
-    // Check elements: [1, 2, 3, 4, 5]
-    for (int i = 0; i < 5; i++) {
-        value_t* elem = (value_t*)da_get(result.as.array, i);
-        TEST_ASSERT_EQUAL(VAL_INT32, elem->type);
-        TEST_ASSERT_EQUAL(i + 1, elem->as.int32);
-    }
-    
-    vm_release(result);
-}
-
-// Test Array(1..<5) - exclusive range constructor
-void test_array_constructor_exclusive_range(void) {
-    value_t result = run_code("Array(1..<5)");
-    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
-    TEST_ASSERT_NOT_NULL(result.as.array);
-    TEST_ASSERT_EQUAL(4, da_length(result.as.array));
-    
-    // Check elements: [1, 2, 3, 4]
-    for (int i = 0; i < 4; i++) {
-        value_t* elem = (value_t*)da_get(result.as.array, i);
-        TEST_ASSERT_EQUAL(VAL_INT32, elem->type);
-        TEST_ASSERT_EQUAL(i + 1, elem->as.int32);
-    }
-    
-    vm_release(result);
-}
-
-// Test Array(5..1) - reverse range constructor
-void test_array_constructor_reverse_range(void) {
-    value_t result = run_code("Array(5..1)");
-    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
-    TEST_ASSERT_NOT_NULL(result.as.array);
-    TEST_ASSERT_EQUAL(5, da_length(result.as.array));
-    
-    // Check elements: [5, 4, 3, 2, 1]
-    for (int i = 0; i < 5; i++) {
-        value_t* elem = (value_t*)da_get(result.as.array, i);
-        TEST_ASSERT_EQUAL(VAL_INT32, elem->type);
-        TEST_ASSERT_EQUAL(5 - i, elem->as.int32);
-    }
-    
-    vm_release(result);
-}
-
-// Test Array(5..<1) - reverse exclusive range constructor
-void test_array_constructor_reverse_exclusive_range(void) {
-    value_t result = run_code("Array(5..<1)");
-    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
-    TEST_ASSERT_NOT_NULL(result.as.array);
-    TEST_ASSERT_EQUAL(4, da_length(result.as.array));
-    
-    // Check elements: [5, 4, 3, 2]
-    for (int i = 0; i < 4; i++) {
-        value_t* elem = (value_t*)da_get(result.as.array, i);
-        TEST_ASSERT_EQUAL(VAL_INT32, elem->type);
-        TEST_ASSERT_EQUAL(5 - i, elem->as.int32);
-    }
-    
-    vm_release(result);
-}
-
-// Test Array(0..0) - single element range
-void test_array_constructor_single_element_range(void) {
-    value_t result = run_code("Array(0..0)");
-    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
-    TEST_ASSERT_NOT_NULL(result.as.array);
-    TEST_ASSERT_EQUAL(1, da_length(result.as.array));
-    
-    value_t* elem = (value_t*)da_get(result.as.array, 0);
-    TEST_ASSERT_EQUAL(VAL_INT32, elem->type);
-    TEST_ASSERT_EQUAL(0, elem->as.int32);
-    
-    vm_release(result);
-}
-
-// Test Array(0..<0) - empty exclusive range
-void test_array_constructor_empty_exclusive_range(void) {
-    value_t result = run_code("Array(0..<0)");
-    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
-    TEST_ASSERT_NOT_NULL(result.as.array);
-    TEST_ASSERT_EQUAL(0, da_length(result.as.array));
-    vm_release(result);
-}
 
 // Test Array("hello") - single non-array argument
 void test_array_constructor_single_element(void) {
@@ -485,12 +395,6 @@ void test_class_array_suite(void) {
     RUN_TEST(test_array_constructor_multiple_args);
     RUN_TEST(test_array_constructor_copy_array);
     RUN_TEST(test_array_constructor_copy_empty_array);
-    RUN_TEST(test_array_constructor_inclusive_range);
-    RUN_TEST(test_array_constructor_exclusive_range);
-    RUN_TEST(test_array_constructor_reverse_range);
-    RUN_TEST(test_array_constructor_reverse_exclusive_range);
-    RUN_TEST(test_array_constructor_single_element_range);
-    RUN_TEST(test_array_constructor_empty_exclusive_range);
     RUN_TEST(test_array_constructor_single_element);
     RUN_TEST(test_array_constructor_single_number);
     RUN_TEST(test_array_constructor_mixed_types);

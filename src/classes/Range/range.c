@@ -1,5 +1,6 @@
 #include "range.h"
 #include "builtins.h"
+#include "vm.h"
 #include "dynamic_array.h"
 #include "dynamic_object.h"
 
@@ -245,31 +246,24 @@ value_t builtin_range_to_array(slate_vm* vm, int arg_count, value_t* args) {
         runtime_error("toArray() only supported for numeric ranges");
     }
     
-    double start_val = value_to_double(range->start);
-    double end_val = value_to_double(range->end);
+    // Use iterator pattern for consistent behavior with Iterator.toArray()
+    // Create iterator for this range
+    iterator_t* iter = create_range_iterator(range->start, range->end, range->exclusive);
+    if (!iter) {
+        runtime_error("Failed to create range iterator");
+    }
     
+    // Create new array to collect elements
     da_array array = da_new(sizeof(value_t));
     
-    if (start_val > end_val) {
-        // Empty range - return empty array
-        return make_array(array);
+    // Consume all elements from iterator (handles forward/reverse automatically)
+    while (iterator_has_next(iter)) {
+        value_t element = iterator_next(iter);
+        da_push(array, &element);
     }
     
-    // Generate integer sequence
-    int start_int = (int)start_val;
-    int end_int = (int)end_val;
-    
-    if (range->exclusive) {
-        for (int i = start_int; i < end_int; i++) {
-            value_t val = make_int32(i);
-            da_push(array, &val);
-        }
-    } else {
-        for (int i = start_int; i <= end_int; i++) {
-            value_t val = make_int32(i);
-            da_push(array, &val);
-        }
-    }
+    // Clean up iterator
+    iterator_release(iter);
     
     return make_array(array);
 }

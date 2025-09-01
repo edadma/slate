@@ -23,59 +23,6 @@ value_t array_factory(value_t* args, int arg_count) {
             return make_array(copy);
         }
 
-        // 1b) Array(r) where r is a Range -> materialize numeric range
-        if (a0.type == VAL_RANGE) {
-            range_t* range = a0.as.range;
-            if (!range) return make_array(da_new(sizeof(value_t)));
-
-            // Only support numeric start/end
-            if ((range->start.type != VAL_INT32 && range->start.type != VAL_NUMBER) ||
-                (range->end.type != VAL_INT32 && range->end.type != VAL_NUMBER)) {
-                runtime_error("Array(range): start/end must be numbers");
-            }
-
-            // Convert to integers for range iteration
-            int start, end;
-            if (range->start.type == VAL_INT32) {
-                start = range->start.as.int32;
-            } else {
-                start = (int)range->start.as.number;
-            }
-            
-            if (range->end.type == VAL_INT32) {
-                end = range->end.as.int32;
-            } else {
-                end = (int)range->end.as.number;
-            }
-
-            da_array arr = da_new(sizeof(value_t));
-            if (range->exclusive) {
-                if (start <= end) {
-                    for (int i = start; i < end; i++) {
-                        value_t v = make_int32(i);
-                        da_push(arr, &v);
-                    }
-                } else {
-                    for (int i = start; i > end; i--) {
-                        value_t v = make_int32(i);
-                        da_push(arr, &v);
-                    }
-                }
-            } else {
-                if (start <= end) {
-                    for (int i = start; i <= end; i++) {
-                        value_t v = make_int32(i);
-                        da_push(arr, &v);
-                    }
-                } else {
-                    for (int i = start; i >= end; i--) {
-                        value_t v = make_int32(i);
-                        da_push(arr, &v);
-                    }
-                }
-            }
-            return make_array(arr);
-        }
 
         // For any other single argument, create array with that single element
         da_array arr = da_new(sizeof(value_t));

@@ -465,16 +465,32 @@ void test_range_iterator_negative_numbers(void) {
 
 // Test range method chaining
 void test_range_method_chaining(void) {
-    // Test chaining with Array constructor (works with reverse ranges)
-    value_t result = interpret_expression("Array((1..5).reverse())");
+    // Test the original failing case: (1..5).reverse().toArray() should now work!
+    value_t result = interpret_expression("(1..5).reverse().toArray()");
     TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
     TEST_ASSERT_EQUAL(5, da_length(result.as.array));
     
     // Check elements are reversed [5, 4, 3, 2, 1]
     value_t* elem0 = (value_t*)da_get(result.as.array, 0);
+    value_t* elem1 = (value_t*)da_get(result.as.array, 1);
+    value_t* elem2 = (value_t*)da_get(result.as.array, 2);
+    value_t* elem3 = (value_t*)da_get(result.as.array, 3);
     value_t* elem4 = (value_t*)da_get(result.as.array, 4);
     TEST_ASSERT_EQUAL(5, elem0->as.int32);
+    TEST_ASSERT_EQUAL(4, elem1->as.int32);
+    TEST_ASSERT_EQUAL(3, elem2->as.int32);
+    TEST_ASSERT_EQUAL(2, elem3->as.int32);
     TEST_ASSERT_EQUAL(1, elem4->as.int32);
+    vm_release(result);
+    
+    // Test that Array(range) now treats range as single element (no expansion)
+    result = interpret_expression("Array((1..5).reverse())");
+    TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
+    TEST_ASSERT_EQUAL(1, da_length(result.as.array)); // Single range element
+    
+    // The array should contain the range as a single element
+    value_t* range_elem = (value_t*)da_get(result.as.array, 0);
+    TEST_ASSERT_EQUAL(VAL_RANGE, range_elem->type);
     vm_release(result);
 }
 
