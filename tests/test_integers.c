@@ -236,8 +236,8 @@ void test_integers_suite(void) {
     RUN_TEST(test_integer_equality);
     // RUN_TEST(test_large_integer_parsing);  // Uses execute_expression
     RUN_TEST(test_arithmetic_overflow_promotion);
-    // RUN_TEST(test_hexadecimal_literals);
-    // RUN_TEST(test_hexadecimal_arithmetic);
+    RUN_TEST(test_hexadecimal_literals);
+    RUN_TEST(test_hexadecimal_arithmetic);
 }
 
 // Test hexadecimal literal parsing and type handling
