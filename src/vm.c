@@ -1226,6 +1226,18 @@ vm_result vm_run(slate_vm* vm) {
             break;
         }
 
+        case OP_NULL_COALESCE: {
+            vm_result result = op_null_coalesce(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_INSTANCEOF: {
+            vm_result result = op_instanceof(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_NOT: {
             vm_result result = op_not(vm);
             if (result != VM_OK) return result;

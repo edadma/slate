@@ -64,5 +64,7 @@ vm_result op_loop(slate_vm* vm);
 vm_result op_pop_n(slate_vm* vm);
 vm_result op_or(slate_vm* vm);
 vm_result op_not(slate_vm* vm);
+vm_result op_null_coalesce(slate_vm* vm);
+vm_result op_instanceof(slate_vm* vm);
 
 #endif // SLATE_OPCODES_H

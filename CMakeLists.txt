@@ -82,6 +82,8 @@ add_executable(slate
         src/opcodes/op_pop_n.c
         src/opcodes/op_or.c
         src/opcodes/op_not.c
+        src/opcodes/op_null_coalesce.c
+        src/opcodes/op_instanceof.c
         deps/cargs/src/cargs.c
 )
 
@@ -198,6 +200,8 @@ if (BUILD_TESTS)
         src/opcodes/op_pop_n.c
         src/opcodes/op_or.c
         src/opcodes/op_not.c
+        src/opcodes/op_null_coalesce.c
+        src/opcodes/op_instanceof.c
     )
 
     # Link math library for tests executable
