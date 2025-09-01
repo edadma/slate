@@ -15,6 +15,7 @@ include_directories(deps/stb_ds.h)
 include_directories(src/classes/String)
 include_directories(src/classes/Array)
 include_directories(src/classes/Buffer)
+include_directories(src/classes/BufferBuilder)
 
 # Main executable
 add_executable(slate
@@ -38,6 +39,7 @@ add_executable(slate
         src/classes/Buffer/methods.c
         src/classes/Buffer/factory.c
         src/classes/Buffer/class.c
+        src/classes/BufferBuilder/buffer_builder.c
         src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c
@@ -165,6 +167,7 @@ if (BUILD_TESTS)
             src/classes/Buffer/methods.c
             src/classes/Buffer/factory.c
             src/classes/Buffer/class.c
+            src/classes/BufferBuilder/buffer_builder.c
             src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c
