@@ -86,8 +86,6 @@ typedef enum {
     // Object/property operations
     OP_GET_PROPERTY, // Pop object, push property value
     OP_SET_PROPERTY, // Pop value, pop object, set property
-    OP_GET_INDEX, // Pop index, pop object, push indexed value
-    OP_SET_INDEX, // Pop value, pop index, pop object, set indexed value
 
     // Array operations
     OP_BUILD_ARRAY, // Pop n elements, build array (operand = n)

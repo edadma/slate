@@ -43,7 +43,6 @@ typedef enum {
 
     // Object/property access
     AST_MEMBER,
-    AST_INDEX,
     AST_OBJECT_LITERAL,
 
     // Statements
@@ -233,13 +232,6 @@ typedef struct {
     char* property;
 } ast_member;
 
-// Index access node (obj[index])
-typedef struct {
-    ast_node base;
-    ast_node* object;
-    ast_node* index;
-} ast_index;
-
 // Object literal property
 typedef struct {
     char* key;
@@ -372,7 +364,6 @@ ast_function* ast_create_function(char** parameters, size_t param_count, ast_nod
 ast_call* ast_create_call(ast_node* function, ast_node** arguments, size_t arg_count, int line, int column);
 
 ast_member* ast_create_member(ast_node* object, const char* property, int line, int column);
-ast_index* ast_create_index(ast_node* object, ast_node* index, int line, int column);
 ast_object_literal* ast_create_object_literal(object_property* properties, size_t property_count, int line, int column);
 
 ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int line, int column);

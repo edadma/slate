@@ -231,18 +231,6 @@ ast_member* ast_create_member(ast_node* object, const char* property, int line, 
     return node;
 }
 
-ast_index* ast_create_index(ast_node* object, ast_node* index, int line, int column) {
-    ast_index* node = malloc(sizeof(ast_index));
-    if (!node) return NULL;
-    
-    node->base.type = AST_INDEX;
-    node->base.line = line;
-    node->base.column = column;
-    node->object = object;
-    node->index = index;
-    
-    return node;
-}
 
 ast_object_literal* ast_create_object_literal(object_property* properties, size_t property_count, int line, int column) {
     ast_object_literal* node = malloc(sizeof(ast_object_literal));
@@ -545,12 +533,6 @@ void ast_free(ast_node* node) {
             break;
         }
         
-        case AST_INDEX: {
-            ast_index* idx_node = (ast_index*)node;
-            ast_free(idx_node->object);
-            ast_free(idx_node->index);
-            break;
-        }
         
         case AST_OBJECT_LITERAL: {
             ast_object_literal* obj_node = (ast_object_literal*)node;
@@ -682,7 +664,6 @@ const char* ast_node_type_name(ast_node_type type) {
         case AST_FUNCTION: return "FUNCTION";
         case AST_CALL: return "CALL";
         case AST_MEMBER: return "MEMBER";
-        case AST_INDEX: return "INDEX";
         case AST_OBJECT_LITERAL: return "OBJECT_LITERAL";
         case AST_VAR_DECLARATION: return "VAR_DECLARATION";
         case AST_ASSIGNMENT: return "ASSIGNMENT";

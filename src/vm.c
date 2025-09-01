@@ -1064,10 +1064,6 @@ const char* opcode_name(opcode op) {
         return "GET_PROPERTY";
     case OP_SET_PROPERTY:
         return "SET_PROPERTY";
-    case OP_GET_INDEX:
-        return "GET_INDEX";
-    case OP_SET_INDEX:
-        return "SET_INDEX";
     case OP_BUILD_ARRAY:
         return "BUILD_ARRAY";
     case OP_BUILD_OBJECT:

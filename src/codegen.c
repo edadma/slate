@@ -441,16 +441,6 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_object(codegen, (ast_object_literal*)expr);
             break;
             
-        case AST_INDEX: {
-            ast_index* index_node = (ast_index*)expr;
-            // Generate object expression
-            codegen_emit_expression(codegen, index_node->object);
-            // Generate index expression
-            codegen_emit_expression(codegen, index_node->index);
-            // Emit index operation
-            codegen_emit_op(codegen, OP_GET_INDEX);
-            break;
-        }
         
         case AST_MEMBER: {
             ast_member* member_node = (ast_member*)expr;
@@ -826,8 +816,8 @@ bool is_lvalue(ast_node* node) {
         case AST_IDENTIFIER:
             // Variables are l-values (when variables are implemented)
             return true;
-        case AST_INDEX:
-            // Array/object indexing is an l-value (e.g., arr[0]++)
+        case AST_CALL:
+            // Function-call style indexing is an l-value (e.g., arr(0)++)
             return true;
         case AST_MEMBER:
             // Object member access is an l-value (e.g., obj.prop++)
