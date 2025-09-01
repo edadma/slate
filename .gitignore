@@ -51,7 +51,3 @@ Thumbs.db
 
 # Log files
 *.log
-
-# Core dumps
-core
-core.*
