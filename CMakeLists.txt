@@ -5,6 +5,7 @@ set(CMAKE_C_STANDARD 11)
 
 # Include directories
 include_directories(include)
+include_directories(src/parser)
 include_directories(deps/cargs/include)
 include_directories(deps/dynamic_string.h)
 include_directories(deps/dynamic_array.h)
@@ -28,7 +29,10 @@ include_directories(src/classes/LocalTime)
 add_executable(slate
         src/main.c
         src/lexer.c
-        src/parser.c
+        src/parser/parser.c
+        src/parser/declarations.c
+        src/parser/statements.c
+        src/parser/expressions.c
         src/ast.c
         src/codegen.c
         src/vm.c
@@ -165,7 +169,10 @@ if (BUILD_TESTS)
             tests/test_functions.c
             deps/cargs/src/cargs.c
             src/lexer.c
-            src/parser.c
+            src/parser/parser.c
+        src/parser/declarations.c
+        src/parser/statements.c
+        src/parser/expressions.c
             src/ast.c
             src/codegen.c
             src/vm.c
