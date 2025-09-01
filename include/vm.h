@@ -20,6 +20,9 @@
 // Include error handling
 #include "error.h"
 
+// Include library assert overrides AFTER all other includes to properly override
+#include "library_assert.h"
+
 // Forward declarations
 typedef struct slate_vm slate_vm;
 

@@ -4,6 +4,9 @@
 #include <stdarg.h>
 #include <string.h>
 
+// External reference to global VM pointer (defined in vm/lifecycle.c)
+extern slate_vm* g_current_vm;
+
 // Helper function to get error kind name
 static const char* error_kind_name(ErrorKind k) {
     switch (k) {
@@ -145,4 +148,16 @@ void slate_runtime_error_with_debug(slate_vm* vm, ErrorKind kind,
                        debug_to_use ? debug_to_use->line : -1,
                        debug_to_use ? debug_to_use->column : -1,
                        "%s", message);
+}
+
+// Wrapper function to handle library assert failures
+void slate_library_assert_failed(const char* condition, const char* file, int line) {
+    if (g_current_vm) {
+        slate_runtime_error(g_current_vm, ERR_ASSERT,
+                           file, line, -1,
+                           "Library assertion failed: %s", condition);
+    } else {
+        fprintf(stderr, "Library assertion failed: %s\n", condition);
+        abort();
+    }
 }

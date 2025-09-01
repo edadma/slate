@@ -14,6 +14,9 @@
 #define FRAMES_MAX 64
 #define CONSTANTS_MAX 256
 
+// Global VM pointer for library assert access
+slate_vm* g_current_vm = NULL;
+
 // VM lifecycle functions
 slate_vm* vm_create(void) {
     slate_vm* vm = malloc(sizeof(slate_vm));
@@ -69,6 +72,9 @@ slate_vm* vm_create(void) {
     vm->error.message[0] = '\0';
     // Note: trap is initialized when needed via setjmp
 
+    // Set global VM pointer for library assert access
+    g_current_vm = vm;
+
     vm_reset(vm);
     return vm;
 }
@@ -85,6 +91,11 @@ slate_vm* vm_create_with_args(int argc, char** argv) {
 void vm_destroy(slate_vm* vm) {
     if (!vm)
         return;
+
+    // Clear global VM pointer if this is the current VM
+    if (vm == g_current_vm) {
+        g_current_vm = NULL;
+    }
 
     // Free constants
     for (size_t i = 0; i < vm->constant_count; i++) {
