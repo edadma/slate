@@ -239,3 +239,51 @@ value_t builtin_array_reverse(slate_vm* vm, int arg_count, value_t* args) {
     // Return the array (for chaining)
     return vm_retain(receiver);
 }
+
+// Array method: fill(n, f)
+// Creates an array of length n, calling function f to generate each element
+value_t builtin_array_fill(slate_vm* vm, int arg_count, value_t* args) {
+    if (arg_count != 3) { // receiver + 2 args
+        runtime_error("fill() takes exactly 2 arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t n_val = args[1];
+    value_t f_val = args[2];
+    
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error("fill() can only be called on arrays");
+    }
+    
+    if (n_val.type != VAL_INT32) {
+        runtime_error("fill() first argument must be an int32");
+    }
+    
+    int32_t n = n_val.as.int32;
+    if (n < 0) {
+        runtime_error("fill() size must be non-negative (%d given)", n);
+    }
+    
+    // Create new array with n elements
+    da_array arr = da_new(sizeof(value_t));
+    
+    // If n is 0, return empty array without checking function
+    if (n == 0) {
+        return make_array(arr);
+    }
+    
+    if (f_val.type != VAL_CLOSURE) {
+        runtime_error("fill() second argument must be a function");
+    }
+    
+    // Call function f for each element
+    for (int32_t i = 0; i < n; i++) {
+        // Call function f with no arguments
+        value_t element = vm_call_function(vm, f_val, 0, NULL);
+        
+        // Add to array (vm_call_function handles retain/release internally)
+        da_push(arr, &element);
+    }
+    
+    return make_array(arr);
+}

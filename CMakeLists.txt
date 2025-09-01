@@ -150,6 +150,7 @@ if (BUILD_TESTS)
             tests/test_infinite_loops.c
             tests/test_builtins.c
             tests/test_buffer_class.c
+            tests/test_class_array.c
             tests/test_integers.c
             tests/test_arithmetic.c
             tests/test_logical.c

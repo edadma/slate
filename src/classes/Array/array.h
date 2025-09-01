@@ -9,6 +9,9 @@ void runtime_error(const char* message, ...);
 // Array Class Initialization
 void array_class_init(slate_vm* vm);
 
+// Array Factory Function
+value_t array_factory(value_t* args, int arg_count);
+
 // Array Instance Methods
 value_t builtin_array_length(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_array_push(slate_vm* vm, int arg_count, value_t* args);
@@ -20,6 +23,7 @@ value_t builtin_array_contains(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_array_copy(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_array_slice(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_array_reverse(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_array_fill(slate_vm* vm, int arg_count, value_t* args);
 
 // Array Functional Methods
 value_t builtin_array_map(slate_vm* vm, int arg_count, value_t* args);
