@@ -1,7 +1,6 @@
 #include "unity.h"
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include "lexer.h"
 #include "parser.h"
 #include "codegen.h"
