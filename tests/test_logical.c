@@ -325,8 +325,6 @@ void test_bitwise_complex_expressions(void) {
 
 // Test bitwise operations error cases
 void test_bitwise_error_cases(void) {
-    printf("DEBUG: test_bitwise_error_cases starting\n");
-    fflush(stdout);
     value_t result;
 
     // Test type errors - bitwise operations should only work with integers
@@ -349,9 +347,6 @@ void test_bitwise_error_cases(void) {
     result = run_code("42 << 3.5");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
     vm_release(result);
-    
-    printf("DEBUG: test_bitwise_error_cases ending\n");
-    fflush(stdout);
 }
 
 // Test suite function for integration with main test runner

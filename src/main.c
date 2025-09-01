@@ -62,6 +62,13 @@ static struct cag_option options[] = {
         .access_letters = "r",
         .access_name = "repl",
         .description = "Start interactive REPL (default if no other options)"
+    },
+    {
+        .identifier = 'D',
+        .access_letters = "D",
+        .access_name = "disassemble",
+        .value_name = "CODE",
+        .description = "Disassemble script bytecode without executing"
     }
 };
 
@@ -78,6 +85,7 @@ static void show_help(const char* program_name) {
     printf("  %s -f script.slate arg1 arg2 # Run file with arguments\n", program_name);
     printf("  %s --stdin < input.txt       # Execute from stdin\n", program_name);
     printf("  %s --test                    # Run built-in tests\n", program_name);
+    printf("  %s -D \"f(g(3))\"              # Disassemble bytecode\n", program_name);
 }
 
 // Show version information
@@ -105,6 +113,56 @@ static void print_ast(ast_node* node) {
     printf("=== AST ===\n");
     ast_print(node, 0);
     printf("\n");
+}
+
+// Disassemble function - compiles and shows bytecode without executing
+static void disassemble(const char* source) {
+    // Tokenize
+    lexer_t lexer;
+    lexer_init(&lexer, source);
+    
+    // Parse
+    parser_t parser;
+    parser_init(&parser, &lexer);
+    ast_program* program = parse_program(&parser);
+    
+    if (parser.had_error || !program) {
+        printf("Parse error\n");
+        lexer_cleanup(&lexer);
+        return;
+    }
+    
+    // Generate code
+    slate_vm* temp_vm = vm_create();
+    codegen_t* codegen = codegen_create_with_debug(temp_vm, source);
+    function_t* function = codegen_compile(codegen, program);
+    
+    if (codegen->had_error || !function) {
+        printf("Compilation error\n");
+        codegen_destroy(codegen);
+        ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
+        vm_destroy(temp_vm);
+        return;
+    }
+    
+    // Disassemble bytecode
+    printf("=== BYTECODE ===\n");
+    bytecode_chunk chunk = {
+        .code = function->bytecode,
+        .count = function->bytecode_length,
+        .constants = function->constants,
+        .constant_count = function->constant_count
+    };
+    chunk_disassemble(&chunk, "main");
+    printf("\n");
+    
+    // Clean up
+    function_destroy(function);
+    codegen_destroy(codegen);
+    ast_free((ast_node*)program);
+    lexer_cleanup(&lexer);
+    vm_destroy(temp_vm);
 }
 
 // Forward declaration
@@ -510,6 +568,7 @@ int main(int argc, char* argv[]) {
     const char* script_file = NULL;
     int use_stdin = 0;
     const char* script_content = NULL;
+    const char* disassemble_content = NULL;
     int start_repl = 0;
     
     cag_option_context context;
@@ -542,6 +601,9 @@ int main(int argc, char* argv[]) {
             case 'r':
                 start_repl = 1;
                 break;
+            case 'D':
+                disassemble_content = cag_option_get_value(&context);
+                break;
             case '?':
                 // Invalid option
                 cag_option_print_error(&context, stdout);
@@ -560,15 +622,19 @@ int main(int argc, char* argv[]) {
     if (use_stdin) execution_modes++;
     if (script_content) execution_modes++;
     if (script_file) execution_modes++;
+    if (disassemble_content) execution_modes++;
     if (start_repl) execution_modes++;
     
     if (execution_modes > 1) {
-        fprintf(stderr, "Error: Only one execution mode can be specified (--stdin, --script, --file, or --repl)\n");
+        fprintf(stderr, "Error: Only one execution mode can be specified (--stdin, --script, --file, --disassemble, or --repl)\n");
         show_help(argv[0]);
         return 1;
     }
     
-    if (use_stdin) {
+    if (disassemble_content) {
+        // Disassemble the provided code
+        disassemble(disassemble_content);
+    } else if (use_stdin) {
         // Read and interpret from stdin with result display
         char* source = read_stdin();
         if (source) {

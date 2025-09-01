@@ -204,17 +204,20 @@ value_t vm_call_function(slate_vm* vm, value_t callable, int arg_count, value_t*
     
     value_t return_value = make_undefined();
     if (result == VM_OK) {
-        // Get return value from VM result or stack
-        if (vm->stack_top > vm->stack + saved_stack_size) {
-            return_value = vm_pop(vm);
-        } else {
-            return_value = vm->result;
-        }
+        // The function result is always in vm->result after OP_RETURN
+        return_value = vm->result;
     }
     
     // Restore VM state
     vm->stack_top = vm->stack + saved_stack_size;
-    vm->ip = saved_ip;
+    // Only restore IP if we're not being called from bytecode execution
+    // When called from bytecode (op_call), we should NOT restore IP
+    // as the calling bytecode needs to continue from where it left off
+    if (saved_frame_count == 0) {
+        // Called from C code - restore IP
+        vm->ip = saved_ip;
+    }
+    // Otherwise leave IP as set by OP_RETURN for proper bytecode continuation
     vm->bytecode = saved_bytecode;
     vm->frame_count = saved_frame_count;
     

@@ -1849,6 +1849,7 @@ size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset) {
         case OP_BUILD_ARRAY:
         case OP_BUILD_OBJECT:
         case OP_CALL:
+        case OP_CLOSURE:
         case OP_GET_GLOBAL:
         case OP_SET_GLOBAL:
         case OP_DEFINE_GLOBAL:
