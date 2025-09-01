@@ -22,6 +22,7 @@ include_directories(src/classes/Iterator)
 include_directories(src/classes/Value)
 include_directories(src/classes/Int)
 include_directories(src/classes/LocalDate)
+include_directories(src/classes/LocalTime)
 
 # Main executable
 add_executable(slate
@@ -52,6 +53,7 @@ add_executable(slate
         src/classes/Value/value.c
         src/classes/Int/int.c
         src/classes/LocalDate/local_date.c
+        src/classes/LocalTime/local_time.c
         src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c
@@ -186,6 +188,7 @@ if (BUILD_TESTS)
             src/classes/Value/value.c
             src/classes/Int/int.c
         src/classes/LocalDate/local_date.c
+        src/classes/LocalTime/local_time.c
             src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c

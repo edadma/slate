@@ -566,7 +566,7 @@ void test_buffer_creation_from_array(void) {
 
 // Test buffer from hex string
 void test_buffer_from_hex(void) {
-    value_t result = interpret_expression("buffer_from_hex(\"48656c6c6f\")");
+    value_t result = interpret_expression("Buffer.fromHex(\"48656c6c6f\")");
     TEST_ASSERT_EQUAL(VAL_BUFFER, result.type);
     TEST_ASSERT_NOT_NULL(result.as.buffer);
     TEST_ASSERT_EQUAL(5, db_size(result.as.buffer));
@@ -577,7 +577,7 @@ void test_buffer_from_hex(void) {
 
 // Test buffer to hex conversion
 void test_buffer_to_hex(void) {
-    value_t result = interpret_expression("buffer_to_hex(buffer(\"Hello\"))");
+    value_t result = interpret_expression("Buffer(\"Hello\").toHex()");
     TEST_ASSERT_EQUAL(VAL_STRING, result.type);
     TEST_ASSERT_EQUAL_STRING("48656c6c6f", result.as.string);
     vm_release(result);
@@ -585,7 +585,7 @@ void test_buffer_to_hex(void) {
 
 // Test buffer slicing
 void test_buffer_slice(void) {
-    value_t result = interpret_expression("buffer_to_hex(buffer_slice(buffer(\"Hello\"), 1, 3))");
+    value_t result = interpret_expression("Buffer(\"Hello\").slice(1, 3).toHex()");
     TEST_ASSERT_EQUAL(VAL_STRING, result.type);
     TEST_ASSERT_EQUAL_STRING("656c6c", result.as.string); // "ell" in hex
     vm_release(result);
@@ -593,7 +593,7 @@ void test_buffer_slice(void) {
 
 // Test buffer concatenation
 void test_buffer_concat(void) {
-    value_t result = interpret_expression("buffer_to_hex(buffer_concat(buffer(\"Hello\"), buffer(\" World\")))");
+    value_t result = interpret_expression("Buffer(\"Hello\").concat(Buffer(\" World\")).toHex()");
     TEST_ASSERT_EQUAL(VAL_STRING, result.type);
     TEST_ASSERT_EQUAL_STRING("48656c6c6f20576f726c64", result.as.string); // "Hello World" in hex
     vm_release(result);
@@ -601,7 +601,7 @@ void test_buffer_concat(void) {
 
 // Test buffer type checking
 void test_buffer_type_checking(void) {
-    value_t result = interpret_expression("type(buffer(\"test\"))");
+    value_t result = interpret_expression("type(Buffer(\"test\"))");
     TEST_ASSERT_EQUAL(VAL_STRING, result.type);
     TEST_ASSERT_EQUAL_STRING("buffer", result.as.string);
     vm_release(result);

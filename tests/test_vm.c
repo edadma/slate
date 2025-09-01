@@ -639,13 +639,13 @@ void test_vm_bound_method_context_passing(void) {
 
     // Test that method receives correct receiver
     // Array iterator should work with the specific array
-    result = run_code("var arr = [10, 20, 30]; var iter = arr.iterator(); hasNext(iter)");
+    result = run_code("var arr = [10, 20, 30]; var iter = arr.iterator(); iter.hasNext()");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_TRUE(result.as.boolean);
     vm_release(result);
 
     // Test range iterator with specific range
-    result = run_code("var range = 5..8; var iter = range.iterator(); hasNext(iter)");
+    result = run_code("var range = 5..8; var iter = range.iterator(); iter.hasNext()");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_TRUE(result.as.boolean);
     vm_release(result);

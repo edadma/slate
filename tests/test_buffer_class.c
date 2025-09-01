@@ -210,18 +210,18 @@ void test_buffer_class_comprehensive(void) {
     vm_release(result);
 }
 
-// Test Buffer class consistency with functional API
+// Test Buffer class consistency between different creation methods
 void test_buffer_class_vs_functional_api(void) {
-    // Compare Buffer class methods with functional equivalents
-    value_t class_result = run_code("Buffer(\"Hello\").toHex()");
-    value_t func_result = run_code("buffer_to_hex(buffer(\"Hello\"))");
+    // Compare Buffer class methods using different creation approaches
+    value_t string_result = run_code("Buffer(\"Hello\").toHex()");
+    value_t array_result = run_code("Buffer([72, 101, 108, 108, 111]).toHex()");
     
-    TEST_ASSERT_EQUAL(VAL_STRING, class_result.type);
-    TEST_ASSERT_EQUAL(VAL_STRING, func_result.type);
-    TEST_ASSERT_EQUAL_STRING(class_result.as.string, func_result.as.string);
+    TEST_ASSERT_EQUAL(VAL_STRING, string_result.type);
+    TEST_ASSERT_EQUAL(VAL_STRING, array_result.type);
+    TEST_ASSERT_EQUAL_STRING(string_result.as.string, array_result.as.string);
     
-    vm_release(class_result);
-    vm_release(func_result);
+    vm_release(string_result);
+    vm_release(array_result);
 }
 
 // Test Suite Runner
