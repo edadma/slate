@@ -32,4 +32,7 @@ value_t builtin_string_builder_to_string(slate_vm* vm, int arg_count, value_t* a
 value_t builtin_string_builder_length(slate_vm* vm, int arg_count, value_t* args);
 value_t builtin_string_builder_clear(slate_vm* vm, int arg_count, value_t* args);
 
+// StringBuilder Class Initialization
+void string_builder_class_init(slate_vm* vm);
+
 #endif // SLATE_STRING_CLASS_H

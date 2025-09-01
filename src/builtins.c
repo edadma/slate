@@ -4,6 +4,8 @@
 #include "array.h"
 #include "buffer.h"
 #include "buffer_builder.h"
+#include "buffer_reader.h"
+#include "range.h"
 #include <assert.h>
 #include <math.h>
 #include <stdarg.h>
@@ -52,7 +54,6 @@ value_t* global_string_class = NULL;
 
 
 // Global Range class storage  
-value_t* global_range_class = NULL;
 
 // Global Iterator class storage
 value_t* global_iterator_class = NULL;
@@ -1854,50 +1855,8 @@ void builtins_init(slate_vm* vm) {
     // Initialize Array class
     array_class_init(vm);
 
-    // Create the Range class with its prototype
-    do_object range_proto = do_create(NULL);
-
-    // Add methods to Range prototype
-    value_t range_iterator_method = make_native(builtin_iterator);
-    do_set(range_proto, "iterator", &range_iterator_method, sizeof(value_t));
-
-    value_t range_start_method = make_native(builtin_range_start);
-    do_set(range_proto, "start", &range_start_method, sizeof(value_t));
-
-    value_t range_end_method = make_native(builtin_range_end);
-    do_set(range_proto, "endValue", &range_end_method, sizeof(value_t));
-
-    value_t range_is_exclusive_method = make_native(builtin_range_is_exclusive);
-    do_set(range_proto, "isExclusive", &range_is_exclusive_method, sizeof(value_t));
-
-    value_t range_is_empty_method = make_native(builtin_range_is_empty);
-    do_set(range_proto, "isEmpty", &range_is_empty_method, sizeof(value_t));
-
-    value_t range_length_method = make_native(builtin_range_length);
-    do_set(range_proto, "length", &range_length_method, sizeof(value_t));
-
-    value_t range_contains_method = make_native(builtin_range_contains);
-    do_set(range_proto, "contains", &range_contains_method, sizeof(value_t));
-
-    value_t range_to_array_method = make_native(builtin_range_to_array);
-    do_set(range_proto, "toArray", &range_to_array_method, sizeof(value_t));
-
-    value_t range_reverse_method = make_native(builtin_range_reverse);
-    do_set(range_proto, "reverse", &range_reverse_method, sizeof(value_t));
-
-    value_t range_equals_method = make_native(builtin_range_equals);
-    do_set(range_proto, "equals", &range_equals_method, sizeof(value_t));
-
-    // Create the Range class
-    value_t range_class = make_class("Range", range_proto);
-
-    // Store in globals
-    do_set(vm->globals, "Range", &range_class, sizeof(value_t));
-
-    // Store a global reference for use in make_range
-    static value_t range_class_storage;
-    range_class_storage = vm_retain(range_class);
-    global_range_class = &range_class_storage;
+    // Initialize Range class
+    range_class_init(vm);
 
     // Create the Iterator class with its prototype
     do_object iterator_proto = do_create(NULL);
@@ -1926,38 +1885,8 @@ void builtins_init(slate_vm* vm) {
     iterator_class_storage = vm_retain(iterator_class);
     global_iterator_class = &iterator_class_storage;
 
-    // Create the StringBuilder class with its prototype  
-    do_object string_builder_proto = do_create(NULL);
-    
-    // Add methods to StringBuilder prototype
-    value_t sb_append_method = make_native(builtin_string_builder_append);
-    do_set(string_builder_proto, "append", &sb_append_method, sizeof(value_t));
-    
-    value_t sb_append_char_method = make_native(builtin_string_builder_append_char);
-    do_set(string_builder_proto, "appendChar", &sb_append_char_method, sizeof(value_t));
-    
-    value_t sb_to_string_method = make_native(builtin_string_builder_to_string);
-    do_set(string_builder_proto, "toString", &sb_to_string_method, sizeof(value_t));
-    
-    value_t sb_length_method = make_native(builtin_string_builder_length);
-    do_set(string_builder_proto, "length", &sb_length_method, sizeof(value_t));
-    
-    value_t sb_clear_method = make_native(builtin_string_builder_clear);
-    do_set(string_builder_proto, "clear", &sb_clear_method, sizeof(value_t));
-    
-    // Create the StringBuilder class
-    value_t string_builder_class = make_class("StringBuilder", string_builder_proto);
-    
-    // Set the factory function 
-    string_builder_class.as.class->factory = string_builder_factory;
-    
-    // Store in globals
-    do_set(vm->globals, "StringBuilder", &string_builder_class, sizeof(value_t));
-    
-    // Store a global reference for use in make_string_builder
-    static value_t string_builder_class_storage;
-    string_builder_class_storage = vm_retain(string_builder_class);
-    global_string_builder_class = &string_builder_class_storage;
+    // Initialize StringBuilder class
+    string_builder_class_init(vm);
 
     // Create the LocalDate class with its prototype
     do_object local_date_proto = do_create(NULL);
@@ -3137,121 +3066,6 @@ value_t builtin_buffer_to_hex(slate_vm* vm, int arg_count, value_t* args) {
     return make_string_ds(hex_str);
 }
 
-// BUFFER READER BUILTIN FUNCTIONS
-// ============================
-
-// buffer_reader(buffer) - Create buffer reader
-value_t builtin_buffer_reader(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("buffer_reader() takes exactly 1 argument (%d given)", arg_count);
-    }
-
-    value_t buffer_val = args[0];
-    if (buffer_val.type != VAL_BUFFER) {
-        runtime_error("buffer_reader() requires a buffer argument, not %s", value_type_name(buffer_val.type));
-    }
-
-    db_reader reader = db_reader_new(buffer_val.as.buffer);
-    return make_buffer_reader(reader);
-}
-
-// reader_read_uint8(reader) - Read uint8 from reader
-value_t builtin_reader_read_uint8(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("reader_read_uint8() takes exactly 1 argument (%d given)", arg_count);
-    }
-
-    value_t reader_val = args[0];
-    if (reader_val.type != VAL_BUFFER_READER) {
-        runtime_error("reader_read_uint8() requires a buffer reader, not %s", value_type_name(reader_val.type));
-    }
-
-    db_reader reader = reader_val.as.reader;
-    if (!db_reader_can_read(reader, 1)) {
-        runtime_error("Cannot read uint8: not enough data remaining");
-    }
-
-    uint8_t value = db_read_uint8(reader);
-    return make_int32((int32_t)value);
-}
-
-// reader_read_uint16_le(reader) - Read uint16 in little-endian from reader
-value_t builtin_reader_read_uint16_le(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("reader_read_uint16_le() takes exactly 1 argument (%d given)", arg_count);
-    }
-
-    value_t reader_val = args[0];
-    if (reader_val.type != VAL_BUFFER_READER) {
-        runtime_error("reader_read_uint16_le() requires a buffer reader, not %s", value_type_name(reader_val.type));
-    }
-
-    db_reader reader = reader_val.as.reader;
-    if (!db_reader_can_read(reader, 2)) {
-        runtime_error("Cannot read uint16: not enough data remaining");
-    }
-
-    uint16_t value = db_read_uint16_le(reader);
-    return make_int32((int32_t)value);
-}
-
-// reader_read_uint32_le(reader) - Read uint32 in little-endian from reader
-value_t builtin_reader_read_uint32_le(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("reader_read_uint32_le() takes exactly 1 argument (%d given)", arg_count);
-    }
-
-    value_t reader_val = args[0];
-    if (reader_val.type != VAL_BUFFER_READER) {
-        runtime_error("reader_read_uint32_le() requires a buffer reader, not %s", value_type_name(reader_val.type));
-    }
-
-    db_reader reader = reader_val.as.reader;
-    if (!db_reader_can_read(reader, 4)) {
-        runtime_error("Cannot read uint32: not enough data remaining");
-    }
-
-    uint32_t value = db_read_uint32_le(reader);
-
-    // Check if value fits in int32_t range
-    if (value <= INT32_MAX) {
-        return make_int32((int32_t)value);
-    } else {
-        // Convert to bigint for large values
-        di_int big = di_from_uint32(value);
-        return make_bigint(big);
-    }
-}
-
-// reader_position(reader) - Get reader position
-value_t builtin_reader_position(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("reader_position() takes exactly 1 argument (%d given)", arg_count);
-    }
-
-    value_t reader_val = args[0];
-    if (reader_val.type != VAL_BUFFER_READER) {
-        runtime_error("reader_position() requires a buffer reader, not %s", value_type_name(reader_val.type));
-    }
-
-    size_t pos = db_reader_position(reader_val.as.reader);
-    return make_int32((int32_t)pos);
-}
-
-// reader_remaining(reader) - Get remaining bytes in reader
-value_t builtin_reader_remaining(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("reader_remaining() takes exactly 1 argument (%d given)", arg_count);
-    }
-
-    value_t reader_val = args[0];
-    if (reader_val.type != VAL_BUFFER_READER) {
-        runtime_error("reader_remaining() requires a buffer reader, not %s", value_type_name(reader_val.type));
-    }
-
-    size_t remaining = db_reader_remaining(reader_val.as.reader);
-    return make_int32((int32_t)remaining);
-}
 
 // ===================
 // I/O BUILTIN FUNCTIONS
@@ -3324,283 +3138,15 @@ value_t builtin_write_file(slate_vm* vm, int arg_count, value_t* args) {
 // String method: isEmpty()
 // Returns true if string has no characters
 
-// Range method implementations
 
-// range.start() - Get the starting value
-value_t builtin_range_start(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("start() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_RANGE) {
-        runtime_error("start() can only be called on ranges");
-    }
-    
-    range_t* range = receiver.as.range;
-    if (!range) {
-        runtime_error("Invalid range");
-    }
-    
-    return vm_retain(range->start);
-}
 
-// range.end() - Get the ending value
-value_t builtin_range_end(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("end() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_RANGE) {
-        runtime_error("end() can only be called on ranges");
-    }
-    
-    range_t* range = receiver.as.range;
-    if (!range) {
-        runtime_error("Invalid range");
-    }
-    
-    return vm_retain(range->end);
-}
 
-// range.isExclusive() - Check if range excludes end value
-value_t builtin_range_is_exclusive(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("isExclusive() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_RANGE) {
-        runtime_error("isExclusive() can only be called on ranges");
-    }
-    
-    range_t* range = receiver.as.range;
-    if (!range) {
-        runtime_error("Invalid range");
-    }
-    
-    return make_boolean(range->exclusive);
-}
 
-// range.isEmpty() - Check if range contains no elements
-value_t builtin_range_is_empty(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("isEmpty() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_RANGE) {
-        runtime_error("isEmpty() can only be called on ranges");
-    }
-    
-    range_t* range = receiver.as.range;
-    if (!range) {
-        runtime_error("Invalid range");
-    }
-    
-    // Range is empty if start > end, or if start == end and exclusive
-    if (!is_number(range->start) || !is_number(range->end)) {
-        // Non-numeric ranges are not empty by default
-        return make_boolean(0);
-    }
-    
-    double start_val = value_to_double(range->start);
-    double end_val = value_to_double(range->end);
-    
-    if (start_val > end_val) {
-        return make_boolean(1); // Empty - start > end
-    }
-    
-    if (start_val == end_val && range->exclusive) {
-        return make_boolean(1); // Empty - start == end with exclusive
-    }
-    
-    return make_boolean(0); // Not empty
-}
 
-// range.length() - Number of elements in range
-value_t builtin_range_length(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("length() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_RANGE) {
-        runtime_error("length() can only be called on ranges");
-    }
-    
-    range_t* range = receiver.as.range;
-    if (!range) {
-        runtime_error("Invalid range");
-    }
-    
-    // Only support numeric ranges for length calculation
-    if (!is_number(range->start) || !is_number(range->end)) {
-        runtime_error("length() only supported for numeric ranges");
-    }
-    
-    double start_val = value_to_double(range->start);
-    double end_val = value_to_double(range->end);
-    
-    if (start_val > end_val) {
-        return make_int32(0); // Empty range
-    }
-    
-    if (start_val == end_val) {
-        return make_int32(range->exclusive ? 0 : 1);
-    }
-    
-    // Calculate length based on integer step
-    int start_int = (int)start_val;
-    int end_int = (int)end_val;
-    
-    if (range->exclusive) {
-        return make_int32(end_int - start_int);
-    } else {
-        return make_int32(end_int - start_int + 1);
-    }
-}
 
-// range.contains(value) - Check if value is within range bounds
-value_t builtin_range_contains(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 2) {
-        runtime_error("contains() takes exactly 1 argument (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    value_t value = args[1];
-    
-    if (receiver.type != VAL_RANGE) {
-        runtime_error("contains() can only be called on ranges");
-    }
-    
-    range_t* range = receiver.as.range;
-    if (!range) {
-        runtime_error("Invalid range");
-    }
-    
-    // Only support numeric values for contains check
-    if (!is_number(range->start) || !is_number(range->end) || !is_number(value)) {
-        return make_boolean(0); // Non-numeric not contained
-    }
-    
-    double start_val = value_to_double(range->start);
-    double end_val = value_to_double(range->end);
-    double check_val = value_to_double(value);
-    
-    if (range->exclusive) {
-        return make_boolean(check_val >= start_val && check_val < end_val);
-    } else {
-        return make_boolean(check_val >= start_val && check_val <= end_val);
-    }
-}
 
-// range.toArray() - Convert range to array
-value_t builtin_range_to_array(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("toArray() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_RANGE) {
-        runtime_error("toArray() can only be called on ranges");
-    }
-    
-    range_t* range = receiver.as.range;
-    if (!range) {
-        runtime_error("Invalid range");
-    }
-    
-    // Only support numeric ranges for conversion to array
-    if (!is_number(range->start) || !is_number(range->end)) {
-        runtime_error("toArray() only supported for numeric ranges");
-    }
-    
-    double start_val = value_to_double(range->start);
-    double end_val = value_to_double(range->end);
-    
-    da_array array = da_new(sizeof(value_t));
-    
-    if (start_val > end_val) {
-        // Empty range - return empty array
-        return make_array(array);
-    }
-    
-    // Generate integer sequence
-    int start_int = (int)start_val;
-    int end_int = (int)end_val;
-    
-    if (range->exclusive) {
-        for (int i = start_int; i < end_int; i++) {
-            value_t val = make_int32(i);
-            da_push(array, &val);
-        }
-    } else {
-        for (int i = start_int; i <= end_int; i++) {
-            value_t val = make_int32(i);
-            da_push(array, &val);
-        }
-    }
-    
-    return make_array(array);
-}
 
-// range.reverse() - Create reversed range
-value_t builtin_range_reverse(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("reverse() takes no arguments (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    if (receiver.type != VAL_RANGE) {
-        runtime_error("reverse() can only be called on ranges");
-    }
-    
-    range_t* range = receiver.as.range;
-    if (!range) {
-        runtime_error("Invalid range");
-    }
-    
-    // Create reversed range: swap start and end, keep exclusivity
-    return make_range(range->end, range->start, range->exclusive);
-}
 
-// range.equals(other) - Deep equality comparison
-value_t builtin_range_equals(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 2) {
-        runtime_error("equals() takes exactly 1 argument (%d given)", arg_count - 1);
-    }
-    
-    value_t receiver = args[0];
-    value_t other = args[1];
-    
-    if (receiver.type != VAL_RANGE) {
-        runtime_error("equals() can only be called on ranges");
-    }
-    
-    if (other.type != VAL_RANGE) {
-        return make_boolean(0); // Different types not equal
-    }
-    
-    range_t* range1 = receiver.as.range;
-    range_t* range2 = other.as.range;
-    
-    if (!range1 || !range2) {
-        return make_boolean(0); // Invalid ranges not equal
-    }
-    
-    // Compare exclusivity flag
-    if (range1->exclusive != range2->exclusive) {
-        return make_boolean(0);
-    }
-    
-    // Compare start and end values
-    int start_equal = values_equal(range1->start, range2->start);
-    int end_equal = values_equal(range1->end, range2->end);
-    
-    return make_boolean(start_equal && end_equal);
-}
 
 // Iterator method implementations
 

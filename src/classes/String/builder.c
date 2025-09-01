@@ -1,9 +1,46 @@
 #include "string.h"
 #include "builtins.h"
 #include "dynamic_string.h"
+#include "dynamic_object.h"
 
 // Global StringBuilder class storage
 value_t* global_string_builder_class = NULL;
+
+// Initialize StringBuilder class with prototype and methods
+void string_builder_class_init(slate_vm* vm) {
+    // Create the StringBuilder class with its prototype  
+    do_object string_builder_proto = do_create(NULL);
+
+    // Add methods to StringBuilder prototype
+    value_t sb_append_method = make_native(builtin_string_builder_append);
+    do_set(string_builder_proto, "append", &sb_append_method, sizeof(value_t));
+
+    value_t sb_append_char_method = make_native(builtin_string_builder_append_char);
+    do_set(string_builder_proto, "appendChar", &sb_append_char_method, sizeof(value_t));
+
+    value_t sb_to_string_method = make_native(builtin_string_builder_to_string);
+    do_set(string_builder_proto, "toString", &sb_to_string_method, sizeof(value_t));
+
+    value_t sb_length_method = make_native(builtin_string_builder_length);
+    do_set(string_builder_proto, "length", &sb_length_method, sizeof(value_t));
+
+    value_t sb_clear_method = make_native(builtin_string_builder_clear);
+    do_set(string_builder_proto, "clear", &sb_clear_method, sizeof(value_t));
+
+    // Create the StringBuilder class
+    value_t string_builder_class = make_class("StringBuilder", string_builder_proto);
+
+    // Set the factory function
+    string_builder_class.as.class->factory = string_builder_factory;
+
+    // Store in globals
+    do_set(vm->globals, "StringBuilder", &string_builder_class, sizeof(value_t));
+
+    // Store a global reference for use in make_string_builder
+    static value_t string_builder_class_storage;
+    string_builder_class_storage = vm_retain(string_builder_class);
+    global_string_builder_class = &string_builder_class_storage;
+}
 
 // StringBuilder factory function
 value_t string_builder_factory(value_t* args, int arg_count) {
