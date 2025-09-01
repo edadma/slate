@@ -517,13 +517,16 @@ void test_division_by_zero_errors() {
     // Division by zero should return null (error case)
     result = execute_expression_allow_errors("10 / 0");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     result = execute_expression_allow_errors("0 / 0");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Negative division by zero
     result = execute_expression_allow_errors("-5 / 0");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 }
 
 // Test modulo by zero error handling (moved from test_vm.c)
@@ -533,17 +536,21 @@ void test_modulo_by_zero_errors() {
     // Modulo by zero should return null (error case)
     result = execute_expression_allow_errors("10 mod 0");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     result = execute_expression_allow_errors("0 mod 0");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Negative modulo by zero
     result = execute_expression_allow_errors("-5 mod 0");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Float modulo by zero
     result = execute_expression_allow_errors("3.14 mod 0");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 }
 
 // Test comprehensive unary operations (moved from test_vm.c)

@@ -334,44 +334,55 @@ void test_vm_type_errors(void) {
     // Cannot subtract strings
     result = run_code("\"hello\" - \"world\"");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Cannot multiply strings
     result = run_code("\"hello\" * 5");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Cannot divide booleans
     result = run_code("true / false");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Cannot modulo with non-numbers
     result = run_code("\"hello\" mod 3");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     result = run_code("5 mod \"world\"");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     result = run_code("true mod false");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Cannot add booleans (no implicit string conversion without string operand)
     result = run_code("true + false");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Cannot add boolean + number (no implicit string conversion without string operand)
     result = run_code("false + 42");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Cannot negate strings
     result = run_code("-\"hello\"");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Cannot index numbers
     result = run_code("42(0)");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 
     // Cannot index with non-numbers
     result = run_code("[1,2,3](\"hello\")");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
 }
 
 // Test complex expressions

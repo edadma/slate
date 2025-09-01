@@ -330,19 +330,22 @@ void test_bitwise_error_cases(void) {
     // Test type errors - bitwise operations should only work with integers
     result = run_code("3.14 & 2");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
+    vm_release(result);
 
     result = run_code("5 | \"hello\"");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
+    vm_release(result);
 
     result = run_code("true ^ false");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
+    vm_release(result);
 
     result = run_code("~null");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
+    vm_release(result);
 
     result = run_code("42 << 3.5");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Should be error
-
     vm_release(result);
 }
 
