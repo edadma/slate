@@ -200,8 +200,7 @@ void test_function_recursive_factorial(void) {
 }
 
 // Main test suite function
-void run_function_tests(void) {
-    printf("Running Function Tests...\n");
+void test_functions_suite(void) {
     
     // Lambda function tests
     RUN_TEST(test_lambda_zero_parameters);
@@ -239,6 +238,4 @@ void run_function_tests(void) {
     RUN_TEST(test_lambda_return_value_types);
     RUN_TEST(test_function_call_argument_validation);
     RUN_TEST(test_function_recursive_factorial);
-    
-    printf("Function Tests Complete!\n");
 }

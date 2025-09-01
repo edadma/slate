@@ -170,7 +170,7 @@ void test_precedence() {
     test_expression_equals_int("false " "?" "?" " true ? 1 : 2", 2);  // false ?? (true ? 1 : 2)
 }
 
-void run_new_operators_tests() {
+void test_new_operators_suite() {
     // Ternary operator tests
     RUN_TEST(test_ternary_true);
     RUN_TEST(test_ternary_false);
