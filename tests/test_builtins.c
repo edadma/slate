@@ -545,7 +545,7 @@ void test_object_with_string_values(void) {
 
 // Test buffer creation from string
 void test_buffer_creation_from_string(void) {
-    value_t result = interpret_expression("buffer(\"Hello\")");
+    value_t result = interpret_expression("Buffer(\"Hello\")");
     TEST_ASSERT_EQUAL(VAL_BUFFER, result.type);
     TEST_ASSERT_NOT_NULL(result.as.buffer);
     TEST_ASSERT_EQUAL(5, db_size(result.as.buffer));
@@ -554,7 +554,7 @@ void test_buffer_creation_from_string(void) {
 
 // Test buffer creation from array
 void test_buffer_creation_from_array(void) {
-    value_t result = interpret_expression("buffer([72, 101, 108, 108, 111])");
+    value_t result = interpret_expression("Buffer([72, 101, 108, 108, 111])");
     TEST_ASSERT_EQUAL(VAL_BUFFER, result.type);
     TEST_ASSERT_NOT_NULL(result.as.buffer);
     TEST_ASSERT_EQUAL(5, db_size(result.as.buffer));
@@ -607,9 +607,9 @@ void test_buffer_type_checking(void) {
     vm_release(result);
 }
 
-// Test buffer reader basic functionality
+// Test buffer reader basic functionality  
 void test_buffer_reader_basic(void) {
-    value_t result = interpret_expression("reader_read_uint8(buffer_reader(buffer(\"H\")))");
+    value_t result = interpret_expression("BufferReader(Buffer(\"H\")).readUint8()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL(72, result.as.int32); // ASCII 'H'
     vm_release(result);
@@ -618,13 +618,13 @@ void test_buffer_reader_basic(void) {
 // Test buffer reader positioning
 void test_buffer_reader_positioning(void) {
     // Test remaining bytes
-    value_t result = interpret_expression("reader_remaining(buffer_reader(buffer(\"Hello\")))");
+    value_t result = interpret_expression("BufferReader(Buffer(\"Hello\")).remaining()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL(5, result.as.int32);
     vm_release(result);
     
     // Test position
-    result = interpret_expression("reader_position(buffer_reader(buffer(\"Hello\")))");
+    result = interpret_expression("BufferReader(Buffer(\"Hello\")).position()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL(0, result.as.int32);
     vm_release(result);

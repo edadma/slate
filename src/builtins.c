@@ -188,6 +188,9 @@ void builtins_init(slate_vm* vm) {
     // Initialize Buffer class
     buffer_class_init(vm);
 
+    // Initialize BufferReader class
+    buffer_reader_class_init(vm);
+
     // Register all built-ins
     register_builtin(vm, "print", builtin_print, 1, 1);
     register_builtin(vm, "type", builtin_type, 1, 1);
@@ -216,23 +219,6 @@ void builtins_init(slate_vm* vm) {
     register_builtin(vm, "parse_number", builtin_parse_number, 1, 1);
     register_builtin(vm, "args", builtin_args, 0, 0);
 
-    register_builtin(vm, "buffer", builtin_buffer, 1, 1);
-
-    // Buffer builder functions
-    register_builtin(vm, "buffer_builder", builtin_buffer_builder, 1, 1);
-    register_builtin(vm, "builder_append_uint8", builtin_builder_append_uint8, 2, 2);
-    register_builtin(vm, "builder_append_uint16_le", builtin_builder_append_uint16_le, 2, 2);
-    register_builtin(vm, "builder_append_uint32_le", builtin_builder_append_uint32_le, 2, 2);
-    register_builtin(vm, "builder_append_cstring", builtin_builder_append_cstring, 2, 2);
-    register_builtin(vm, "builder_finish", builtin_builder_finish, 1, 1);
-
-    // Buffer reader functions
-    register_builtin(vm, "buffer_reader", builtin_buffer_reader, 1, 1);
-    register_builtin(vm, "reader_read_uint8", builtin_reader_read_uint8, 1, 1);
-    register_builtin(vm, "reader_read_uint16_le", builtin_reader_read_uint16_le, 1, 1);
-    register_builtin(vm, "reader_read_uint32_le", builtin_reader_read_uint32_le, 1, 1);
-    register_builtin(vm, "reader_position", builtin_reader_position, 1, 1);
-    register_builtin(vm, "reader_remaining", builtin_reader_remaining, 1, 1);
 
     // I/O functions
     register_builtin(vm, "read_file", builtin_read_file, 1, 1);
@@ -855,151 +841,6 @@ value_t builtin_args(slate_vm* vm, int arg_count, value_t* args) {
 
 
 
-
-// ========================
-// BUFFER BUILTIN FUNCTIONS
-// ========================
-
-// buffer(data) - Create buffer from string or array
-value_t builtin_buffer(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("buffer() takes exactly 1 argument (%d given)", arg_count);
-    }
-
-    value_t data = args[0];
-    db_buffer buf;
-
-    if (data.type == VAL_STRING) {
-        // Create buffer from string
-        const char* str = data.as.string;
-        size_t len = str ? strlen(str) : 0;
-        buf = db_new_with_data(str, len);
-    } else if (data.type == VAL_ARRAY) {
-        // Create buffer from array of numbers
-        da_array arr = data.as.array;
-        size_t len = da_length(arr);
-
-        // Convert array elements to bytes
-        uint8_t* bytes = malloc(len);
-        if (!bytes) {
-            runtime_error("Failed to allocate memory for buffer");
-        }
-
-        for (size_t i = 0; i < len; i++) {
-            value_t* elem = (value_t*)da_get(arr, i);
-            if (!elem) {
-                free(bytes);
-                runtime_error("Invalid array element at index %zu", i);
-            }
-            if (elem->type == VAL_INT32) {
-                if (elem->as.int32 < 0 || elem->as.int32 > 255) {
-                    free(bytes);
-                    runtime_error("Array element %d at index %zu is not a valid byte (0-255)", elem->as.int32, i);
-                }
-                bytes[i] = (uint8_t)elem->as.int32;
-            } else {
-                free(bytes);
-                runtime_error("Array element at index %zu must be an integer, not %s", i, value_type_name(elem->type));
-            }
-        }
-
-        buf = db_new_with_data(bytes, len);
-        free(bytes);
-    } else {
-        runtime_error("buffer() requires a string or array argument, not %s", value_type_name(data.type));
-    }
-
-    return make_buffer(buf);
-}
-
-
-// buffer_slice(buffer, offset, length) - Create buffer slice
-value_t builtin_buffer_slice(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 3) {
-        runtime_error("buffer_slice() takes exactly 3 arguments (%d given)", arg_count);
-    }
-
-    value_t buf_val = args[0];
-    value_t offset_val = args[1];
-    value_t length_val = args[2];
-
-    if (buf_val.type != VAL_BUFFER) {
-        runtime_error("buffer_slice() requires a buffer as first argument, not %s", value_type_name(buf_val.type));
-    }
-    if (offset_val.type != VAL_INT32) {
-        runtime_error("buffer_slice() requires an integer offset, not %s", value_type_name(offset_val.type));
-    }
-    if (length_val.type != VAL_INT32) {
-        runtime_error("buffer_slice() requires an integer length, not %s", value_type_name(length_val.type));
-    }
-
-    db_buffer buf = buf_val.as.buffer;
-    int32_t offset = offset_val.as.int32;
-    int32_t length = length_val.as.int32;
-
-    if (offset < 0 || length < 0) {
-        runtime_error("buffer_slice() offset and length must be non-negative");
-    }
-
-    db_buffer slice = db_slice(buf, (size_t)offset, (size_t)length);
-    if (!slice) {
-        runtime_error("Invalid buffer slice bounds");
-    }
-
-    return make_buffer(slice);
-}
-
-// buffer_concat(buf1, buf2) - Concatenate two buffers
-value_t builtin_buffer_concat(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 2) {
-        runtime_error("buffer_concat() takes exactly 2 arguments (%d given)", arg_count);
-    }
-
-    value_t buf1_val = args[0];
-    value_t buf2_val = args[1];
-
-    if (buf1_val.type != VAL_BUFFER) {
-        runtime_error("buffer_concat() requires buffer as first argument, not %s", value_type_name(buf1_val.type));
-    }
-    if (buf2_val.type != VAL_BUFFER) {
-        runtime_error("buffer_concat() requires buffer as second argument, not %s", value_type_name(buf2_val.type));
-    }
-
-    db_buffer result = db_concat(buf1_val.as.buffer, buf2_val.as.buffer);
-    return make_buffer(result);
-}
-
-// buffer_to_hex(buffer) - Convert buffer to hex string
-value_t builtin_buffer_to_hex(slate_vm* vm, int arg_count, value_t* args) {
-    if (arg_count != 1) {
-        runtime_error("buffer_to_hex() takes exactly 1 argument (%d given)", arg_count);
-    }
-
-    value_t buf_val = args[0];
-    if (buf_val.type != VAL_BUFFER) {
-        runtime_error("buffer_to_hex() requires a buffer argument, not %s", value_type_name(buf_val.type));
-    }
-
-    db_buffer hex_buf = db_to_hex(buf_val.as.buffer, false); // lowercase
-
-    // Create null-terminated string from hex buffer
-    size_t hex_len = db_size(hex_buf);
-    char* null_term_hex = malloc(hex_len + 1);
-    if (!null_term_hex) {
-        db_release(&hex_buf);
-        runtime_error("Failed to allocate memory for hex string");
-    }
-
-    memcpy(null_term_hex, hex_buf, hex_len);
-    null_term_hex[hex_len] = '\0';
-
-    ds_string hex_str = ds_new(null_term_hex);
-
-    free(null_term_hex);
-    db_release(&hex_buf);
-
-    return make_string_ds(hex_str);
-}
 
 
 // ===================

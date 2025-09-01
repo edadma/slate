@@ -175,8 +175,8 @@ void test_buffer_class_method_chaining(void) {
 
 // Test Buffer reader method with buffer reader methods
 void test_buffer_class_reader_integration(void) {
-    // Test getting a reader and reading bytes
-    value_t result = run_code("reader_read_uint8(Buffer(\"H\").reader())");
+    // Test getting a reader and reading bytes using BufferReader class methods
+    value_t result = run_code("Buffer(\"H\").reader().readUint8()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL(72, result.as.int32); // ASCII 'H'
     vm_release(result);
@@ -184,14 +184,14 @@ void test_buffer_class_reader_integration(void) {
 
 // Test Buffer reader with positioning
 void test_buffer_class_reader_positioning(void) {
-    // Test remaining bytes in reader
-    value_t result = run_code("reader_remaining(Buffer(\"Hello\").reader())");
+    // Test remaining bytes in reader using BufferReader class methods
+    value_t result = run_code("Buffer(\"Hello\").reader().remaining()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL(5, result.as.int32);
     vm_release(result);
     
     // Test position
-    result = run_code("reader_position(Buffer(\"Hello\").reader())");
+    result = run_code("Buffer(\"Hello\").reader().position()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL(0, result.as.int32);
     vm_release(result);
@@ -203,8 +203,8 @@ void test_buffer_class_reader_positioning(void) {
 
 // Test Buffer class with method chaining and reader
 void test_buffer_class_comprehensive(void) {
-    // Create a buffer, slice it, convert to hex, create from hex, and read
-    value_t result = run_code("reader_read_uint8(Buffer.fromHex(Buffer(\"Hello World\").slice(0, 5).toHex()).reader())");
+    // Create a buffer, slice it, convert to hex, create from hex, and read using BufferReader class methods
+    value_t result = run_code("Buffer.fromHex(Buffer(\"Hello World\").slice(0, 5).toHex()).reader().readUint8()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL(72, result.as.int32); // ASCII 'H' from "Hello"
     vm_release(result);

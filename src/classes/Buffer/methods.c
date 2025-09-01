@@ -2,6 +2,7 @@
 #include "builtins.h"
 #include "dynamic_buffer.h"
 #include "dynamic_string.h"
+#include "buffer_reader.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -176,6 +177,6 @@ value_t builtin_buffer_method_reader(slate_vm* vm, int arg_count, value_t* args)
         runtime_error("reader() can only be called on buffers");
     }
     
-    db_reader reader = db_reader_new(receiver.as.buffer);
-    return make_buffer_reader(reader);
+    // Use BufferReader factory to create a proper BufferReader class instance
+    return buffer_reader_factory(&receiver, 1);
 }
