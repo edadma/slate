@@ -18,10 +18,16 @@ vm_result op_instanceof(vm_t* vm) {
     
     // Check if the value has a class and if it matches
     if (value_val.class && value_val.class->type == VAL_CLASS) {
-        class_t* value_class = value_val.class->as.class;
-        
-        // Simple class comparison - could be extended for inheritance
-        is_instance = (value_class == target_class);
+        // Check inheritance hierarchy by walking up the class chain
+        value_t* current_class_val = value_val.class;
+        while (current_class_val && current_class_val->type == VAL_CLASS) {
+            if (current_class_val->as.class == target_class) {
+                is_instance = true;
+                break;
+            }
+            // Move up the inheritance chain
+            current_class_val = current_class_val->class;
+        }
     }
     
     vm_push(vm, make_boolean(is_instance));

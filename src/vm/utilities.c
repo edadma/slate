@@ -55,9 +55,15 @@ int values_equal(value_t a, value_t b) {
         } else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
             return di_eq(a.as.bigint, b.as.bigint);
         } else if (a.type == VAL_FLOAT32 && b.type == VAL_FLOAT32) {
-            return a.as.float32 == b.as.float32;
+            // IEEE 754: NaN is never equal to NaN
+            float fa = a.as.float32, fb = b.as.float32;
+            if (isnan(fa) || isnan(fb)) return 0;
+            return fa == fb;
         } else if (a.type == VAL_FLOAT64 && b.type == VAL_FLOAT64) {
-            return a.as.float64 == b.as.float64;
+            // IEEE 754: NaN is never equal to NaN
+            double da = a.as.float64, db = b.as.float64;
+            if (isnan(da) || isnan(db)) return 0;
+            return da == db;
         }
         // Cross-type comparisons - convert to common type
         // Convert to double for simplicity
@@ -69,6 +75,8 @@ int values_equal(value_t a, value_t b) {
             : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
             : (b.type == VAL_FLOAT32)        ? (double)b.as.float32
                                              : b.as.float64;
+        // IEEE 754: NaN is never equal to NaN, Infinity equals Infinity across precisions
+        if (isnan(a_val) || isnan(b_val)) return 0;
         return a_val == b_val;
     }
 
@@ -161,10 +169,28 @@ void print_value(vm_t* vm, value_t value) {
         break;
     }
     case VAL_FLOAT32:
-        printf("%.7g", value.as.float32);
+        {
+            float val = value.as.float32;
+            if (isnan(val)) {
+                printf("NaN");
+            } else if (isinf(val)) {
+                printf("%s", val > 0 ? "Infinity" : "-Infinity");
+            } else {
+                printf("%.7g", val);
+            }
+        }
         break;
     case VAL_FLOAT64:
-        printf("%.6g", value.as.float64);
+        {
+            double val = value.as.float64;
+            if (isnan(val)) {
+                printf("NaN");
+            } else if (isinf(val)) {
+                printf("%s", val > 0 ? "Infinity" : "-Infinity");
+            } else {
+                printf("%.6g", val);
+            }
+        }
         break;
     case VAL_STRING:
         printf("\"%s\"", value.as.string ? value.as.string : ""); // DS strings work directly!

@@ -15,6 +15,8 @@
 #include "datetime.h"
 #include "int.h"
 #include "iterator.h"
+#include "classes/Number/number.h"
+#include "classes/Float/float.h"
 #include "library_assert.h"
 #include "local_date.h"
 #include "local_datetime.h"
@@ -144,26 +146,13 @@ void builtins_init(vm_t* vm) {
     // Register all built-ins
     register_builtin(vm, "print", builtin_print, 1, 1);
     register_builtin(vm, "type", builtin_type, 1, 1);
-    register_builtin(vm, "abs", builtin_abs, 1, 1);
-    register_builtin(vm, "sqrt", builtin_sqrt, 1, 1);
-    register_builtin(vm, "floor", builtin_floor, 1, 1);
-    register_builtin(vm, "ceil", builtin_ceil, 1, 1);
-    register_builtin(vm, "round", builtin_round, 1, 1);
+    // abs() is now an instance method: n.abs()
     register_builtin(vm, "min", builtin_min, 2, 2);
     register_builtin(vm, "max", builtin_max, 2, 2);
     register_builtin(vm, "random", builtin_random, 0, 0);
-    register_builtin(vm, "sin", builtin_sin, 1, 1);
-    register_builtin(vm, "cos", builtin_cos, 1, 1);
-    register_builtin(vm, "tan", builtin_tan, 1, 1);
-    register_builtin(vm, "asin", builtin_asin, 1, 1);
-    register_builtin(vm, "acos", builtin_acos, 1, 1);
-    register_builtin(vm, "atan", builtin_atan, 1, 1);
-    register_builtin(vm, "atan2", builtin_atan2, 2, 2);
-    register_builtin(vm, "degrees", builtin_degrees, 1, 1);
-    register_builtin(vm, "radians", builtin_radians, 1, 1);
-    register_builtin(vm, "exp", builtin_exp, 1, 1);
-    register_builtin(vm, "ln", builtin_ln, 1, 1);
-    register_builtin(vm, "sign", builtin_sign, 1, 1);
+    // Math functions are now instance methods: n.sin(), n.cos(), etc.
+    // Math functions degrees, radians, exp, ln are now instance methods
+    // sign() is now an instance method: n.sign()
     register_builtin(vm, "input", builtin_input, 0, 1);
     register_builtin(vm, "parse_int", builtin_parse_int, 1, 1);
     register_builtin(vm, "parse_number", builtin_parse_number, 1, 1);
@@ -174,16 +163,14 @@ void builtins_init(vm_t* vm) {
     register_builtin(vm, "read_file", builtin_read_file, 1, 1);
     register_builtin(vm, "write_file", builtin_write_file, 2, 2);
 
-    // Initialize Int class
-    int_class_init(vm);
-
-
     // Create the Value class - the ultimate superclass of all values
     do_object value_proto = do_create(NULL);
 
     // Add methods to Value prototype
     value_t value_to_string_method = make_native(builtin_value_to_string);
     do_set(value_proto, "toString", &value_to_string_method, sizeof(value_t));
+
+    // Value prototype now only has toString - numeric methods inherited from Number
 
     // Create the Value class
     value_t value_class = make_class("Value", value_proto);
@@ -201,6 +188,15 @@ void builtins_init(vm_t* vm) {
     static value_t value_class_storage;
     value_class_storage = vm_retain(value_class);
     global_value_class = &value_class_storage;
+
+    // Initialize Number class (abstract superclass)
+    number_class_init(vm);
+    
+    // Initialize Int class (inherits from Number)
+    int_class_init(vm);
+    
+    // Initialize Float class (inherits from Number)
+    float_class_init(vm);
 
     // Now that Value class is created, set up proper inheritance chain
     // Array class should inherit from Value class

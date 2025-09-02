@@ -36,7 +36,9 @@ include_directories(src/classes/BufferReader)
 include_directories(src/classes/Range)
 include_directories(src/classes/Iterator)
 include_directories(src/classes/Value)
+include_directories(src/classes/Number)
 include_directories(src/classes/Int)
+include_directories(src/classes/Float)
 include_directories(src/classes/LocalDate)
 include_directories(src/classes/LocalTime)
 include_directories(src/classes/LocalDateTime)
@@ -97,7 +99,12 @@ add_executable(slate
         src/classes/Range/range.c
         src/classes/Iterator/iterator.c
         src/classes/Value/value.c
+        src/classes/Number/class.c
+        src/classes/Number/methods.c
         src/classes/Int/int.c
+        src/classes/Float/class.c
+        src/classes/Float/factory.c
+        src/classes/Float/methods.c
         src/classes/LocalDate/local_date.c
         src/classes/LocalTime/local_time.c
         src/classes/LocalDateTime/factory.c
@@ -275,7 +282,12 @@ if (BUILD_TESTS)
             src/classes/Range/range.c
             src/classes/Iterator/iterator.c
             src/classes/Value/value.c
+            src/classes/Number/class.c
+            src/classes/Number/methods.c
             src/classes/Int/int.c
+            src/classes/Float/class.c
+            src/classes/Float/factory.c
+            src/classes/Float/methods.c
         src/classes/LocalDate/local_date.c
         src/classes/LocalTime/local_time.c
         src/classes/LocalDateTime/factory.c

@@ -53,6 +53,8 @@ static keyword_entry_t keywords[] = {
     {"false", TOKEN_FALSE},
     {"null", TOKEN_NULL},
     {"undefined", TOKEN_UNDEFINED},
+    {"NaN", TOKEN_NAN},
+    {"Infinity", TOKEN_INFINITY},
     {NULL, TOKEN_EOF} // Sentinel
 };
 

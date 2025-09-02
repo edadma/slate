@@ -4,6 +4,7 @@
 #include "dynamic_array.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 
 // Forward declarations for functions still in builtins.c
 value_t builtin_local_date_to_string(vm_t* vm, int arg_count, value_t* args);
@@ -144,18 +145,32 @@ value_t builtin_value_to_string(vm_t* vm, int arg_count, value_t* args) {
             
         case VAL_FLOAT32:
             {
-                char buffer[32];
-                // Use %.7g for clean formatting without unnecessary zeros (float32 precision)
-                snprintf(buffer, sizeof(buffer), "%.7g", receiver.as.float32);
-                return make_string(buffer);
+                float val = receiver.as.float32;
+                if (isnan(val)) {
+                    return make_string("NaN");
+                } else if (isinf(val)) {
+                    return make_string(val > 0 ? "Infinity" : "-Infinity");
+                } else {
+                    char buffer[32];
+                    // Use %.7g for clean formatting without unnecessary zeros (float32 precision)
+                    snprintf(buffer, sizeof(buffer), "%.7g", val);
+                    return make_string(buffer);
+                }
             }
             
         case VAL_FLOAT64:
             {
-                char buffer[64];
-                // Use %.15g for clean formatting without unnecessary zeros
-                snprintf(buffer, sizeof(buffer), "%.15g", receiver.as.float64);
-                return make_string(buffer);
+                double val = receiver.as.float64;
+                if (isnan(val)) {
+                    return make_string("NaN");
+                } else if (isinf(val)) {
+                    return make_string(val > 0 ? "Infinity" : "-Infinity");
+                } else {
+                    char buffer[64];
+                    // Use %.15g for clean formatting without unnecessary zeros
+                    snprintf(buffer, sizeof(buffer), "%.15g", val);
+                    return make_string(buffer);
+                }
             }
             
         case VAL_STRING:

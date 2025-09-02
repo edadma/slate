@@ -1,6 +1,7 @@
 #include "vm.h"
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "datetime.h"
 #include "instant.h"
 
@@ -82,14 +83,28 @@ ds_string value_to_string_representation(vm_t* vm, value_t value) {
         }
     }
     case VAL_FLOAT32: {
-        char buffer[32];
-        snprintf(buffer, sizeof(buffer), "%.7g", value.as.float32);
-        return ds_new(buffer);
+        float val = value.as.float32;
+        if (isnan(val)) {
+            return ds_new("NaN");
+        } else if (isinf(val)) {
+            return ds_new(val > 0 ? "Infinity" : "-Infinity");
+        } else {
+            char buffer[32];
+            snprintf(buffer, sizeof(buffer), "%.7g", val);
+            return ds_new(buffer);
+        }
     }
     case VAL_FLOAT64: {
-        char buffer[32];
-        snprintf(buffer, sizeof(buffer), "%.6g", value.as.float64);
-        return ds_new(buffer);
+        double val = value.as.float64;
+        if (isnan(val)) {
+            return ds_new("NaN");
+        } else if (isinf(val)) {
+            return ds_new(val > 0 ? "Infinity" : "-Infinity");
+        } else {
+            char buffer[32];
+            snprintf(buffer, sizeof(buffer), "%.6g", val);
+            return ds_new(buffer);
+        }
     }
     case VAL_BOOLEAN:
         return ds_new(value.as.boolean ? "true" : "false");

@@ -64,8 +64,7 @@ vm_result op_get_property(vm_t* vm) {
             }
         }
         // Move to parent class if any
-        // For now, no inheritance - just break
-        break;
+        current_class = current_class->class;
     }
     
     if (!property_found) {

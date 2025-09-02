@@ -202,6 +202,7 @@ struct period {
 // Global class instances (extern declarations)
 extern value_t* global_value_class;
 extern value_t* global_int_class;
+extern value_t* global_float_class;
 extern value_t* global_string_class;
 extern value_t* global_array_class;
 extern value_t* global_range_class;

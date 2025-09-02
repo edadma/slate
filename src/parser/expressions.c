@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <math.h>
 
 // Forward declarations for static functions
 static ast_node* parse_bitwise_or(parser_t* parser);
@@ -402,6 +403,24 @@ ast_node* parse_primary(parser_t* parser) {
     
     if (parser_match(parser, TOKEN_UNDEFINED)) {
         return (ast_node*)ast_create_undefined(parser->previous.line, parser->previous.column);
+    }
+    
+    if (parser_match(parser, TOKEN_NAN)) {
+        // Create NaN as float64 by default, respecting build configuration  
+#ifdef DEFAULT_FLOAT32
+        return (ast_node*)ast_create_float32(NAN, parser->previous.line, parser->previous.column);
+#else
+        return (ast_node*)ast_create_float64(NAN, parser->previous.line, parser->previous.column);
+#endif
+    }
+    
+    if (parser_match(parser, TOKEN_INFINITY)) {
+        // Create Infinity as float64 by default, respecting build configuration
+#ifdef DEFAULT_FLOAT32
+        return (ast_node*)ast_create_float32(INFINITY, parser->previous.line, parser->previous.column);
+#else
+        return (ast_node*)ast_create_float64(INFINITY, parser->previous.line, parser->previous.column);
+#endif
     }
     
     if (parser_match(parser, TOKEN_INTEGER)) {

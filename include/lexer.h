@@ -16,6 +16,8 @@ typedef enum {
     TOKEN_FALSE,         // false
     TOKEN_NULL,          // null
     TOKEN_UNDEFINED,     // undefined
+    TOKEN_NAN,           // NaN
+    TOKEN_INFINITY,      // Infinity
     
     // Keywords
     TOKEN_VAR,           // var

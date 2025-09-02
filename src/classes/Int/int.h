@@ -27,6 +27,25 @@ value_t builtin_int_lcm(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_int_pow(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_int_factorial(vm_t* vm, int arg_count, value_t* args);
 
+// Number interface methods for integers
+value_t builtin_int_abs(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_sign(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_is_finite(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_is_integer(vm_t* vm, int arg_count, value_t* args);
+
+// Math methods for integers
+value_t builtin_int_sqrt(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_sin(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_cos(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_tan(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_exp(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_ln(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_asin(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_acos(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_atan(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_degrees(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_radians(vm_t* vm, int arg_count, value_t* args);
+
 // Helper Functions
 value_t safe_int_multiply(value_t a, value_t b);
 

@@ -163,7 +163,7 @@ value_t make_float32(float float_val) {
     value_t value;
     value.type = VAL_FLOAT32;
     value.as.float32 = float_val;
-    value.class = global_value_class;
+    value.class = global_float_class; // Use Float class for float32
     value.debug = NULL;
     return value;
 }
@@ -172,7 +172,7 @@ value_t make_float64(double double_val) {
     value_t value;
     value.type = VAL_FLOAT64;
     value.as.float64 = double_val;
-    value.class = global_value_class;
+    value.class = global_float_class; // Use Float class for float64
     value.debug = NULL;
     return value;
 }

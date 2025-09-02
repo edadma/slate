@@ -2,10 +2,339 @@
 #include "builtins.h"
 #include "dynamic_object.h"
 #include "dynamic_int.h"
+#include "number.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+#include <math.h>
+
+// Int method: abs() - Absolute value for integers
+value_t builtin_int_abs(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "abs() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    switch (receiver.type) {
+        case VAL_INT32:
+            if (receiver.as.int32 == INT32_MIN) {
+                // INT32_MIN abs overflows to BigInt
+                di_int result = di_from_int64((int64_t)INT32_MAX + 1);
+                return make_bigint(result);
+            }
+            return make_int32(receiver.as.int32 < 0 ? -receiver.as.int32 : receiver.as.int32);
+            
+        case VAL_BIGINT:
+            return make_bigint(di_abs(receiver.as.bigint));
+            
+        default:
+            runtime_error(vm, "abs() can only be called on integers");
+            return make_null();
+    }
+}
+
+// Int method: sign() - Sign function for integers
+value_t builtin_int_sign(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "sign() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    switch (receiver.type) {
+        case VAL_INT32:
+            if (receiver.as.int32 > 0) return make_int32(1);
+            if (receiver.as.int32 < 0) return make_int32(-1);
+            return make_int32(0);
+            
+        case VAL_BIGINT:
+            if (di_is_zero(receiver.as.bigint)) return make_int32(0);
+            if (di_is_negative(receiver.as.bigint)) return make_int32(-1);
+            return make_int32(1);
+            
+        default:
+            runtime_error(vm, "sign() can only be called on integers");
+            return make_null();
+    }
+}
+
+// Int method: isFinite() - Integers are always finite
+value_t builtin_int_is_finite(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "isFinite() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32 || receiver.type == VAL_BIGINT) {
+        return make_boolean(1); // Integers are always finite
+    } else {
+        runtime_error(vm, "isFinite() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: isInteger() - Integers are always integers
+value_t builtin_int_is_integer(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "isInteger() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32 || receiver.type == VAL_BIGINT) {
+        return make_boolean(1); // Integers are always integers
+    } else {
+        runtime_error(vm, "isInteger() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: sqrt() - Square root (returns float)
+value_t builtin_int_sqrt(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "sqrt() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        if (val < 0) {
+            runtime_error(vm, "sqrt() cannot be applied to negative numbers");
+        }
+        return make_float64(sqrt(val));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        if (val < 0) {
+            runtime_error(vm, "sqrt() cannot be applied to negative numbers");
+        }
+        return make_float64(sqrt(val));
+    } else {
+        runtime_error(vm, "sqrt() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: sin() - Sine function (returns float)
+value_t builtin_int_sin(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "sin() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        return make_float64(sin(val));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        return make_float64(sin(val));
+    } else {
+        runtime_error(vm, "sin() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: cos() - Cosine function (returns float)
+value_t builtin_int_cos(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "cos() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        return make_float64(cos(val));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        return make_float64(cos(val));
+    } else {
+        runtime_error(vm, "cos() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: tan() - Tangent function (returns float)
+value_t builtin_int_tan(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "tan() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        return make_float64(tan(val));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        return make_float64(tan(val));
+    } else {
+        runtime_error(vm, "tan() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: exp() - Exponential function (returns float)
+value_t builtin_int_exp(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "exp() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        return make_float64(exp(val));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        return make_float64(exp(val));
+    } else {
+        runtime_error(vm, "exp() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: ln() - Natural logarithm (returns float)
+value_t builtin_int_ln(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "ln() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        if (val <= 0) {
+            runtime_error(vm, "ln() argument must be positive");
+        }
+        return make_float64(log(val));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        if (val <= 0) {
+            runtime_error(vm, "ln() argument must be positive");
+        }
+        return make_float64(log(val));
+    } else {
+        runtime_error(vm, "ln() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: asin() - Arc sine (returns float)
+value_t builtin_int_asin(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "asin() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        if (val < -1.0 || val > 1.0) {
+            runtime_error(vm, "asin() argument must be between -1 and 1");
+        }
+        return make_float64(asin(val));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        if (val < -1.0 || val > 1.0) {
+            runtime_error(vm, "asin() argument must be between -1 and 1");
+        }
+        return make_float64(asin(val));
+    } else {
+        runtime_error(vm, "asin() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: acos() - Arc cosine (returns float)
+value_t builtin_int_acos(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "acos() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        if (val < -1.0 || val > 1.0) {
+            runtime_error(vm, "acos() argument must be between -1 and 1");
+        }
+        return make_float64(acos(val));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        if (val < -1.0 || val > 1.0) {
+            runtime_error(vm, "acos() argument must be between -1 and 1");
+        }
+        return make_float64(acos(val));
+    } else {
+        runtime_error(vm, "acos() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: atan() - Arc tangent (returns float)
+value_t builtin_int_atan(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "atan() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        return make_float64(atan(val));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        return make_float64(atan(val));
+    } else {
+        runtime_error(vm, "atan() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: degrees() - Convert radians to degrees (returns float)
+value_t builtin_int_degrees(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "degrees() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        return make_float64(val * (180.0 / M_PI));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        return make_float64(val * (180.0 / M_PI));
+    } else {
+        runtime_error(vm, "degrees() can only be called on integers");
+        return make_null();
+    }
+}
+
+// Int method: radians() - Convert degrees to radians (returns float)
+value_t builtin_int_radians(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "radians() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_INT32) {
+        double val = (double)receiver.as.int32;
+        return make_float64(val * (M_PI / 180.0));
+    } else if (receiver.type == VAL_BIGINT) {
+        double val = di_to_double(receiver.as.bigint);
+        return make_float64(val * (M_PI / 180.0));
+    } else {
+        runtime_error(vm, "radians() can only be called on integers");
+        return make_null();
+    }
+}
 
 // Helper function to check if a value is an integer (int32 or bigint)
 int is_integer(value_t value) {
@@ -834,11 +1163,65 @@ void int_class_init(vm_t* vm) {
     value_t factorial_method = make_native(builtin_int_factorial);
     do_set(int_proto, "factorial", &factorial_method, sizeof(value_t));
     
+    // Add Number interface methods for integers
+    value_t int_abs_method = make_native(builtin_int_abs);
+    do_set(int_proto, "abs", &int_abs_method, sizeof(value_t));
+    
+    value_t int_sign_method = make_native(builtin_int_sign);
+    do_set(int_proto, "sign", &int_sign_method, sizeof(value_t));
+    
+    value_t int_is_finite_method = make_native(builtin_int_is_finite);
+    do_set(int_proto, "isFinite", &int_is_finite_method, sizeof(value_t));
+    
+    value_t int_is_integer_method = make_native(builtin_int_is_integer);
+    do_set(int_proto, "isInteger", &int_is_integer_method, sizeof(value_t));
+    
+    // Math methods for integers (return appropriate types)
+    value_t int_sqrt_method = make_native(builtin_int_sqrt);
+    do_set(int_proto, "sqrt", &int_sqrt_method, sizeof(value_t));
+    
+    value_t int_sin_method = make_native(builtin_int_sin);
+    do_set(int_proto, "sin", &int_sin_method, sizeof(value_t));
+    
+    value_t int_cos_method = make_native(builtin_int_cos);
+    do_set(int_proto, "cos", &int_cos_method, sizeof(value_t));
+    
+    value_t int_tan_method = make_native(builtin_int_tan);
+    do_set(int_proto, "tan", &int_tan_method, sizeof(value_t));
+    
+    value_t int_exp_method = make_native(builtin_int_exp);
+    do_set(int_proto, "exp", &int_exp_method, sizeof(value_t));
+    
+    value_t int_ln_method = make_native(builtin_int_ln);
+    do_set(int_proto, "ln", &int_ln_method, sizeof(value_t));
+    
+    value_t int_asin_method = make_native(builtin_int_asin);
+    do_set(int_proto, "asin", &int_asin_method, sizeof(value_t));
+    
+    value_t int_acos_method = make_native(builtin_int_acos);
+    do_set(int_proto, "acos", &int_acos_method, sizeof(value_t));
+    
+    value_t int_atan_method = make_native(builtin_int_atan);
+    do_set(int_proto, "atan", &int_atan_method, sizeof(value_t));
+    
+    value_t int_degrees_method = make_native(builtin_int_degrees);
+    do_set(int_proto, "degrees", &int_degrees_method, sizeof(value_t));
+    
+    value_t int_radians_method = make_native(builtin_int_radians);
+    do_set(int_proto, "radians", &int_radians_method, sizeof(value_t));
+    
     // Create the Int class
     value_t int_class = make_class("Int", int_proto);
     
     // Set the factory function to allow Int(string, base?)
     int_class.as.class->factory = int_factory;
+    
+    // Get the Number class to inherit from
+    value_t* number_class_ptr = (value_t*)do_get(vm->globals, "Number");
+    if (number_class_ptr && number_class_ptr->type == VAL_CLASS) {
+        // Set Number as parent class for inheritance
+        int_class.class = number_class_ptr;
+    }
     
     // Store in globals
     do_set(vm->globals, "Int", &int_class, sizeof(value_t));
