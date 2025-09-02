@@ -1,5 +1,5 @@
-#ifndef BIT_AST_H
-#define BIT_AST_H
+#ifndef AST_H
+#define AST_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -390,4 +390,4 @@ void ast_free(ast_node* node);
 void ast_print(ast_node* node, int indent);
 const char* ast_node_type_name(ast_node_type type);
 
-#endif // BIT_AST_H
+#endif // AST_H

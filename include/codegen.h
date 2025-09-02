@@ -1,5 +1,5 @@
-#ifndef BIT_CODEGEN_H
-#define BIT_CODEGEN_H
+#ifndef CODEGEN_H
+#define CODEGEN_H
 
 #include "ast.h"
 #include "vm.h"
@@ -169,4 +169,4 @@ void codegen_error(codegen_t* codegen, const char* message);
 void chunk_disassemble(bytecode_chunk* chunk, const char* name);
 size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset);
 
-#endif // BIT_CODEGEN_H
+#endif // CODEGEN_H

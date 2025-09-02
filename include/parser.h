@@ -1,5 +1,5 @@
-#ifndef BIT_PARSER_H
-#define BIT_PARSER_H
+#ifndef PARSER_H
+#define PARSER_H
 
 #include "lexer.h"
 #include "ast.h"
@@ -89,4 +89,4 @@ ast_node* finish_call(parser_t* parser, ast_node* callee);
 binary_operator token_to_binary_op(token_type_t type);
 unary_operator token_to_unary_op(token_type_t type);
 
-#endif // BIT_PARSER_H
+#endif // PARSER_H

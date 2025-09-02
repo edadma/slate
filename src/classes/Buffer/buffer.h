@@ -1,10 +1,9 @@
-#ifndef SLATE_BUFFER_CLASS_H
-#define SLATE_BUFFER_CLASS_H
+#ifndef CLASS_BUFFER_H
+#define CLASS_BUFFER_H
 
-// Forward declarations
-typedef struct slate_vm vm_t;
-typedef struct value value_t;
-void runtime_error(vm_t* vm, const char* message, ...);
+#include "vm.h"
+#include "value.h"
+#include "runtime_error.h"
 
 // Buffer Class Initialization
 void buffer_class_init(vm_t* vm);
@@ -24,4 +23,4 @@ value_t builtin_buffer_method_reader(vm_t* vm, int arg_count, value_t* args);
 // Buffer Static Methods
 value_t builtin_buffer_from_hex(vm_t* vm, int arg_count, value_t* args);
 
-#endif // SLATE_BUFFER_CLASS_H
+#endif // CLASS_BUFFER_H

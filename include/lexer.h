@@ -1,5 +1,5 @@
-#ifndef BIT_LEXER_H
-#define BIT_LEXER_H
+#ifndef LEXER_H
+#define LEXER_H
 
 #include <stddef.h>
 
@@ -176,4 +176,4 @@ int is_digit(char c);
 int is_alpha(char c);
 int is_alnum(char c);
 
-#endif // BIT_LEXER_H
+#endif // LEXER_H

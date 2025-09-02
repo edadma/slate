@@ -1,9 +1,8 @@
-#ifndef SLATE_ITERATOR_CLASS_H
-#define SLATE_ITERATOR_CLASS_H
+#ifndef CLASS_ITERATOR_H
+#define CLASS_ITERATOR_H
 
-// Forward declarations
-typedef struct slate_vm vm_t;
-typedef struct value value_t;
+#include "vm.h"
+#include "value.h"
 
 // Iterator Class Initialization
 void iterator_class_init(vm_t* vm);
@@ -19,4 +18,4 @@ value_t builtin_next(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_iterator_is_empty(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_iterator_to_array(vm_t* vm, int arg_count, value_t* args);
 
-#endif // SLATE_ITERATOR_CLASS_H
+#endif // CLASS_ITERATOR_H

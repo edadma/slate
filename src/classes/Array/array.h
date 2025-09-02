@@ -1,10 +1,9 @@
-#ifndef SLATE_ARRAY_CLASS_H
-#define SLATE_ARRAY_CLASS_H
+#ifndef CLASS_ARRAY_H
+#define CLASS_ARRAY_H
 
-// Forward declarations
-typedef struct slate_vm vm_t;
-typedef struct value value_t;
-void runtime_error(vm_t* vm, const char* message, ...);
+#include "vm.h"
+#include "value.h"
+#include "runtime_error.h"
 
 // Array Class Initialization
 void array_class_init(vm_t* vm);
@@ -33,4 +32,4 @@ value_t builtin_array_flatmap(vm_t* vm, int arg_count, value_t* args);
 // External dependencies from other modules
 value_t builtin_iterator(vm_t* vm, int arg_count, value_t* args);
 
-#endif // SLATE_ARRAY_CLASS_H
+#endif // CLASS_ARRAY_H

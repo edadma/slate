@@ -1,9 +1,8 @@
-#ifndef SLATE_RANGE_CLASS_H
-#define SLATE_RANGE_CLASS_H
+#ifndef CLASS_RANGE_H
+#define CLASS_RANGE_H
 
-// Forward declarations
-typedef struct slate_vm vm_t;
-typedef struct value value_t;
+#include "vm.h"
+#include "value.h"
 
 // Range Class Initialization
 void range_class_init(vm_t* vm);
@@ -19,4 +18,4 @@ value_t builtin_range_to_array(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_range_reverse(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_range_equals(vm_t* vm, int arg_count, value_t* args);
 
-#endif // SLATE_RANGE_CLASS_H
+#endif // CLASS_RANGE_H

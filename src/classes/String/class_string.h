@@ -1,10 +1,10 @@
 #ifndef CLASS_STRING_H
 #define CLASS_STRING_H
 
-// Forward declarations
-typedef struct slate_vm vm_t;
-typedef struct value value_t;
-void runtime_error(vm_t* vm, const char* message, ...);
+#include "vm.h"
+#include "value.h"
+#include "runtime_error.h"
+
 value_t builtin_value_to_string(vm_t* vm, int arg_count, value_t* args);
 
 // String Factory Function

@@ -1,9 +1,8 @@
-#ifndef SLATE_INT_CLASS_H
-#define SLATE_INT_CLASS_H
+#ifndef CLASS_INT_H
+#define CLASS_INT_H
 
-// Forward declarations
-typedef struct slate_vm vm_t;
-typedef struct value value_t;
+#include "vm.h"
+#include "value.h"
 
 // Int Class Initialization
 void int_class_init(vm_t* vm);
@@ -31,4 +30,4 @@ value_t builtin_int_factorial(vm_t* vm, int arg_count, value_t* args);
 // Helper Functions
 value_t safe_int_multiply(value_t a, value_t b);
 
-#endif // SLATE_INT_CLASS_H
+#endif // CLASS_INT_H

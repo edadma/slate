@@ -1,9 +1,8 @@
-#ifndef SLATE_LOCAL_DATE_CLASS_H
-#define SLATE_LOCAL_DATE_CLASS_H
+#ifndef CLASS_LOCAL_DATE_H
+#define CLASS_LOCAL_DATE_H
 
-// Forward declarations
-typedef struct slate_vm vm_t;
-typedef struct value value_t;
+#include "vm.h"
+#include "value.h"
 
 // LocalDate Class Initialization
 void local_date_class_init(vm_t* vm);
@@ -32,4 +31,4 @@ value_t builtin_local_date_to_string(vm_t* vm, int arg_count, value_t* args);
 // - builtin_local_date_now
 // - builtin_local_date_of
 
-#endif // SLATE_LOCAL_DATE_CLASS_H
+#endif // CLASS_LOCAL_DATE_H
