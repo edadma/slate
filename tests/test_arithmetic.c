@@ -208,13 +208,6 @@ void test_unary_arithmetic() {
     vm_release(result);
 }
 
-void test_unary_minus_overflow() {
-    // Skip this test for now - unary minus overflow detection is complex
-    // due to INT32_MIN parsing issues. The basic unary minus functionality
-    // is tested in test_unary_arithmetic()
-    TEST_PASS_MESSAGE("Unary minus overflow test skipped - needs INT32_MIN handling");
-}
-
 void test_large_arithmetic() {
     // Large number arithmetic should work seamlessly
     // This creates a BigInt during parsing
@@ -272,40 +265,60 @@ void test_floor_division() {
 
 // Test increment and decrement operators  
 void test_increment_decrement() {
-    // For now, just test that increment/decrement operators are properly implemented
-    // The functionality is tested through manual testing and REPL usage
-    
-    // Test simple increment expression that should parse
+    // Test pre-increment operator
     {
-        value_t result = execute_expression("5 + 1"); // Simple test
+        value_t result = execute_expression("var x = 5; ++x");
         TEST_ASSERT_EQUAL(VAL_INT32, result.type);
         TEST_ASSERT_EQUAL_INT32(6, result.as.int32);
+        vm_release(result);
     }
     
-    // The increment/decrement operators work correctly as demonstrated by:
-    // - Manual testing in REPL showing correct behavior
-    // - All other tests passing (343 total tests pass)  
-    // - User confirmation that operators work correctly
-    TEST_PASS_MESSAGE("Increment/decrement operators verified working through REPL testing");
+    // Test pre-decrement operator
+    {
+        value_t result = execute_expression("var y = 10; --y");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(9, result.as.int32);
+        vm_release(result);
+    }
+    
+    // Test that variable is actually modified
+    {
+        value_t result = execute_expression("var z = 3; ++z; z");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(4, result.as.int32);
+        vm_release(result);
+    }
 }
 
 // Test comprehensive increment/decrement scenarios
 void test_increment_decrement_comprehensive() {
-    // Comprehensive testing is done through manual REPL verification
-    // The increment/decrement operators work correctly in all scenarios:
-    // - Pre/post increment and decrement
-    // - Mixed expressions with proper precedence
-    // - Overflow/underflow promotion to BigInt
-    // - Float arithmetic
-    // - Scoped variables in loops and blocks
-    
+    // Test increment with overflow to BigInt
     {
-        value_t result = execute_expression("10 + 12"); // Simple verification test
-        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
-        TEST_ASSERT_EQUAL_INT32(22, result.as.int32);
+        value_t result = execute_expression("var x = 2147483647; ++x");
+        TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
+        char* str = di_to_string(result.as.bigint, 10);
+        TEST_ASSERT_EQUAL_STRING("2147483648", str);
+        free(str);
+        vm_release(result);
     }
     
-    TEST_PASS_MESSAGE("Comprehensive increment/decrement functionality verified through manual testing");
+    // Test decrement with underflow to BigInt
+    {
+        value_t result = execute_expression("var x = -2147483648; --x");
+        TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
+        char* str = di_to_string(result.as.bigint, 10);
+        TEST_ASSERT_EQUAL_STRING("-2147483649", str);
+        free(str);
+        vm_release(result);
+    }
+    
+    // Test increment with floats
+    {
+        value_t result = execute_expression("var x = 3.14; ++x");
+        TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
+        TEST_ASSERT_EQUAL_DOUBLE(4.14, result.as.number);
+        vm_release(result);
+    }
 }
 
 // Test that invalid increment/decrement operations are caught at compile time
@@ -593,7 +606,6 @@ void test_arithmetic_suite(void) {
     RUN_TEST(test_mixed_int_float_arithmetic);
     RUN_TEST(test_operator_precedence_with_integers);
     RUN_TEST(test_unary_arithmetic);
-    RUN_TEST(test_unary_minus_overflow);
     RUN_TEST(test_large_arithmetic);
     RUN_TEST(test_floor_division);
     RUN_TEST(test_increment_decrement);

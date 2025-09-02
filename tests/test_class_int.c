@@ -178,10 +178,6 @@ void test_large_integer_parsing() {
     TEST_ASSERT_EQUAL_DOUBLE((double)INT32_MAX + 1000.0, result.as.number);
 }
 
-void test_arithmetic_overflow_promotion() {
-    // These tests are now in test_arithmetic.c
-    TEST_PASS_MESSAGE("Arithmetic overflow promotion tests moved to test_arithmetic.c");
-}
 
 // Test suite function for integration with main test runner
 void test_class_int_suite(void) {
@@ -194,7 +190,6 @@ void test_class_int_suite(void) {
     RUN_TEST(test_integer_truthiness);
     RUN_TEST(test_integer_equality);
     // RUN_TEST(test_large_integer_parsing);  // Uses execute_expression
-    RUN_TEST(test_arithmetic_overflow_promotion);
     RUN_TEST(test_hexadecimal_literals);
     RUN_TEST(test_hexadecimal_arithmetic);
 }
