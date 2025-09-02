@@ -70,7 +70,7 @@ add_executable(slate
         src/datetime.c
         src/classes/String/factory.c
         src/classes/String/methods.c
-        src/classes/String/builder.c
+        src/classes/StringBuilder/string_builder.c
         src/classes/Array/methods.c
         src/classes/Array/functional.c
         src/classes/Array/class.c
@@ -238,7 +238,7 @@ if (BUILD_TESTS)
             src/datetime.c
             src/classes/String/factory.c
             src/classes/String/methods.c
-            src/classes/String/builder.c
+            src/classes/StringBuilder/string_builder.c
             src/classes/Array/methods.c
             src/classes/Array/functional.c
             src/classes/Array/class.c
