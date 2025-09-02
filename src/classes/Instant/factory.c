@@ -19,6 +19,13 @@ value_t instant_factory(vm_t* vm, int arg_count, value_t* args) {
         if (is_int(args[0])) {
             int64_t epoch_millis = value_to_int(args[0]);
             return make_instant_direct(epoch_millis);
+        } else if (args[0].type == VAL_BIGINT) {
+            // Handle BigInt epoch milliseconds
+            int64_t epoch_millis;
+            if (!di_to_int64(args[0].as.bigint, &epoch_millis)) {
+                runtime_error(vm, "Epoch milliseconds BigInt value is too large for Instant");
+            }
+            return make_instant_direct(epoch_millis);
         } else if (args[0].type == VAL_STRING) {
             // Parse ISO 8601 string
             const char* iso_string = args[0].as.string;
