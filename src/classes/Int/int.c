@@ -16,20 +16,20 @@ int is_integer(value_t value) {
 value_t* global_int_class = NULL;
 
 // Int factory function for converting strings to integers with optional base
-value_t int_factory(value_t* args, int arg_count) {
+value_t int_factory(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count == 0) {
-        runtime_error("Int() requires at least 1 argument (the string to parse)");
+        runtime_error(vm, "Int() requires at least 1 argument (the string to parse)");
         return make_null();
     }
     
     if (arg_count > 2) {
-        runtime_error("Int() takes at most 2 arguments (string and optional base)");
+        runtime_error(vm, "Int() takes at most 2 arguments (string and optional base)");
         return make_null();
     }
     
     // First argument must be a string
     if (args[0].type != VAL_STRING) {
-        runtime_error("Int() first argument must be a string");
+        runtime_error(vm, "Int() first argument must be a string");
         return make_null();
     }
     
@@ -39,12 +39,12 @@ value_t int_factory(value_t* args, int arg_count) {
     // If second argument provided, it must be the base
     if (arg_count == 2) {
         if (args[1].type != VAL_INT32) {
-            runtime_error("Int() base argument must be an integer");
+            runtime_error(vm, "Int() base argument must be an integer");
             return make_null();
         }
         base = args[1].as.int32;
         if (base < 2 || base > 36) {
-            runtime_error("Int() base must be between 2 and 36, got %d", base);
+            runtime_error(vm, "Int() base must be between 2 and 36, got %d", base);
             return make_null();
         }
     }
@@ -55,12 +55,12 @@ value_t int_factory(value_t* args, int arg_count) {
     
     // Check for parsing errors
     if (endptr == str) {
-        runtime_error("Int() could not parse '%s' as integer in base %d", str, base);
+        runtime_error(vm, "Int() could not parse '%s' as integer in base %d", str, base);
         return make_null();
     }
     
     if (*endptr != '\0') {
-        runtime_error("Int() found invalid characters in '%s' for base %d", str, base);
+        runtime_error(vm, "Int() found invalid characters in '%s' for base %d", str, base);
         return make_null();
     }
     
@@ -112,9 +112,9 @@ value_t safe_int_multiply(value_t a, value_t b) {
 }
 
 // Int method: toString(base?) - Convert integer to string in specified base
-value_t builtin_int_to_string(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_to_string(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count < 1 || arg_count > 2) {
-        runtime_error("toString() requires 0 or 1 arguments (optional base)");
+        runtime_error(vm, "toString() requires 0 or 1 arguments (optional base)");
         return make_null();
     }
     
@@ -123,12 +123,12 @@ value_t builtin_int_to_string(slate_vm* vm, int arg_count, value_t* args) {
     
     if (arg_count == 2) {
         if (args[1].type != VAL_INT32) {
-            runtime_error("toString() base argument must be an integer");
+            runtime_error(vm, "toString() base argument must be an integer");
             return make_null();
         }
         base = args[1].as.int32;
         if (base < 2 || base > 36) {
-            runtime_error("toString() base must be between 2 and 36, got %d", base);
+            runtime_error(vm, "toString() base must be between 2 and 36, got %d", base);
             return make_null();
         }
     }
@@ -192,15 +192,15 @@ value_t builtin_int_to_string(slate_vm* vm, int arg_count, value_t* args) {
         free(str);
         return result;
     } else {
-        runtime_error("toString() can only be called on integers");
+        runtime_error(vm, "toString() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: setBit(position) - Set bit at position to 1
-value_t builtin_int_set_bit(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_set_bit(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("setBit() requires exactly 1 argument (bit position)");
+        runtime_error(vm, "setBit() requires exactly 1 argument (bit position)");
         return make_null();
     }
     
@@ -208,19 +208,19 @@ value_t builtin_int_set_bit(slate_vm* vm, int arg_count, value_t* args) {
     value_t pos_val = args[1];
     
     if (pos_val.type != VAL_INT32) {
-        runtime_error("setBit() bit position must be an integer");
+        runtime_error(vm, "setBit() bit position must be an integer");
         return make_null();
     }
     
     int32_t position = pos_val.as.int32;
     if (position < 0) {
-        runtime_error("setBit() bit position cannot be negative: %d", position);
+        runtime_error(vm, "setBit() bit position cannot be negative: %d", position);
         return make_null();
     }
     
     if (receiver.type == VAL_INT32) {
         if (position >= 32) {
-            runtime_error("setBit() position %d is out of range for 32-bit integer", position);
+            runtime_error(vm, "setBit() position %d is out of range for 32-bit integer", position);
             return make_null();
         }
         int32_t result = receiver.as.int32 | (1 << position);
@@ -236,15 +236,15 @@ value_t builtin_int_set_bit(slate_vm* vm, int arg_count, value_t* args) {
         di_release(&shifted_bit);
         return make_bigint(final_result);
     } else {
-        runtime_error("setBit() can only be called on integers");
+        runtime_error(vm, "setBit() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: clearBit(position) - Set bit at position to 0
-value_t builtin_int_clear_bit(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_clear_bit(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("clearBit() requires exactly 1 argument (bit position)");
+        runtime_error(vm, "clearBit() requires exactly 1 argument (bit position)");
         return make_null();
     }
     
@@ -252,19 +252,19 @@ value_t builtin_int_clear_bit(slate_vm* vm, int arg_count, value_t* args) {
     value_t pos_val = args[1];
     
     if (pos_val.type != VAL_INT32) {
-        runtime_error("clearBit() bit position must be an integer");
+        runtime_error(vm, "clearBit() bit position must be an integer");
         return make_null();
     }
     
     int32_t position = pos_val.as.int32;
     if (position < 0) {
-        runtime_error("clearBit() bit position cannot be negative: %d", position);
+        runtime_error(vm, "clearBit() bit position cannot be negative: %d", position);
         return make_null();
     }
     
     if (receiver.type == VAL_INT32) {
         if (position >= 32) {
-            runtime_error("clearBit() position %d is out of range for 32-bit integer", position);
+            runtime_error(vm, "clearBit() position %d is out of range for 32-bit integer", position);
             return make_null();
         }
         int32_t result = receiver.as.int32 & ~(1 << position);
@@ -282,15 +282,15 @@ value_t builtin_int_clear_bit(slate_vm* vm, int arg_count, value_t* args) {
         di_release(&inverted_bit);
         return make_bigint(final_result);
     } else {
-        runtime_error("clearBit() can only be called on integers");
+        runtime_error(vm, "clearBit() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: toggleBit(position) - Toggle bit at position
-value_t builtin_int_toggle_bit(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_toggle_bit(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("toggleBit() requires exactly 1 argument (bit position)");
+        runtime_error(vm, "toggleBit() requires exactly 1 argument (bit position)");
         return make_null();
     }
     
@@ -298,19 +298,19 @@ value_t builtin_int_toggle_bit(slate_vm* vm, int arg_count, value_t* args) {
     value_t pos_val = args[1];
     
     if (pos_val.type != VAL_INT32) {
-        runtime_error("toggleBit() bit position must be an integer");
+        runtime_error(vm, "toggleBit() bit position must be an integer");
         return make_null();
     }
     
     int32_t position = pos_val.as.int32;
     if (position < 0) {
-        runtime_error("toggleBit() bit position cannot be negative: %d", position);
+        runtime_error(vm, "toggleBit() bit position cannot be negative: %d", position);
         return make_null();
     }
     
     if (receiver.type == VAL_INT32) {
         if (position >= 32) {
-            runtime_error("toggleBit() position %d is out of range for 32-bit integer", position);
+            runtime_error(vm, "toggleBit() position %d is out of range for 32-bit integer", position);
             return make_null();
         }
         int32_t result = receiver.as.int32 ^ (1 << position);
@@ -326,15 +326,15 @@ value_t builtin_int_toggle_bit(slate_vm* vm, int arg_count, value_t* args) {
         di_release(&shifted_bit);
         return make_bigint(final_result);
     } else {
-        runtime_error("toggleBit() can only be called on integers");
+        runtime_error(vm, "toggleBit() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: getBit(position) - Get bit value at position (0 or 1)
-value_t builtin_int_get_bit(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_get_bit(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("getBit() requires exactly 1 argument (bit position)");
+        runtime_error(vm, "getBit() requires exactly 1 argument (bit position)");
         return make_null();
     }
     
@@ -342,13 +342,13 @@ value_t builtin_int_get_bit(slate_vm* vm, int arg_count, value_t* args) {
     value_t pos_val = args[1];
     
     if (pos_val.type != VAL_INT32) {
-        runtime_error("getBit() bit position must be an integer");
+        runtime_error(vm, "getBit() bit position must be an integer");
         return make_null();
     }
     
     int32_t position = pos_val.as.int32;
     if (position < 0) {
-        runtime_error("getBit() bit position cannot be negative: %d", position);
+        runtime_error(vm, "getBit() bit position cannot be negative: %d", position);
         return make_null();
     }
     
@@ -377,15 +377,15 @@ value_t builtin_int_get_bit(slate_vm* vm, int arg_count, value_t* args) {
             return make_int32(0);
         }
     } else {
-        runtime_error("getBit() can only be called on integers");
+        runtime_error(vm, "getBit() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: countBits() - Count number of set bits (population count)
-value_t builtin_int_count_bits(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_count_bits(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("countBits() takes no arguments");
+        runtime_error(vm, "countBits() takes no arguments");
         return make_null();
     }
     
@@ -401,18 +401,18 @@ value_t builtin_int_count_bits(slate_vm* vm, int arg_count, value_t* args) {
         return make_int32(count);
     } else if (receiver.type == VAL_BIGINT) {
         // For BigInt, count bits - this is complex, for now return error
-        runtime_error("countBits() not yet implemented for BigInt");
+        runtime_error(vm, "countBits() not yet implemented for BigInt");
         return make_null();
     } else {
-        runtime_error("countBits() can only be called on integers");
+        runtime_error(vm, "countBits() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: leadingZeros() - Count leading zero bits
-value_t builtin_int_leading_zeros(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_leading_zeros(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("leadingZeros() takes no arguments");
+        runtime_error(vm, "leadingZeros() takes no arguments");
         return make_null();
     }
     
@@ -434,18 +434,18 @@ value_t builtin_int_leading_zeros(slate_vm* vm, int arg_count, value_t* args) {
         return make_int32(count);
     } else if (receiver.type == VAL_BIGINT) {
         // For BigInt, leading zeros - complex, for now return error
-        runtime_error("leadingZeros() not yet implemented for BigInt");
+        runtime_error(vm, "leadingZeros() not yet implemented for BigInt");
         return make_null();
     } else {
-        runtime_error("leadingZeros() can only be called on integers");
+        runtime_error(vm, "leadingZeros() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: trailingZeros() - Count trailing zero bits
-value_t builtin_int_trailing_zeros(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_trailing_zeros(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("trailingZeros() takes no arguments");
+        runtime_error(vm, "trailingZeros() takes no arguments");
         return make_null();
     }
     
@@ -467,18 +467,18 @@ value_t builtin_int_trailing_zeros(slate_vm* vm, int arg_count, value_t* args) {
         return make_int32(count);
     } else if (receiver.type == VAL_BIGINT) {
         // For BigInt, trailing zeros - complex, for now return error
-        runtime_error("trailingZeros() not yet implemented for BigInt");
+        runtime_error(vm, "trailingZeros() not yet implemented for BigInt");
         return make_null();
     } else {
-        runtime_error("trailingZeros() can only be called on integers");
+        runtime_error(vm, "trailingZeros() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: isEven() - Check if number is even
-value_t builtin_int_is_even(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_is_even(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("isEven() takes no arguments");
+        runtime_error(vm, "isEven() takes no arguments");
         return make_null();
     }
     
@@ -496,15 +496,15 @@ value_t builtin_int_is_even(slate_vm* vm, int arg_count, value_t* args) {
         di_release(&zero);
         return make_boolean(is_even);
     } else {
-        runtime_error("isEven() can only be called on integers");
+        runtime_error(vm, "isEven() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: isOdd() - Check if number is odd
-value_t builtin_int_is_odd(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_is_odd(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("isOdd() takes no arguments");
+        runtime_error(vm, "isOdd() takes no arguments");
         return make_null();
     }
     
@@ -522,15 +522,15 @@ value_t builtin_int_is_odd(slate_vm* vm, int arg_count, value_t* args) {
         di_release(&one);
         return make_boolean(is_odd);
     } else {
-        runtime_error("isOdd() can only be called on integers");
+        runtime_error(vm, "isOdd() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: isPrime() - Check if number is prime
-value_t builtin_int_is_prime(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_is_prime(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("isPrime() takes no arguments");
+        runtime_error(vm, "isPrime() takes no arguments");
         return make_null();
     }
     
@@ -567,19 +567,19 @@ value_t builtin_int_is_prime(slate_vm* vm, int arg_count, value_t* args) {
             }
             return make_boolean(true);
         } else {
-            runtime_error("isPrime() not yet implemented for large BigInt values");
+            runtime_error(vm, "isPrime() not yet implemented for large BigInt values");
             return make_null();
         }
     } else {
-        runtime_error("isPrime() can only be called on integers");
+        runtime_error(vm, "isPrime() can only be called on integers");
         return make_null();
     }
 }
 
 // Int method: gcd(other) - Greatest common divisor
-value_t builtin_int_gcd(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_gcd(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("gcd() requires exactly 1 argument");
+        runtime_error(vm, "gcd() requires exactly 1 argument");
         return make_null();
     }
     
@@ -587,7 +587,7 @@ value_t builtin_int_gcd(slate_vm* vm, int arg_count, value_t* args) {
     value_t other = args[1];
     
     if (!is_integer(receiver) || !is_integer(other)) {
-        runtime_error("gcd() requires integer arguments");
+        runtime_error(vm, "gcd() requires integer arguments");
         return make_null();
     }
     
@@ -618,9 +618,9 @@ value_t builtin_int_gcd(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // Int method: lcm(other) - Least common multiple
-value_t builtin_int_lcm(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_lcm(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("lcm() requires exactly 1 argument");
+        runtime_error(vm, "lcm() requires exactly 1 argument");
         return make_null();
     }
     
@@ -628,7 +628,7 @@ value_t builtin_int_lcm(slate_vm* vm, int arg_count, value_t* args) {
     value_t other = args[1];
     
     if (!is_integer(receiver) || !is_integer(other)) {
-        runtime_error("lcm() requires integer arguments");
+        runtime_error(vm, "lcm() requires integer arguments");
         return make_null();
     }
     
@@ -668,9 +668,9 @@ value_t builtin_int_lcm(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // Int method: pow(exponent) - Integer exponentiation
-value_t builtin_int_pow(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_pow(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("pow() requires exactly 1 argument (exponent)");
+        runtime_error(vm, "pow() requires exactly 1 argument (exponent)");
         return make_null();
     }
     
@@ -678,14 +678,14 @@ value_t builtin_int_pow(slate_vm* vm, int arg_count, value_t* args) {
     value_t exp_val = args[1];
     
     if (!is_integer(base) || !is_integer(exp_val)) {
-        runtime_error("pow() requires integer arguments");
+        runtime_error(vm, "pow() requires integer arguments");
         return make_null();
     }
     
     // Handle negative exponents
     if ((exp_val.type == VAL_INT32 && exp_val.as.int32 < 0) ||
         (exp_val.type == VAL_BIGINT && di_is_negative(exp_val.as.bigint))) {
-        runtime_error("pow() does not support negative exponents");
+        runtime_error(vm, "pow() does not support negative exponents");
         return make_null();
     }
     
@@ -701,7 +701,7 @@ value_t builtin_int_pow(slate_vm* vm, int arg_count, value_t* args) {
         int32_t exp_int = exp_val.as.int32;
         
         if (exp_int < 0) {
-            runtime_error("pow() exponent cannot be negative");
+            runtime_error(vm, "pow() exponent cannot be negative");
             return make_null();
         }
         
@@ -740,29 +740,29 @@ value_t builtin_int_pow(slate_vm* vm, int arg_count, value_t* args) {
         return make_int32((int32_t)result);
     } else {
         // For now, BigInt power is not fully implemented
-        runtime_error("pow() not yet fully implemented for BigInt values");
+        runtime_error(vm, "pow() not yet fully implemented for BigInt values");
         return make_null();
     }
 }
 
 // Int method: factorial() - Calculate factorial
-value_t builtin_int_factorial(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_int_factorial(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("factorial() takes no arguments");
+        runtime_error(vm, "factorial() takes no arguments");
         return make_null();
     }
     
     value_t receiver = args[0];
     
     if (!is_integer(receiver)) {
-        runtime_error("factorial() can only be called on integers");
+        runtime_error(vm, "factorial() can only be called on integers");
         return make_null();
     }
     
     // Check for negative input
     if ((receiver.type == VAL_INT32 && receiver.as.int32 < 0) ||
         (receiver.type == VAL_BIGINT && di_is_negative(receiver.as.bigint))) {
-        runtime_error("factorial() is not defined for negative numbers");
+        runtime_error(vm, "factorial() is not defined for negative numbers");
         return make_null();
     }
     
@@ -773,7 +773,7 @@ value_t builtin_int_factorial(slate_vm* vm, int arg_count, value_t* args) {
     
     // Only support VAL_INT32 for factorial
     if (receiver.type != VAL_INT32) {
-        runtime_error("factorial() only supports 32-bit integers");
+        runtime_error(vm, "factorial() only supports 32-bit integers");
         return make_null();
     }
     
@@ -784,7 +784,7 @@ value_t builtin_int_factorial(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // Initialize Int class with prototype and methods
-void int_class_init(slate_vm* vm) {
+void int_class_init(vm_t* vm) {
     // Create the Int class with its prototype
     do_object int_proto = do_create(NULL);
     

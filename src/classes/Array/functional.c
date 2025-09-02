@@ -8,19 +8,19 @@ static int is_callable(value_t v) {
            v.type == VAL_FUNCTION || v.type == VAL_BOUND_METHOD;
 }
 
-value_t builtin_array_map(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_map(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("map() takes exactly 1 argument (%d given)", arg_count - 1);
+        runtime_error(vm, "map() takes exactly 1 argument (%d given)", arg_count - 1);
     }
 
     value_t receiver = args[0];
     value_t mapper   = args[1];
 
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("map() can only be called on arrays");
+        runtime_error(vm, "map() can only be called on arrays");
     }
     if (!is_callable(mapper)) {
-        runtime_error("map() expects a function");
+        runtime_error(vm, "map() expects a function");
     }
 
     da_array in  = receiver.as.array;
@@ -55,19 +55,19 @@ value_t builtin_array_map(slate_vm* vm, int arg_count, value_t* args) {
     return make_array(out);
 }
 
-value_t builtin_array_filter(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_filter(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("filter() takes exactly 1 argument (%d given)", arg_count - 1);
+        runtime_error(vm, "filter() takes exactly 1 argument (%d given)", arg_count - 1);
     }
 
     value_t receiver = args[0];
     value_t predicate = args[1];
 
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("filter() can only be called on arrays");
+        runtime_error(vm, "filter() can only be called on arrays");
     }
     if (!is_callable(predicate)) {
-        runtime_error("filter() expects a function");
+        runtime_error(vm, "filter() expects a function");
     }
 
     da_array in = receiver.as.array;
@@ -104,19 +104,19 @@ value_t builtin_array_filter(slate_vm* vm, int arg_count, value_t* args) {
     return make_array(out);
 }
 
-value_t builtin_array_flatmap(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_flatmap(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("flatMap() takes exactly 1 argument (%d given)", arg_count - 1);
+        runtime_error(vm, "flatMap() takes exactly 1 argument (%d given)", arg_count - 1);
     }
 
     value_t receiver = args[0];
     value_t mapper   = args[1];
 
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("flatMap() can only be called on arrays");
+        runtime_error(vm, "flatMap() can only be called on arrays");
     }
     if (!is_callable(mapper)) {
-        runtime_error("flatMap() expects a function");
+        runtime_error(vm, "flatMap() expects a function");
     }
 
     da_array in      = receiver.as.array;

@@ -15,11 +15,11 @@
 #define CONSTANTS_MAX 256
 
 // Global VM pointer for library assert access
-slate_vm* g_current_vm = NULL;
+vm_t* g_current_vm = NULL;
 
 // VM lifecycle functions
-slate_vm* vm_create(void) {
-    slate_vm* vm = malloc(sizeof(slate_vm));
+vm_t* vm_create(void) {
+    vm_t* vm = malloc(sizeof(vm_t));
     if (!vm)
         return NULL;
 
@@ -79,8 +79,8 @@ slate_vm* vm_create(void) {
     return vm;
 }
 
-slate_vm* vm_create_with_args(int argc, char** argv) {
-    slate_vm* vm = vm_create();
+vm_t* vm_create_with_args(int argc, char** argv) {
+    vm_t* vm = vm_create();
     if (vm) {
         vm->argc = argc;
         vm->argv = argv;
@@ -88,7 +88,7 @@ slate_vm* vm_create_with_args(int argc, char** argv) {
     return vm;
 }
 
-void vm_destroy(slate_vm* vm) {
+void vm_destroy(vm_t* vm) {
     if (!vm)
         return;
 
@@ -119,7 +119,7 @@ void vm_destroy(slate_vm* vm) {
     free(vm);
 }
 
-void vm_reset(slate_vm* vm) {
+void vm_reset(vm_t* vm) {
     if (!vm)
         return;
 

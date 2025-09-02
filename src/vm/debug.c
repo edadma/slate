@@ -1,9 +1,9 @@
-#include "vm.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include "codegen.h"
 #include "runtime_error.h"
+#include "vm.h"
 
 // Debug location management
 debug_location* debug_location_create(int line, int column, const char* source_text) {
@@ -25,7 +25,7 @@ debug_location* debug_location_copy(const debug_location* debug) {
 }
 
 void debug_location_free(debug_location* debug) {
-    if (debug && (uintptr_t)debug > 0x1000) {  // Basic sanity check - valid pointers are usually much higher
+    if (debug && (uintptr_t)debug > 0x1000) { // Basic sanity check - valid pointers are usually much higher
         free(debug);
     }
 }
@@ -83,19 +83,13 @@ void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset) {
     return best_entry ? debug : NULL;
 }
 
-// Enhanced runtime error using context-aware error system
-void vm_runtime_error_with_debug(slate_vm* vm, const char* message) {
-    // Use the new context-aware error system which handles CTX_TEST silently
-    slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "%s", message);
-}
-
 // Enhanced error reporting using value debug information
-void vm_runtime_error_with_values(slate_vm* vm, const char* format, const value_t* a, const value_t* b,
+void vm_runtime_error_with_values(vm_t* vm, const char* format, const value_t* a, const value_t* b,
                                   debug_location* location) {
     // Format the error message with value types
     char formatted_message[256];
-    snprintf(formatted_message, sizeof(formatted_message), format, 
-             value_type_name(a->type), b ? value_type_name(b->type) : "");
+    snprintf(formatted_message, sizeof(formatted_message), format, value_type_name(a->type),
+             b ? value_type_name(b->type) : "");
 
     // Use the best debug location available (preference order: location param, a->debug, b->debug, current_debug)
     debug_location* debug_to_use = location;

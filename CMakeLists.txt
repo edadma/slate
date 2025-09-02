@@ -26,6 +26,7 @@ include_directories(src/classes/Value)
 include_directories(src/classes/Int)
 include_directories(src/classes/LocalDate)
 include_directories(src/classes/LocalTime)
+include_directories(src/classes/LocalDateTime)
 
 # Main executable
 add_executable(slate
@@ -85,6 +86,9 @@ add_executable(slate
         src/classes/Int/int.c
         src/classes/LocalDate/local_date.c
         src/classes/LocalTime/local_time.c
+        src/classes/LocalDateTime/factory.c
+        src/classes/LocalDateTime/methods.c
+        src/classes/LocalDateTime/class.c
         src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c
@@ -197,6 +201,7 @@ if (BUILD_TESTS)
             tests/test_class_string.c
             tests/test_class_localdate.c
             tests/test_class_localtime.c
+            tests/test_class_local_date_time.c
             tests/test_new_operators.c
             tests/test_functions.c
             deps/cargs/src/cargs.c
@@ -253,6 +258,9 @@ if (BUILD_TESTS)
             src/classes/Int/int.c
         src/classes/LocalDate/local_date.c
         src/classes/LocalTime/local_time.c
+        src/classes/LocalDateTime/factory.c
+        src/classes/LocalDateTime/methods.c
+        src/classes/LocalDateTime/class.c
             src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c

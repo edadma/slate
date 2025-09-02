@@ -5,7 +5,7 @@
 
 // Core VM execution loop - runs until completion
 // Assumes VM is already set up with proper call frames and stack
-vm_result vm_run(slate_vm* vm) {
+vm_result vm_run(vm_t* vm) {
     if (!vm)
         return VM_RUNTIME_ERROR;
 
@@ -371,7 +371,7 @@ vm_result vm_run(slate_vm* vm) {
 }
 
 // VM execution with setup - clears stack and sets up initial call frame
-vm_result vm_execute(slate_vm* vm, function_t* function) {
+vm_result vm_execute(vm_t* vm, function_t* function) {
     if (!vm || !function)
         return VM_RUNTIME_ERROR;
 
@@ -402,7 +402,7 @@ vm_result vm_execute(slate_vm* vm, function_t* function) {
     
     return result;
 }
-vm_result vm_interpret(slate_vm* vm, const char* source) {
+vm_result vm_interpret(vm_t* vm, const char* source) {
     // This would compile source to bytecode and execute
     // For now, just a stub
     (void)vm;

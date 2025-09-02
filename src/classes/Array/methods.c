@@ -3,15 +3,15 @@
 #include "dynamic_array.h"
 
 // Array method: length()
-value_t builtin_array_length(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_length(vm_t* vm, int arg_count, value_t* args) {
     // When called as a method, args[0] is the receiver (the array)
     if (arg_count != 1) {
-        runtime_error("length() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "length() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("length() can only be called on arrays");
+        runtime_error(vm, "length() can only be called on arrays");
     }
     
     size_t length = da_length(receiver.as.array);
@@ -20,16 +20,16 @@ value_t builtin_array_length(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: push(element)
 // Adds element to end of array, returns new length
-value_t builtin_array_push(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_push(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) { // receiver + 1 arg
-        runtime_error("push() takes exactly 1 argument (%d given)", arg_count - 1);
+        runtime_error(vm, "push() takes exactly 1 argument (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     value_t element = args[1];
     
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("push() can only be called on arrays");
+        runtime_error(vm, "push() can only be called on arrays");
     }
     
     // Add element to array
@@ -42,14 +42,14 @@ value_t builtin_array_push(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: pop()
 // Removes and returns last element
-value_t builtin_array_pop(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_pop(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("pop() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "pop() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("pop() can only be called on arrays");
+        runtime_error(vm, "pop() can only be called on arrays");
     }
     
     da_array array = receiver.as.array;
@@ -72,14 +72,14 @@ value_t builtin_array_pop(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: isEmpty()
 // Returns true if array has no elements
-value_t builtin_array_is_empty(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_is_empty(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("isEmpty() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "isEmpty() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("isEmpty() can only be called on arrays");
+        runtime_error(vm, "isEmpty() can only be called on arrays");
     }
     
     bool is_empty = da_is_empty(receiver.as.array);
@@ -88,14 +88,14 @@ value_t builtin_array_is_empty(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: nonEmpty()
 // Returns true if array has at least one element (Scala-inspired)
-value_t builtin_array_non_empty(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_non_empty(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("nonEmpty() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "nonEmpty() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("nonEmpty() can only be called on arrays");
+        runtime_error(vm, "nonEmpty() can only be called on arrays");
     }
     
     bool is_empty = da_is_empty(receiver.as.array);
@@ -104,16 +104,16 @@ value_t builtin_array_non_empty(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: indexOf(element)
 // Returns first index of element, or -1 if not found
-value_t builtin_array_index_of(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_index_of(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) { // receiver + 1 arg
-        runtime_error("indexOf() takes exactly 1 argument (%d given)", arg_count - 1);
+        runtime_error(vm, "indexOf() takes exactly 1 argument (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     value_t element = args[1];
     
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("indexOf() can only be called on arrays");
+        runtime_error(vm, "indexOf() can only be called on arrays");
     }
     
     da_array array = receiver.as.array;
@@ -132,16 +132,16 @@ value_t builtin_array_index_of(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: contains(element)
 // Returns true if array contains element
-value_t builtin_array_contains(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_contains(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) { // receiver + 1 arg
-        runtime_error("contains() takes exactly 1 argument (%d given)", arg_count - 1);
+        runtime_error(vm, "contains() takes exactly 1 argument (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     value_t element = args[1];
     
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("contains() can only be called on arrays");
+        runtime_error(vm, "contains() can only be called on arrays");
     }
     
     da_array array = receiver.as.array;
@@ -160,14 +160,14 @@ value_t builtin_array_contains(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: copy()
 // Returns a copy of the array
-value_t builtin_array_copy(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_copy(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("copy() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "copy() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("copy() can only be called on arrays");
+        runtime_error(vm, "copy() can only be called on arrays");
     }
     
     // Create a copy using da_copy
@@ -177,20 +177,20 @@ value_t builtin_array_copy(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: slice(start, end?)
 // Returns a subset of the array from start to end (exclusive)
-value_t builtin_array_slice(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_slice(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count < 2 || arg_count > 3) {
-        runtime_error("slice() takes 1 or 2 arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "slice() takes 1 or 2 arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     value_t start_val = args[1];
     
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("slice() can only be called on arrays");
+        runtime_error(vm, "slice() can only be called on arrays");
     }
     
     if (start_val.type != VAL_INT32) {
-        runtime_error("slice() start index must be an integer");
+        runtime_error(vm, "slice() start index must be an integer");
     }
     
     da_array array = receiver.as.array;
@@ -202,7 +202,7 @@ value_t builtin_array_slice(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count == 3) {
         value_t end_val = args[2];
         if (end_val.type != VAL_INT32) {
-            runtime_error("slice() end index must be an integer");
+            runtime_error(vm, "slice() end index must be an integer");
         }
         end = end_val.as.int32;
     }
@@ -223,14 +223,14 @@ value_t builtin_array_slice(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: reverse()
 // Reverses the array in-place and returns it
-value_t builtin_array_reverse(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_reverse(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("reverse() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "reverse() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("reverse() can only be called on arrays");
+        runtime_error(vm, "reverse() can only be called on arrays");
     }
     
     // Reverse the array in-place
@@ -242,9 +242,9 @@ value_t builtin_array_reverse(slate_vm* vm, int arg_count, value_t* args) {
 
 // Array method: fill(n, f)
 // Creates an array of length n, calling function f to generate each element
-value_t builtin_array_fill(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_array_fill(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 3) { // receiver + 2 args
-        runtime_error("fill() takes exactly 2 arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "fill() takes exactly 2 arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
@@ -252,16 +252,16 @@ value_t builtin_array_fill(slate_vm* vm, int arg_count, value_t* args) {
     value_t f_val = args[2];
     
     if (receiver.type != VAL_ARRAY) {
-        runtime_error("fill() can only be called on arrays");
+        runtime_error(vm, "fill() can only be called on arrays");
     }
     
     if (n_val.type != VAL_INT32) {
-        runtime_error("fill() first argument must be an int32");
+        runtime_error(vm, "fill() first argument must be an int32");
     }
     
     int32_t n = n_val.as.int32;
     if (n < 0) {
-        runtime_error("fill() size must be non-negative (%d given)", n);
+        runtime_error(vm, "fill() size must be non-negative (%d given)", n);
     }
     
     // Create new array with n elements
@@ -273,7 +273,7 @@ value_t builtin_array_fill(slate_vm* vm, int arg_count, value_t* args) {
     }
     
     if (f_val.type != VAL_CLOSURE) {
-        runtime_error("fill() second argument must be a function");
+        runtime_error(vm, "fill() second argument must be a function");
     }
     
     // Call function f for each element

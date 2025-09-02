@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_bitwise_xor(slate_vm* vm) {
+vm_result op_bitwise_xor(vm_t* vm) {
     value_t b = vm_pop(vm);
     value_t a = vm_pop(vm);
 

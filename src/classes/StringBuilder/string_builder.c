@@ -7,7 +7,7 @@
 value_t* global_string_builder_class = NULL;
 
 // Initialize StringBuilder class with prototype and methods
-void string_builder_class_init(slate_vm* vm) {
+void string_builder_class_init(vm_t* vm) {
     // Create the StringBuilder class with its prototype  
     do_object string_builder_proto = do_create(NULL);
 
@@ -43,7 +43,7 @@ void string_builder_class_init(slate_vm* vm) {
 }
 
 // StringBuilder factory function
-value_t string_builder_factory(value_t* args, int arg_count) {
+value_t string_builder_factory(vm_t* vm, int arg_count, value_t* args) {
     // Parse optional initial capacity (first arg if it's an integer)
     size_t initial_capacity = 16; // default capacity
     int string_arg_start = 0;
@@ -52,13 +52,13 @@ value_t string_builder_factory(value_t* args, int arg_count) {
         // First argument is capacity
         if (args[0].type == VAL_INT32) {
             if (args[0].as.int32 < 0) {
-                runtime_error("StringBuilder initial capacity cannot be negative: %d", args[0].as.int32);
+                runtime_error(vm, "StringBuilder initial capacity cannot be negative: %d", args[0].as.int32);
                 return make_null();
             }
             initial_capacity = (size_t)args[0].as.int32;
         } else {
             // For BigInt capacity, we'll just use default for simplicity
-            runtime_error("BigInt capacity not yet supported for StringBuilder");
+            runtime_error(vm, "BigInt capacity not yet supported for StringBuilder");
             return make_null();
         }
         string_arg_start = 1;
@@ -71,7 +71,7 @@ value_t string_builder_factory(value_t* args, int arg_count) {
     for (int i = string_arg_start; i < arg_count; i++) {
         if (args[i].type != VAL_STRING) {
             ds_builder_release(&builder);
-            runtime_error("StringBuilder() string arguments must be strings, not %s", value_type_name(args[i].type));
+            runtime_error(vm, "StringBuilder() string arguments must be strings, not %s", value_type_name(args[i].type));
             return make_null();
         }
         
@@ -84,9 +84,9 @@ value_t string_builder_factory(value_t* args, int arg_count) {
 }
 
 // StringBuilder method: append(string) - appends a string to the builder
-value_t builtin_string_builder_append(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_string_builder_append(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("append() requires exactly 1 argument (the string to append)");
+        runtime_error(vm, "append() requires exactly 1 argument (the string to append)");
         return make_null();
     }
     
@@ -94,7 +94,7 @@ value_t builtin_string_builder_append(slate_vm* vm, int arg_count, value_t* args
     value_t str_val = args[1];
     
     if (receiver.type != VAL_STRING_BUILDER) {
-        runtime_error("append() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
+        runtime_error(vm, "append() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
         return make_null();
     }
     
@@ -120,9 +120,9 @@ value_t builtin_string_builder_append(slate_vm* vm, int arg_count, value_t* args
 }
 
 // StringBuilder method: appendChar(codepoint) - appends a Unicode codepoint
-value_t builtin_string_builder_append_char(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_string_builder_append_char(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("appendChar() requires exactly 1 argument (the codepoint)");
+        runtime_error(vm, "appendChar() requires exactly 1 argument (the codepoint)");
         return make_null();
     }
     
@@ -130,18 +130,18 @@ value_t builtin_string_builder_append_char(slate_vm* vm, int arg_count, value_t*
     value_t codepoint_val = args[1];
     
     if (receiver.type != VAL_STRING_BUILDER) {
-        runtime_error("appendChar() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
+        runtime_error(vm, "appendChar() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
         return make_null();
     }
     
     if (codepoint_val.type != VAL_INT32) {
-        runtime_error("appendChar() requires an integer codepoint, not %s", value_type_name(codepoint_val.type));
+        runtime_error(vm, "appendChar() requires an integer codepoint, not %s", value_type_name(codepoint_val.type));
         return make_null();
     }
     
     uint32_t codepoint = (uint32_t)codepoint_val.as.int32;
     if (codepoint_val.as.int32 < 0 || codepoint > 0x10FFFF) {
-        runtime_error("Invalid Unicode codepoint: 0x%X", codepoint);
+        runtime_error(vm, "Invalid Unicode codepoint: 0x%X", codepoint);
         return make_null();
     }
     
@@ -153,16 +153,16 @@ value_t builtin_string_builder_append_char(slate_vm* vm, int arg_count, value_t*
 }
 
 // StringBuilder method: toString() - converts builder to string
-value_t builtin_string_builder_to_string(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_string_builder_to_string(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("toString() requires no arguments");
+        runtime_error(vm, "toString() requires no arguments");
         return make_null();
     }
     
     value_t receiver = args[0];
     
     if (receiver.type != VAL_STRING_BUILDER) {
-        runtime_error("toString() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
+        runtime_error(vm, "toString() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
         return make_null();
     }
     
@@ -172,16 +172,16 @@ value_t builtin_string_builder_to_string(slate_vm* vm, int arg_count, value_t* a
 }
 
 // StringBuilder method: length() - returns the current length
-value_t builtin_string_builder_length(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_string_builder_length(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("length() requires no arguments");
+        runtime_error(vm, "length() requires no arguments");
         return make_null();
     }
     
     value_t receiver = args[0];
     
     if (receiver.type != VAL_STRING_BUILDER) {
-        runtime_error("length() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
+        runtime_error(vm, "length() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
         return make_null();
     }
     
@@ -191,16 +191,16 @@ value_t builtin_string_builder_length(slate_vm* vm, int arg_count, value_t* args
 }
 
 // StringBuilder method: clear() - clears the builder
-value_t builtin_string_builder_clear(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_string_builder_clear(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("clear() requires no arguments");
+        runtime_error(vm, "clear() requires no arguments");
         return make_null();
     }
     
     value_t receiver = args[0];
     
     if (receiver.type != VAL_STRING_BUILDER) {
-        runtime_error("clear() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
+        runtime_error(vm, "clear() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
         return make_null();
     }
     

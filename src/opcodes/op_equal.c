@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_equal(slate_vm* vm) {
+vm_result op_equal(vm_t* vm) {
     value_t b = vm_pop(vm);
     value_t a = vm_pop(vm);
     int result = values_equal(a, b);

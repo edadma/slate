@@ -11,14 +11,14 @@
 extern value_t* global_local_date_class;
 
 // LocalDate factory function
-value_t local_date_factory(value_t* args, int arg_count) {
+value_t local_date_factory(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 3) {
-        runtime_error("LocalDate() requires 3 arguments: year, month, day");
+        runtime_error(vm, "LocalDate() requires 3 arguments: year, month, day");
     }
     
     // Validate arguments are numbers
     if (!is_number(args[0]) || !is_number(args[1]) || !is_number(args[2])) {
-        runtime_error("LocalDate() arguments must be numbers");
+        runtime_error(vm, "LocalDate() arguments must be numbers");
     }
     
     int year = (int)value_to_double(args[0]);
@@ -27,7 +27,7 @@ value_t local_date_factory(value_t* args, int arg_count) {
     
     // Validate date components
     if (!is_valid_date(year, month, day)) {
-        runtime_error("Invalid date: %d-%02d-%02d", year, month, day);
+        runtime_error(vm, "Invalid date parameters");
     }
     
     local_date_t* date = local_date_create(NULL, year, month, day);
@@ -44,14 +44,14 @@ value_t local_date_factory(value_t* args, int arg_count) {
 }
 
 // LocalDate.year() - Get the year
-value_t builtin_local_date_year(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_year(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalDate.year() takes 1 argument (self)");
+        runtime_error(vm, "LocalDate.year() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.year() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.year() can only be called on LocalDate objects");
         return make_null();
     }
     
@@ -60,14 +60,14 @@ value_t builtin_local_date_year(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // LocalDate.month() - Get the month
-value_t builtin_local_date_month(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_month(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalDate.month() takes 1 argument (self)");
+        runtime_error(vm, "LocalDate.month() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.month() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.month() can only be called on LocalDate objects");
         return make_null();
     }
     
@@ -76,14 +76,14 @@ value_t builtin_local_date_month(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // LocalDate.day() - Get the day
-value_t builtin_local_date_day(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_day(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalDate.day() takes 1 argument (self)");
+        runtime_error(vm, "LocalDate.day() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.day() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.day() can only be called on LocalDate objects");
         return make_null();
     }
     
@@ -92,14 +92,14 @@ value_t builtin_local_date_day(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // LocalDate.dayOfWeek() - Get day of week (1=Monday, 7=Sunday)
-value_t builtin_local_date_day_of_week(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_day_of_week(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalDate.dayOfWeek() takes 1 argument (self)");
+        runtime_error(vm, "LocalDate.dayOfWeek() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.dayOfWeek() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.dayOfWeek() can only be called on LocalDate objects");
         return make_null();
     }
     
@@ -108,14 +108,14 @@ value_t builtin_local_date_day_of_week(slate_vm* vm, int arg_count, value_t* arg
 }
 
 // LocalDate.dayOfYear() - Get day of year (1-366)
-value_t builtin_local_date_day_of_year(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_day_of_year(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalDate.dayOfYear() takes 1 argument (self)");
+        runtime_error(vm, "LocalDate.dayOfYear() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.dayOfYear() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.dayOfYear() can only be called on LocalDate objects");
         return make_null();
     }
     
@@ -124,19 +124,19 @@ value_t builtin_local_date_day_of_year(slate_vm* vm, int arg_count, value_t* arg
 }
 
 // LocalDate.plusDays(days) - Add days to the date
-value_t builtin_local_date_plus_days(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_plus_days(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalDate.plusDays() takes 2 arguments (self, days)");
+        runtime_error(vm, "LocalDate.plusDays() takes 2 arguments (self, days)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.plusDays() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.plusDays() can only be called on LocalDate objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalDate.plusDays() days argument must be a number");
+        runtime_error(vm, "LocalDate.plusDays() days argument must be a number");
         return make_null();
     }
     
@@ -145,7 +145,7 @@ value_t builtin_local_date_plus_days(slate_vm* vm, int arg_count, value_t* args)
     
     local_date_t* new_date = local_date_plus_days(NULL, date, days);
     if (!new_date) {
-        vm_runtime_error_with_debug(vm, "Failed to add days to date");
+        runtime_error(vm, "Failed to add days to date");
         return make_null();
     }
     
@@ -153,19 +153,19 @@ value_t builtin_local_date_plus_days(slate_vm* vm, int arg_count, value_t* args)
 }
 
 // LocalDate.plusMonths(months) - Add months to the date
-value_t builtin_local_date_plus_months(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_plus_months(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalDate.plusMonths() takes 2 arguments (self, months)");
+        runtime_error(vm, "LocalDate.plusMonths() takes 2 arguments (self, months)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.plusMonths() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.plusMonths() can only be called on LocalDate objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalDate.plusMonths() months argument must be a number");
+        runtime_error(vm, "LocalDate.plusMonths() months argument must be a number");
         return make_null();
     }
     
@@ -174,7 +174,7 @@ value_t builtin_local_date_plus_months(slate_vm* vm, int arg_count, value_t* arg
     
     local_date_t* new_date = local_date_plus_months(NULL, date, months);
     if (!new_date) {
-        vm_runtime_error_with_debug(vm, "Failed to add months to date");
+        runtime_error(vm, "Failed to add months to date");
         return make_null();
     }
     
@@ -182,19 +182,19 @@ value_t builtin_local_date_plus_months(slate_vm* vm, int arg_count, value_t* arg
 }
 
 // LocalDate.plusYears(years) - Add years to the date
-value_t builtin_local_date_plus_years(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_plus_years(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalDate.plusYears() takes 2 arguments (self, years)");
+        runtime_error(vm, "LocalDate.plusYears() takes 2 arguments (self, years)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.plusYears() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.plusYears() can only be called on LocalDate objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalDate.plusYears() years argument must be a number");
+        runtime_error(vm, "LocalDate.plusYears() years argument must be a number");
         return make_null();
     }
     
@@ -203,7 +203,7 @@ value_t builtin_local_date_plus_years(slate_vm* vm, int arg_count, value_t* args
     
     local_date_t* new_date = local_date_plus_years(NULL, date, years);
     if (!new_date) {
-        vm_runtime_error_with_debug(vm, "Failed to add years to date");
+        runtime_error(vm, "Failed to add years to date");
         return make_null();
     }
     
@@ -211,19 +211,19 @@ value_t builtin_local_date_plus_years(slate_vm* vm, int arg_count, value_t* args
 }
 
 // LocalDate.minusDays(days) - Subtract days from the date
-value_t builtin_local_date_minus_days(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_minus_days(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalDate.minusDays() takes 2 arguments (self, days)");
+        runtime_error(vm, "LocalDate.minusDays() takes 2 arguments (self, days)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.minusDays() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.minusDays() can only be called on LocalDate objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalDate.minusDays() days argument must be a number");
+        runtime_error(vm, "LocalDate.minusDays() days argument must be a number");
         return make_null();
     }
     
@@ -232,7 +232,7 @@ value_t builtin_local_date_minus_days(slate_vm* vm, int arg_count, value_t* args
     
     local_date_t* new_date = local_date_plus_days(NULL, date, -days);
     if (!new_date) {
-        vm_runtime_error_with_debug(vm, "Failed to subtract days from date");
+        runtime_error(vm, "Failed to subtract days from date");
         return make_null();
     }
     
@@ -240,19 +240,19 @@ value_t builtin_local_date_minus_days(slate_vm* vm, int arg_count, value_t* args
 }
 
 // LocalDate.minusMonths(months) - Subtract months from the date
-value_t builtin_local_date_minus_months(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_minus_months(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalDate.minusMonths() takes 2 arguments (self, months)");
+        runtime_error(vm, "LocalDate.minusMonths() takes 2 arguments (self, months)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.minusMonths() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.minusMonths() can only be called on LocalDate objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalDate.minusMonths() months argument must be a number");
+        runtime_error(vm, "LocalDate.minusMonths() months argument must be a number");
         return make_null();
     }
     
@@ -261,7 +261,7 @@ value_t builtin_local_date_minus_months(slate_vm* vm, int arg_count, value_t* ar
     
     local_date_t* new_date = local_date_plus_months(NULL, date, -months);
     if (!new_date) {
-        vm_runtime_error_with_debug(vm, "Failed to subtract months from date");
+        runtime_error(vm, "Failed to subtract months from date");
         return make_null();
     }
     
@@ -269,19 +269,19 @@ value_t builtin_local_date_minus_months(slate_vm* vm, int arg_count, value_t* ar
 }
 
 // LocalDate.minusYears(years) - Subtract years from the date
-value_t builtin_local_date_minus_years(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_minus_years(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalDate.minusYears() takes 2 arguments (self, years)");
+        runtime_error(vm, "LocalDate.minusYears() takes 2 arguments (self, years)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.minusYears() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.minusYears() can only be called on LocalDate objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalDate.minusYears() years argument must be a number");
+        runtime_error(vm, "LocalDate.minusYears() years argument must be a number");
         return make_null();
     }
     
@@ -290,7 +290,7 @@ value_t builtin_local_date_minus_years(slate_vm* vm, int arg_count, value_t* arg
     
     local_date_t* new_date = local_date_plus_years(NULL, date, -years);
     if (!new_date) {
-        vm_runtime_error_with_debug(vm, "Failed to subtract years from date");
+        runtime_error(vm, "Failed to subtract years from date");
         return make_null();
     }
     
@@ -298,14 +298,14 @@ value_t builtin_local_date_minus_years(slate_vm* vm, int arg_count, value_t* arg
 }
 
 // LocalDate.equals(other) - Check if dates are equal
-value_t builtin_local_date_equals(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_equals(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalDate.equals() takes 2 arguments (self, other)");
+        runtime_error(vm, "LocalDate.equals() takes 2 arguments (self, other)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.equals() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.equals() can only be called on LocalDate objects");
         return make_null();
     }
     
@@ -320,19 +320,19 @@ value_t builtin_local_date_equals(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // LocalDate.isBefore(other) - Check if this date is before another
-value_t builtin_local_date_is_before(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_is_before(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalDate.isBefore() takes 2 arguments (self, other)");
+        runtime_error(vm, "LocalDate.isBefore() takes 2 arguments (self, other)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.isBefore() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.isBefore() can only be called on LocalDate objects");
         return make_null();
     }
     
     if (args[1].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.isBefore() other argument must be a LocalDate");
+        runtime_error(vm, "LocalDate.isBefore() other argument must be a LocalDate");
         return make_null();
     }
     
@@ -343,19 +343,19 @@ value_t builtin_local_date_is_before(slate_vm* vm, int arg_count, value_t* args)
 }
 
 // LocalDate.isAfter(other) - Check if this date is after another
-value_t builtin_local_date_is_after(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_is_after(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalDate.isAfter() takes 2 arguments (self, other)");
+        runtime_error(vm, "LocalDate.isAfter() takes 2 arguments (self, other)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.isAfter() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.isAfter() can only be called on LocalDate objects");
         return make_null();
     }
     
     if (args[1].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.isAfter() other argument must be a LocalDate");
+        runtime_error(vm, "LocalDate.isAfter() other argument must be a LocalDate");
         return make_null();
     }
     
@@ -366,14 +366,14 @@ value_t builtin_local_date_is_after(slate_vm* vm, int arg_count, value_t* args) 
 }
 
 // LocalDate.toString() - Convert to string representation
-value_t builtin_local_date_to_string(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_date_to_string(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalDate.toString() takes 1 argument (self)");
+        runtime_error(vm, "LocalDate.toString() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_DATE) {
-        vm_runtime_error_with_debug(vm, "LocalDate.toString() can only be called on LocalDate objects");
+        runtime_error(vm, "LocalDate.toString() can only be called on LocalDate objects");
         return make_null();
     }
     
@@ -381,7 +381,7 @@ value_t builtin_local_date_to_string(slate_vm* vm, int arg_count, value_t* args)
     char* str = local_date_to_string(NULL, date);
     
     if (!str) {
-        vm_runtime_error_with_debug(vm, "Failed to convert date to string");
+        runtime_error(vm, "Failed to convert date to string");
         return make_null();
     }
     
@@ -392,7 +392,7 @@ value_t builtin_local_date_to_string(slate_vm* vm, int arg_count, value_t* args)
 
 
 // Initialize LocalDate class with prototype and methods
-void local_date_class_init(slate_vm* vm) {
+void local_date_class_init(vm_t* vm) {
     // Create the LocalDate class with its prototype
     do_object local_date_proto = do_create(NULL);
 

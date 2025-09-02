@@ -7,7 +7,7 @@
 value_t* global_iterator_class = NULL;
 
 // Initialize Iterator class with prototype and methods
-void iterator_class_init(slate_vm* vm) {
+void iterator_class_init(vm_t* vm) {
     // Create the Iterator class with its prototype
     do_object iterator_proto = do_create(NULL);
 
@@ -37,9 +37,9 @@ void iterator_class_init(slate_vm* vm) {
 }
 
 // iterator(collection) - Create iterator for arrays and ranges
-value_t builtin_iterator(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_iterator(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("iterator() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "iterator() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t collection = args[0];
@@ -56,25 +56,25 @@ value_t builtin_iterator(slate_vm* vm, int arg_count, value_t* args) {
         }
         break;
     default:
-        runtime_error("iterator() can only be called on arrays and ranges, not %s", value_type_name(collection.type));
+        runtime_error(vm, "iterator() can only be called on arrays and ranges, not %s", value_type_name(collection.type));
     }
 
     if (!iter) {
-        runtime_error("Failed to create iterator");
+        runtime_error(vm, "Failed to create iterator");
     }
 
     return make_iterator(iter);
 }
 
 // hasNext(iterator) - Check if iterator has more elements
-value_t builtin_has_next(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_has_next(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("hasNext() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "hasNext() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t iter_val = args[0];
     if (iter_val.type != VAL_ITERATOR) {
-        runtime_error("hasNext() requires an iterator argument, not %s", value_type_name(iter_val.type));
+        runtime_error(vm, "hasNext() requires an iterator argument, not %s", value_type_name(iter_val.type));
     }
 
     int has_next = iterator_has_next(iter_val.as.iterator);
@@ -82,37 +82,37 @@ value_t builtin_has_next(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // next(iterator) - Get next element from iterator
-value_t builtin_next(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_next(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("next() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "next() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t iter_val = args[0];
     if (iter_val.type != VAL_ITERATOR) {
-        runtime_error("next() requires an iterator argument, not %s", value_type_name(iter_val.type));
+        runtime_error(vm, "next() requires an iterator argument, not %s", value_type_name(iter_val.type));
     }
 
     if (!iterator_has_next(iter_val.as.iterator)) {
-        runtime_error("Iterator has no more elements");
+        runtime_error(vm, "Iterator has no more elements");
     }
 
     return iterator_next(iter_val.as.iterator);
 }
 
 // iterator.isEmpty() - Check if iterator has no more elements
-value_t builtin_iterator_is_empty(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_iterator_is_empty(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("isEmpty() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "isEmpty() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_ITERATOR) {
-        runtime_error("isEmpty() can only be called on iterators");
+        runtime_error(vm, "isEmpty() can only be called on iterators");
     }
     
     iterator_t* iter = receiver.as.iterator;
     if (!iter) {
-        runtime_error("Invalid iterator");
+        runtime_error(vm, "Invalid iterator");
     }
     
     int has_next = iterator_has_next(iter);
@@ -120,19 +120,19 @@ value_t builtin_iterator_is_empty(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // iterator.toArray() - Consume remaining elements into an array
-value_t builtin_iterator_to_array(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_iterator_to_array(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("toArray() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "toArray() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_ITERATOR) {
-        runtime_error("toArray() can only be called on iterators");
+        runtime_error(vm, "toArray() can only be called on iterators");
     }
     
     iterator_t* iter = receiver.as.iterator;
     if (!iter) {
-        runtime_error("Invalid iterator");
+        runtime_error(vm, "Invalid iterator");
     }
     
     // Create new array to collect elements

@@ -22,17 +22,17 @@ uint32_t date_to_epoch_day(int year, int month, int day);
 void epoch_day_to_date(uint32_t epoch_day, int* year, int* month, int* day);
 
 // Local Date factory functions
-local_date_t* local_date_create(slate_vm* vm, int year, int month, int day);
-local_date_t* local_date_now(slate_vm* vm);
-local_date_t* local_date_of_epoch_day(slate_vm* vm, uint32_t epoch_day);
+local_date_t* local_date_create(vm_t* vm, int year, int month, int day);
+local_date_t* local_date_now(vm_t* vm);
+local_date_t* local_date_of_epoch_day(vm_t* vm, uint32_t epoch_day);
 
 // Local Time factory functions
-local_time_t* local_time_create(slate_vm* vm, int hour, int minute, int second, int millis);
-local_time_t* local_time_now(slate_vm* vm);
+local_time_t* local_time_create(vm_t* vm, int hour, int minute, int second, int millis);
+local_time_t* local_time_now(vm_t* vm);
 
 // Local DateTime factory functions
-local_datetime_t* local_datetime_create(slate_vm* vm, local_date_t* date, local_time_t* time);
-local_datetime_t* local_datetime_now(slate_vm* vm);
+local_datetime_t* local_datetime_create(vm_t* vm, local_date_t* date, local_time_t* time);
+local_datetime_t* local_datetime_now(vm_t* vm);
 
 // Instant factory functions
 instant_t* instant_create(int64_t epoch_seconds, uint32_t nanos);
@@ -52,9 +52,9 @@ period_t* period_of_months(int months);
 period_t* period_of_days(int days);
 
 // Value factory functions (create value_t wrappers)
-value_t make_local_date_value(slate_vm* vm, int year, int month, int day);
-value_t make_local_time_value(slate_vm* vm, int hour, int minute, int second, int millis);
-value_t make_local_datetime_value(slate_vm* vm, local_date_t* date, local_time_t* time);
+value_t make_local_date_value(vm_t* vm, int year, int month, int day);
+value_t make_local_time_value(vm_t* vm, int hour, int minute, int second, int millis);
+value_t make_local_datetime_value(vm_t* vm, local_date_t* date, local_time_t* time);
 value_t make_instant_value(int64_t epoch_seconds, uint32_t nanos);
 value_t make_duration_value(int64_t seconds, int32_t nanos);
 value_t make_period_value(int years, int months, int days);
@@ -86,15 +86,20 @@ bool local_time_equals(const local_time_t* a, const local_time_t* b);
 bool local_time_is_before(const local_time_t* a, const local_time_t* b);
 bool local_time_is_after(const local_time_t* a, const local_time_t* b);
 
+int local_datetime_compare(const local_datetime_t* a, const local_datetime_t* b);
+bool local_datetime_equals(const local_datetime_t* a, const local_datetime_t* b);
+bool local_datetime_is_before(const local_datetime_t* a, const local_datetime_t* b);
+bool local_datetime_is_after(const local_datetime_t* a, const local_datetime_t* b);
+
 // Date arithmetic functions
-local_date_t* local_date_plus_days(slate_vm* vm, const local_date_t* date, int days);
-local_date_t* local_date_plus_months(slate_vm* vm, const local_date_t* date, int months);
-local_date_t* local_date_plus_years(slate_vm* vm, const local_date_t* date, int years);
+local_date_t* local_date_plus_days(vm_t* vm, const local_date_t* date, int days);
+local_date_t* local_date_plus_months(vm_t* vm, const local_date_t* date, int months);
+local_date_t* local_date_plus_years(vm_t* vm, const local_date_t* date, int years);
 
 // Time arithmetic functions
-local_time_t* local_time_plus_hours(slate_vm* vm, const local_time_t* time, int hours);
-local_time_t* local_time_plus_minutes(slate_vm* vm, const local_time_t* time, int minutes);
-local_time_t* local_time_plus_seconds(slate_vm* vm, const local_time_t* time, int seconds);
+local_time_t* local_time_plus_hours(vm_t* vm, const local_time_t* time, int hours);
+local_time_t* local_time_plus_minutes(vm_t* vm, const local_time_t* time, int minutes);
+local_time_t* local_time_plus_seconds(vm_t* vm, const local_time_t* time, int seconds);
 
 // Date accessor functions
 int local_date_get_year(const local_date_t* date);
@@ -120,21 +125,21 @@ local_time_t* local_time_with_minute(const local_time_t* time, int minute);
 local_time_t* local_time_with_second(const local_time_t* time, int second);
 
 // String conversion functions
-char* local_date_to_string(slate_vm* vm, const local_date_t* date);
-char* local_time_to_string(slate_vm* vm, const local_time_t* time);
-char* local_datetime_to_string(slate_vm* vm, const local_datetime_t* dt);
+char* local_date_to_string(vm_t* vm, const local_date_t* date);
+char* local_time_to_string(vm_t* vm, const local_time_t* time);
+char* local_datetime_to_string(vm_t* vm, const local_datetime_t* dt);
 
 // Parsing functions
 local_date_t* local_date_parse_iso(const char* iso_string);
 local_time_t* local_time_parse_iso(const char* iso_string);
-local_datetime_t* local_datetime_parse_iso(const char* iso_string);
+local_datetime_t* local_datetime_parse_iso(vm_t* vm, const char* iso_string);
 
 // Built-in function prototypes for VM integration
-value_t builtin_local_date_now(slate_vm* vm, int arg_count, value_t* args);
-value_t builtin_local_date_of(slate_vm* vm, int arg_count, value_t* args);
-value_t builtin_local_date_parse(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_local_date_now(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_local_date_of(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_local_date_parse(vm_t* vm, int arg_count, value_t* args);
 
 // Initialization function
-void init_datetime_classes(slate_vm* vm);
+void init_datetime_classes(vm_t* vm);
 
 #endif // SLATE_DATETIME_H

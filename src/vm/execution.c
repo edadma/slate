@@ -5,7 +5,7 @@
 // Assumes the VM is already set up with proper stack state and call frame
 
 // Helper function to call functions from C code (for array methods, etc.)
-value_t vm_call_function(slate_vm* vm, value_t callable, int arg_count, value_t* args) {
+value_t vm_call_function(vm_t* vm, value_t callable, int arg_count, value_t* args) {
     if (callable.type == VAL_NATIVE) {
         // Native functions are easy - just call them directly
         native_t func = (native_t)callable.as.native;
@@ -103,7 +103,7 @@ value_t vm_call_function(slate_vm* vm, value_t callable, int arg_count, value_t*
 
 // Helper function for calling Slate functions from C code using isolated VM execution
 // This avoids instruction pointer conflicts when calling closures from native functions
-value_t vm_call_slate_function_from_c(slate_vm* vm, value_t callable, int arg_count, value_t* args) {
+value_t vm_call_slate_function_from_c(vm_t* vm, value_t callable, int arg_count, value_t* args) {
     // Handle native functions the same way
     if (callable.type == VAL_NATIVE) {
         native_t func = (native_t)callable.as.native;
@@ -129,7 +129,7 @@ value_t vm_call_slate_function_from_c(slate_vm* vm, value_t callable, int arg_co
     }
     
     // Create isolated VM for closure execution
-    slate_vm* isolated_vm = vm_create();
+    vm_t* isolated_vm = vm_create();
     if (!isolated_vm) {
         return make_undefined();
     }

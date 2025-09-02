@@ -8,7 +8,7 @@
 value_t* global_range_class = NULL;
 
 // Initialize Range class with prototype and methods
-void range_class_init(slate_vm* vm) {
+void range_class_init(vm_t* vm) {
     // Create the Range class with its prototype
     do_object range_proto = do_create(NULL);
 
@@ -56,76 +56,76 @@ void range_class_init(slate_vm* vm) {
 }
 
 // range.start() - Get the starting value
-value_t builtin_range_start(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_range_start(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("start() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "start() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_RANGE) {
-        runtime_error("start() can only be called on ranges");
+        runtime_error(vm, "start() can only be called on ranges");
     }
     
     range_t* range = receiver.as.range;
     if (!range) {
-        runtime_error("Invalid range");
+        runtime_error(vm, "Invalid range");
     }
     
     return vm_retain(range->start);
 }
 
 // range.end() - Get the ending value
-value_t builtin_range_end(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_range_end(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("end() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "end() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_RANGE) {
-        runtime_error("end() can only be called on ranges");
+        runtime_error(vm, "end() can only be called on ranges");
     }
     
     range_t* range = receiver.as.range;
     if (!range) {
-        runtime_error("Invalid range");
+        runtime_error(vm, "Invalid range");
     }
     
     return vm_retain(range->end);
 }
 
 // range.isExclusive() - Check if range excludes end value
-value_t builtin_range_is_exclusive(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_range_is_exclusive(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("isExclusive() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "isExclusive() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_RANGE) {
-        runtime_error("isExclusive() can only be called on ranges");
+        runtime_error(vm, "isExclusive() can only be called on ranges");
     }
     
     range_t* range = receiver.as.range;
     if (!range) {
-        runtime_error("Invalid range");
+        runtime_error(vm, "Invalid range");
     }
     
     return make_boolean(range->exclusive);
 }
 
 // range.isEmpty() - Check if range contains no elements
-value_t builtin_range_is_empty(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_range_is_empty(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("isEmpty() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "isEmpty() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_RANGE) {
-        runtime_error("isEmpty() can only be called on ranges");
+        runtime_error(vm, "isEmpty() can only be called on ranges");
     }
     
     range_t* range = receiver.as.range;
     if (!range) {
-        runtime_error("Invalid range");
+        runtime_error(vm, "Invalid range");
     }
     
     // Range is empty if start > end, or if start == end and exclusive
@@ -149,24 +149,24 @@ value_t builtin_range_is_empty(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // range.length() - Number of elements in range
-value_t builtin_range_length(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_range_length(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("length() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "length() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_RANGE) {
-        runtime_error("length() can only be called on ranges");
+        runtime_error(vm, "length() can only be called on ranges");
     }
     
     range_t* range = receiver.as.range;
     if (!range) {
-        runtime_error("Invalid range");
+        runtime_error(vm, "Invalid range");
     }
     
     // Only support numeric ranges for length calculation
     if (!is_number(range->start) || !is_number(range->end)) {
-        runtime_error("length() only supported for numeric ranges");
+        runtime_error(vm, "length() only supported for numeric ranges");
     }
     
     double start_val = value_to_double(range->start);
@@ -192,21 +192,21 @@ value_t builtin_range_length(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // range.contains(value) - Check if value is within range bounds
-value_t builtin_range_contains(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_range_contains(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("contains() takes exactly 1 argument (%d given)", arg_count - 1);
+        runtime_error(vm, "contains() takes exactly 1 argument (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     value_t value = args[1];
     
     if (receiver.type != VAL_RANGE) {
-        runtime_error("contains() can only be called on ranges");
+        runtime_error(vm, "contains() can only be called on ranges");
     }
     
     range_t* range = receiver.as.range;
     if (!range) {
-        runtime_error("Invalid range");
+        runtime_error(vm, "Invalid range");
     }
     
     // Only support numeric values for contains check
@@ -226,31 +226,31 @@ value_t builtin_range_contains(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // range.toArray() - Convert range to array
-value_t builtin_range_to_array(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_range_to_array(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("toArray() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "toArray() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_RANGE) {
-        runtime_error("toArray() can only be called on ranges");
+        runtime_error(vm, "toArray() can only be called on ranges");
     }
     
     range_t* range = receiver.as.range;
     if (!range) {
-        runtime_error("Invalid range");
+        runtime_error(vm, "Invalid range");
     }
     
     // Only support numeric ranges for conversion to array
     if (!is_number(range->start) || !is_number(range->end)) {
-        runtime_error("toArray() only supported for numeric ranges");
+        runtime_error(vm, "toArray() only supported for numeric ranges");
     }
     
     // Use iterator pattern for consistent behavior with Iterator.toArray()
     // Create iterator for this range
     iterator_t* iter = create_range_iterator(range->start, range->end, range->exclusive);
     if (!iter) {
-        runtime_error("Failed to create range iterator");
+        runtime_error(vm, "Failed to create range iterator");
     }
     
     // Create new array to collect elements
@@ -269,19 +269,19 @@ value_t builtin_range_to_array(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // range.reverse() - Create reversed range
-value_t builtin_range_reverse(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_range_reverse(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("reverse() takes no arguments (%d given)", arg_count - 1);
+        runtime_error(vm, "reverse() takes no arguments (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     if (receiver.type != VAL_RANGE) {
-        runtime_error("reverse() can only be called on ranges");
+        runtime_error(vm, "reverse() can only be called on ranges");
     }
     
     range_t* range = receiver.as.range;
     if (!range) {
-        runtime_error("Invalid range");
+        runtime_error(vm, "Invalid range");
     }
     
     // Create reversed range: swap start and end, keep exclusivity
@@ -289,16 +289,16 @@ value_t builtin_range_reverse(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // range.equals(other) - Deep equality comparison
-value_t builtin_range_equals(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_range_equals(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("equals() takes exactly 1 argument (%d given)", arg_count - 1);
+        runtime_error(vm, "equals() takes exactly 1 argument (%d given)", arg_count - 1);
     }
     
     value_t receiver = args[0];
     value_t other = args[1];
     
     if (receiver.type != VAL_RANGE) {
-        runtime_error("equals() can only be called on ranges");
+        runtime_error(vm, "equals() can only be called on ranges");
     }
     
     if (other.type != VAL_RANGE) {

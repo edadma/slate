@@ -11,18 +11,18 @@
 extern value_t* global_local_time_class;
 
 // LocalTime factory function
-value_t local_time_factory(value_t* args, int arg_count) {
+value_t local_time_factory(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 3 && arg_count != 4) {
-        runtime_error("LocalTime() requires 3 or 4 arguments: hour, minute, second, [millisecond]");
+        runtime_error(vm, "LocalTime() requires 3 or 4 arguments: hour, minute, second, [millisecond]");
     }
     
     // Validate arguments are numbers
     if (!is_number(args[0]) || !is_number(args[1]) || !is_number(args[2])) {
-        runtime_error("LocalTime() first 3 arguments must be numbers");
+        runtime_error(vm, "LocalTime() first 3 arguments must be numbers");
     }
     
     if (arg_count == 4 && !is_number(args[3])) {
-        runtime_error("LocalTime() millisecond argument must be a number");
+        runtime_error(vm, "LocalTime() millisecond argument must be a number");
     }
     
     int hour = (int)value_to_double(args[0]);
@@ -32,7 +32,7 @@ value_t local_time_factory(value_t* args, int arg_count) {
     
     // Validate time components
     if (!is_valid_time(hour, minute, second, millis)) {
-        runtime_error("Invalid time: %02d:%02d:%02d.%03d", hour, minute, second, millis);
+        runtime_error(vm, "Invalid time parameters");
     }
     
     local_time_t* time = local_time_create(NULL, hour, minute, second, millis);
@@ -49,14 +49,14 @@ value_t local_time_factory(value_t* args, int arg_count) {
 }
 
 // LocalTime.hour() - Get the hour
-value_t builtin_local_time_hour(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_hour(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalTime.hour() takes 1 argument (self)");
+        runtime_error(vm, "LocalTime.hour() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.hour() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.hour() can only be called on LocalTime objects");
         return make_null();
     }
     
@@ -65,14 +65,14 @@ value_t builtin_local_time_hour(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // LocalTime.minute() - Get the minute
-value_t builtin_local_time_minute(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_minute(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minute() takes 1 argument (self)");
+        runtime_error(vm, "LocalTime.minute() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minute() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.minute() can only be called on LocalTime objects");
         return make_null();
     }
     
@@ -81,14 +81,14 @@ value_t builtin_local_time_minute(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // LocalTime.second() - Get the second
-value_t builtin_local_time_second(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_second(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalTime.second() takes 1 argument (self)");
+        runtime_error(vm, "LocalTime.second() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.second() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.second() can only be called on LocalTime objects");
         return make_null();
     }
     
@@ -97,14 +97,14 @@ value_t builtin_local_time_second(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // LocalTime.millisecond() - Get the millisecond
-value_t builtin_local_time_millisecond(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_millisecond(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalTime.millisecond() takes 1 argument (self)");
+        runtime_error(vm, "LocalTime.millisecond() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.millisecond() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.millisecond() can only be called on LocalTime objects");
         return make_null();
     }
     
@@ -113,19 +113,19 @@ value_t builtin_local_time_millisecond(slate_vm* vm, int arg_count, value_t* arg
 }
 
 // LocalTime.plusHours(hours) - Add hours to the time
-value_t builtin_local_time_plus_hours(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_plus_hours(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalTime.plusHours() takes 2 arguments (self, hours)");
+        runtime_error(vm, "LocalTime.plusHours() takes 2 arguments (self, hours)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.plusHours() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.plusHours() can only be called on LocalTime objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalTime.plusHours() hours argument must be a number");
+        runtime_error(vm, "LocalTime.plusHours() hours argument must be a number");
         return make_null();
     }
     
@@ -142,19 +142,19 @@ value_t builtin_local_time_plus_hours(slate_vm* vm, int arg_count, value_t* args
 }
 
 // LocalTime.plusMinutes(minutes) - Add minutes to the time
-value_t builtin_local_time_plus_minutes(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_plus_minutes(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalTime.plusMinutes() takes 2 arguments (self, minutes)");
+        runtime_error(vm, "LocalTime.plusMinutes() takes 2 arguments (self, minutes)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.plusMinutes() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.plusMinutes() can only be called on LocalTime objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalTime.plusMinutes() minutes argument must be a number");
+        runtime_error(vm, "LocalTime.plusMinutes() minutes argument must be a number");
         return make_null();
     }
     
@@ -171,19 +171,19 @@ value_t builtin_local_time_plus_minutes(slate_vm* vm, int arg_count, value_t* ar
 }
 
 // LocalTime.plusSeconds(seconds) - Add seconds to the time
-value_t builtin_local_time_plus_seconds(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_plus_seconds(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalTime.plusSeconds() takes 2 arguments (self, seconds)");
+        runtime_error(vm, "LocalTime.plusSeconds() takes 2 arguments (self, seconds)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.plusSeconds() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.plusSeconds() can only be called on LocalTime objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalTime.plusSeconds() seconds argument must be a number");
+        runtime_error(vm, "LocalTime.plusSeconds() seconds argument must be a number");
         return make_null();
     }
     
@@ -200,19 +200,19 @@ value_t builtin_local_time_plus_seconds(slate_vm* vm, int arg_count, value_t* ar
 }
 
 // LocalTime.minusHours(hours) - Subtract hours from the time
-value_t builtin_local_time_minus_hours(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_minus_hours(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minusHours() takes 2 arguments (self, hours)");
+        runtime_error(vm, "LocalTime.minusHours() takes 2 arguments (self, hours)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minusHours() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.minusHours() can only be called on LocalTime objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minusHours() hours argument must be a number");
+        runtime_error(vm, "LocalTime.minusHours() hours argument must be a number");
         return make_null();
     }
     
@@ -229,19 +229,19 @@ value_t builtin_local_time_minus_hours(slate_vm* vm, int arg_count, value_t* arg
 }
 
 // LocalTime.minusMinutes(minutes) - Subtract minutes from the time
-value_t builtin_local_time_minus_minutes(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_minus_minutes(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minusMinutes() takes 2 arguments (self, minutes)");
+        runtime_error(vm, "LocalTime.minusMinutes() takes 2 arguments (self, minutes)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minusMinutes() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.minusMinutes() can only be called on LocalTime objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minusMinutes() minutes argument must be a number");
+        runtime_error(vm, "LocalTime.minusMinutes() minutes argument must be a number");
         return make_null();
     }
     
@@ -258,19 +258,19 @@ value_t builtin_local_time_minus_minutes(slate_vm* vm, int arg_count, value_t* a
 }
 
 // LocalTime.minusSeconds(seconds) - Subtract seconds from the time
-value_t builtin_local_time_minus_seconds(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_minus_seconds(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minusSeconds() takes 2 arguments (self, seconds)");
+        runtime_error(vm, "LocalTime.minusSeconds() takes 2 arguments (self, seconds)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minusSeconds() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.minusSeconds() can only be called on LocalTime objects");
         return make_null();
     }
     
     if (!is_number(args[1])) {
-        vm_runtime_error_with_debug(vm, "LocalTime.minusSeconds() seconds argument must be a number");
+        runtime_error(vm, "LocalTime.minusSeconds() seconds argument must be a number");
         return make_null();
     }
     
@@ -287,14 +287,14 @@ value_t builtin_local_time_minus_seconds(slate_vm* vm, int arg_count, value_t* a
 }
 
 // LocalTime.equals(other) - Check if times are equal
-value_t builtin_local_time_equals(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_equals(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalTime.equals() takes 2 arguments (self, other)");
+        runtime_error(vm, "LocalTime.equals() takes 2 arguments (self, other)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.equals() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.equals() can only be called on LocalTime objects");
         return make_null();
     }
     
@@ -309,19 +309,19 @@ value_t builtin_local_time_equals(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // LocalTime.isBefore(other) - Check if this time is before another
-value_t builtin_local_time_is_before(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_is_before(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalTime.isBefore() takes 2 arguments (self, other)");
+        runtime_error(vm, "LocalTime.isBefore() takes 2 arguments (self, other)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.isBefore() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.isBefore() can only be called on LocalTime objects");
         return make_null();
     }
     
     if (args[1].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.isBefore() other argument must be a LocalTime");
+        runtime_error(vm, "LocalTime.isBefore() other argument must be a LocalTime");
         return make_null();
     }
     
@@ -332,19 +332,19 @@ value_t builtin_local_time_is_before(slate_vm* vm, int arg_count, value_t* args)
 }
 
 // LocalTime.isAfter(other) - Check if this time is after another
-value_t builtin_local_time_is_after(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_is_after(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        vm_runtime_error_with_debug(vm, "LocalTime.isAfter() takes 2 arguments (self, other)");
+        runtime_error(vm, "LocalTime.isAfter() takes 2 arguments (self, other)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.isAfter() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.isAfter() can only be called on LocalTime objects");
         return make_null();
     }
     
     if (args[1].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.isAfter() other argument must be a LocalTime");
+        runtime_error(vm, "LocalTime.isAfter() other argument must be a LocalTime");
         return make_null();
     }
     
@@ -355,14 +355,14 @@ value_t builtin_local_time_is_after(slate_vm* vm, int arg_count, value_t* args) 
 }
 
 // LocalTime.toString() - Convert to string representation
-value_t builtin_local_time_to_string(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_local_time_to_string(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "LocalTime.toString() takes 1 argument (self)");
+        runtime_error(vm, "LocalTime.toString() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_LOCAL_TIME) {
-        vm_runtime_error_with_debug(vm, "LocalTime.toString() can only be called on LocalTime objects");
+        runtime_error(vm, "LocalTime.toString() can only be called on LocalTime objects");
         return make_null();
     }
     
@@ -380,7 +380,7 @@ value_t builtin_local_time_to_string(slate_vm* vm, int arg_count, value_t* args)
 }
 
 // Initialize LocalTime class with prototype and methods
-void local_time_class_init(slate_vm* vm) {
+void local_time_class_init(vm_t* vm) {
     // Create the LocalTime class with its prototype
     do_object local_time_proto = do_create(NULL);
 

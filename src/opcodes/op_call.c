@@ -1,7 +1,7 @@
 #include "vm.h"
 #include "runtime_error.h"
 
-vm_result op_call(slate_vm* vm) {
+vm_result op_call(vm_t* vm) {
     uint16_t arg_count = *vm->ip | (*(vm->ip + 1) << 8);
     vm->ip += 2;
 
@@ -217,7 +217,7 @@ vm_result op_call(slate_vm* vm) {
         class_t* cls = callable.as.class;
         if (cls->factory != NULL) {
             // Call the factory function to create an instance
-            value_t result = cls->factory(args, arg_count);
+            value_t result = cls->factory(vm, arg_count, args);
             vm_push(vm, result);
 
             if (args) {

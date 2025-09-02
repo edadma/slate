@@ -1,26 +1,27 @@
 #include "builtins.h"
-#include "datetime.h"
-#include "classes/String/class_string.h"
-#include "classes/StringBuilder/string_builder.h"
-#include "array.h"
-#include "buffer.h"
-#include "buffer_builder.h"
-#include "buffer_reader.h"
-#include "range.h"
-#include "iterator.h"
-#include "value.h"
-#include "int.h"
-#include "local_date.h"
-#include "local_time.h"
 #include <assert.h>
-#include "runtime_error.h"
-#include "library_assert.h"
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "array.h"
+#include "buffer.h"
+#include "buffer_builder.h"
+#include "buffer_reader.h"
+#include "classes/String/class_string.h"
+#include "classes/StringBuilder/string_builder.h"
+#include "datetime.h"
+#include "int.h"
+#include "iterator.h"
+#include "library_assert.h"
+#include "local_date.h"
+#include "local_datetime.h"
+#include "local_time.h"
+#include "range.h"
+#include "runtime_error.h"
+#include "value.h"
 
 // Include dynamic_string for ds_builder functions (implementation in library_impl.c)
 #include "dynamic_string.h"
@@ -32,28 +33,8 @@
 static int random_initialized = 0;
 
 
-
-// Runtime error handling - uses context-aware error system
-void runtime_error(const char* message, ...) {
-    va_list args;
-    va_start(args, message);
-    
-    char formatted_message[256];
-    vsnprintf(formatted_message, sizeof(formatted_message), message, args);
-    va_end(args);
-
-    if (g_current_vm) {
-        // Use the new context-aware error system
-        slate_runtime_error(g_current_vm, ERR_TYPE, __FILE__, __LINE__, -1, "%s", formatted_message);
-    } else {
-        // Fallback for cases without VM
-        fprintf(stderr, "Runtime error: %s\n", formatted_message);
-        exit(1);
-    }
-}
-
 // Register a built-in function in the VM's global namespace
-void register_builtin(slate_vm* vm, const char* name, native_t func, int min_args, int max_args) {
+void register_builtin(vm_t* vm, const char* name, native_t func, int min_args, int max_args) {
     // Create a built-in function value
     value_t builtin_val = make_native((void*)func);
 
@@ -65,57 +46,11 @@ void register_builtin(slate_vm* vm, const char* name, native_t func, int min_arg
 value_t* global_string_class = NULL;
 
 
-// Global Range class storage  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Helper function to compute GCD using Euclidean algorithm
-static int32_t compute_gcd(int32_t a, int32_t b) {
-    a = a < 0 ? -a : a; // Make positive
-    b = b < 0 ? -b : b; // Make positive
-    
-    while (b != 0) {
-        int32_t temp = b;
-        b = a % b;
-        a = temp;
-    }
-    return a;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Global Value class storage  
+// Global Value class storage
 value_t* global_value_class = NULL;
 
 // Initialize all built-in functions
-void builtins_init(slate_vm* vm) {
+void builtins_init(vm_t* vm) {
     // Initialize random seed once
     if (!random_initialized) {
         srand((unsigned int)time(NULL));
@@ -164,7 +99,7 @@ void builtins_init(slate_vm* vm) {
 
     // Create the String class
     value_t string_class = make_class("String", string_proto);
-    
+
     // Set the factory function to allow String(codepoint) or String([codepoints])
     string_class.as.class->factory = string_factory;
 
@@ -193,6 +128,9 @@ void builtins_init(slate_vm* vm) {
 
     // Initialize LocalTime class
     local_time_class_init(vm);
+
+    // Initialize LocalDateTime class
+    local_datetime_class_init(vm);
 
     // Initialize Buffer class
     buffer_class_init(vm);
@@ -232,49 +170,48 @@ void builtins_init(slate_vm* vm) {
     // I/O functions
     register_builtin(vm, "read_file", builtin_read_file, 1, 1);
     register_builtin(vm, "write_file", builtin_write_file, 2, 2);
-    
+
     // Initialize Int class
     int_class_init(vm);
-    
+
 
     // Create the Value class - the ultimate superclass of all values
     do_object value_proto = do_create(NULL);
-    
+
     // Add methods to Value prototype
     value_t value_to_string_method = make_native(builtin_value_to_string);
     do_set(value_proto, "toString", &value_to_string_method, sizeof(value_t));
-    
+
     // Create the Value class
     value_t value_class = make_class("Value", value_proto);
-    
+
     // Value class has no factory (factory = NULL) - cannot be instantiated directly
     value_class.as.class->factory = NULL;
-    
+
     // Value class should have no parent class (it's the root class)
     value_class.class = NULL;
-    
+
     // Store in globals (though it shouldn't be called directly)
     do_set(vm->globals, "Value", &value_class, sizeof(value_t));
-    
+
     // Store a global reference for use in make_value functions
     static value_t value_class_storage;
     value_class_storage = vm_retain(value_class);
     global_value_class = &value_class_storage;
-    
+
     // Now that Value class is created, set up proper inheritance chain
     // Array class should inherit from Value class
     if (global_array_class && global_array_class->type == VAL_CLASS) {
         global_array_class->class = &value_class_storage;
     }
-    
 }
 
 // Built-in function implementations
 
 // print(value) - Print any value to console
-value_t builtin_print(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_print(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("print() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "print() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
@@ -288,9 +225,9 @@ value_t builtin_print(slate_vm* vm, int arg_count, value_t* args) {
 
 
 // abs(number) - Absolute value
-value_t builtin_abs(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_abs(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("abs() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "abs() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
@@ -311,36 +248,36 @@ value_t builtin_abs(slate_vm* vm, int arg_count, value_t* args) {
     } else if (arg.type == VAL_NUMBER) {
         return make_number(fabs(arg.as.number));
     } else {
-        runtime_error("abs() requires a number argument");
+        runtime_error(vm, "abs() requires a number argument");
     }
 }
 
 // sqrt(number) - Square root
-value_t builtin_sqrt(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_sqrt(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("sqrt() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "sqrt() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("sqrt() requires a number argument");
+        runtime_error(vm, "sqrt() requires a number argument");
     }
 
     double val = value_to_double(arg);
 
     if (val < 0) {
-        runtime_error("sqrt() of negative number");
+        runtime_error(vm, "sqrt() of negative number");
     }
 
     return make_number(sqrt(val));
 }
 
 // floor(number) - Floor function
-value_t builtin_floor(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_floor(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("floor() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "floor() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
@@ -361,14 +298,14 @@ value_t builtin_floor(slate_vm* vm, int arg_count, value_t* args) {
             return make_number(result);
         }
     } else {
-        runtime_error("floor() requires a number argument");
+        runtime_error(vm, "floor() requires a number argument");
     }
 }
 
 // ceil(number) - Ceiling function
-value_t builtin_ceil(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_ceil(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("ceil() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "ceil() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
@@ -389,14 +326,14 @@ value_t builtin_ceil(slate_vm* vm, int arg_count, value_t* args) {
             return make_number(result);
         }
     } else {
-        runtime_error("ceil() requires a number argument");
+        runtime_error(vm, "ceil() requires a number argument");
     }
 }
 
 // round(number) - Round to nearest integer
-value_t builtin_round(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_round(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("round() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "round() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
@@ -417,14 +354,14 @@ value_t builtin_round(slate_vm* vm, int arg_count, value_t* args) {
             return make_number(result);
         }
     } else {
-        runtime_error("round() requires a number argument");
+        runtime_error(vm, "round() requires a number argument");
     }
 }
 
 // min(a, b) - Minimum of two values
-value_t builtin_min(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_min(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("min() takes exactly 2 arguments (%d given)", arg_count);
+        runtime_error(vm, "min() takes exactly 2 arguments (%d given)", arg_count);
     }
 
     value_t a = args[0];
@@ -432,7 +369,7 @@ value_t builtin_min(slate_vm* vm, int arg_count, value_t* args) {
 
     // Check if both are numeric types
     if (!is_number(a) || !is_number(b)) {
-        runtime_error("min() requires number arguments");
+        runtime_error(vm, "min() requires number arguments");
     }
 
     // Convert both to double for comparison
@@ -444,9 +381,9 @@ value_t builtin_min(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // max(a, b) - Maximum of two values
-value_t builtin_max(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_max(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("max() takes exactly 2 arguments (%d given)", arg_count);
+        runtime_error(vm, "max() takes exactly 2 arguments (%d given)", arg_count);
     }
 
     value_t a = args[0];
@@ -454,7 +391,7 @@ value_t builtin_max(slate_vm* vm, int arg_count, value_t* args) {
 
     // Check if both are numeric types
     if (!is_number(a) || !is_number(b)) {
-        runtime_error("max() requires number arguments");
+        runtime_error(vm, "max() requires number arguments");
     }
 
     // Convert both to double for comparison
@@ -466,25 +403,25 @@ value_t builtin_max(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // random() - Random number 0.0 to 1.0
-value_t builtin_random(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_random(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 0) {
-        runtime_error("random() takes no arguments (%d given)", arg_count);
+        runtime_error(vm, "random() takes no arguments (%d given)", arg_count);
     }
 
     return make_number((double)rand() / RAND_MAX);
 }
 
 // sin(number) - Sine function (radians)
-value_t builtin_sin(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_sin(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("sin() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "sin() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("sin() requires a number argument");
+        runtime_error(vm, "sin() requires a number argument");
     }
 
     double val = value_to_double(arg);
@@ -493,16 +430,16 @@ value_t builtin_sin(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // cos(number) - Cosine function (radians)
-value_t builtin_cos(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_cos(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("cos() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "cos() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("cos() requires a number argument");
+        runtime_error(vm, "cos() requires a number argument");
     }
 
     double val = value_to_double(arg);
@@ -511,16 +448,16 @@ value_t builtin_cos(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // tan(number) - Tangent function (radians)
-value_t builtin_tan(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_tan(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("tan() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "tan() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("tan() requires a number argument");
+        runtime_error(vm, "tan() requires a number argument");
     }
 
     double val = value_to_double(arg);
@@ -529,16 +466,16 @@ value_t builtin_tan(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // exp(number) - Exponential function (e^x)
-value_t builtin_exp(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_exp(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("exp() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "exp() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("exp() requires a number argument");
+        runtime_error(vm, "exp() requires a number argument");
     }
 
     double val = value_to_double(arg);
@@ -547,85 +484,85 @@ value_t builtin_exp(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // ln(number) - Natural logarithm (base e)
-value_t builtin_ln(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_ln(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("ln() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "ln() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("ln() requires a number argument");
+        runtime_error(vm, "ln() requires a number argument");
     }
 
     double val = value_to_double(arg);
 
     // Check for domain error (ln of non-positive numbers)
     if (val <= 0) {
-        runtime_error("ln() domain error: argument must be positive");
+        runtime_error(vm, "ln() domain error: argument must be positive");
     }
 
     return make_number(log(val));
 }
 
 // asin(number) - Inverse sine function (returns radians)
-value_t builtin_asin(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_asin(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("asin() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "asin() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("asin() requires a number argument");
+        runtime_error(vm, "asin() requires a number argument");
     }
 
     double val = value_to_double(arg);
 
     // Check for domain error (asin domain is [-1, 1])
     if (val < -1.0 || val > 1.0) {
-        runtime_error("asin() domain error: argument must be in range [-1, 1]");
+        runtime_error(vm, "asin() domain error: argument must be in range [-1, 1]");
     }
 
     return make_number(asin(val));
 }
 
 // acos(number) - Inverse cosine function (returns radians)
-value_t builtin_acos(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_acos(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("acos() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "acos() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("acos() requires a number argument");
+        runtime_error(vm, "acos() requires a number argument");
     }
 
     double val = value_to_double(arg);
 
     // Check for domain error (acos domain is [-1, 1])
     if (val < -1.0 || val > 1.0) {
-        runtime_error("acos() domain error: argument must be in range [-1, 1]");
+        runtime_error(vm, "acos() domain error: argument must be in range [-1, 1]");
     }
 
     return make_number(acos(val));
 }
 
 // atan(number) - Inverse tangent function (returns radians)
-value_t builtin_atan(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_atan(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("atan() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "atan() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("atan() requires a number argument");
+        runtime_error(vm, "atan() requires a number argument");
     }
 
     double val = value_to_double(arg);
@@ -634,9 +571,9 @@ value_t builtin_atan(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // atan2(y, x) - Two-argument inverse tangent function (returns radians)
-value_t builtin_atan2(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_atan2(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("atan2() takes exactly 2 arguments (%d given)", arg_count);
+        runtime_error(vm, "atan2() takes exactly 2 arguments (%d given)", arg_count);
     }
 
     value_t y = args[0];
@@ -644,7 +581,7 @@ value_t builtin_atan2(slate_vm* vm, int arg_count, value_t* args) {
 
     // Check if both are numeric types
     if (!is_number(y) || !is_number(x)) {
-        runtime_error("atan2() requires number arguments");
+        runtime_error(vm, "atan2() requires number arguments");
     }
 
     double y_val = value_to_double(y);
@@ -654,16 +591,16 @@ value_t builtin_atan2(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // degrees(radians) - Convert radians to degrees
-value_t builtin_degrees(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_degrees(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("degrees() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "degrees() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("degrees() requires a number argument");
+        runtime_error(vm, "degrees() requires a number argument");
     }
 
     double val = value_to_double(arg);
@@ -672,16 +609,16 @@ value_t builtin_degrees(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // radians(degrees) - Convert degrees to radians
-value_t builtin_radians(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_radians(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("radians() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "radians() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("radians() requires a number argument");
+        runtime_error(vm, "radians() requires a number argument");
     }
 
     double val = value_to_double(arg);
@@ -690,16 +627,16 @@ value_t builtin_radians(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // sign(number) - Sign function (-1, 0, or 1)
-value_t builtin_sign(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_sign(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("sign() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "sign() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
 
     // Check if it's a numeric type
     if (!is_number(arg)) {
-        runtime_error("sign() requires a number argument");
+        runtime_error(vm, "sign() requires a number argument");
     }
 
     double val = value_to_double(arg);
@@ -714,9 +651,9 @@ value_t builtin_sign(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // input(prompt) - Read user input with optional prompt
-value_t builtin_input(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_input(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count > 1) {
-        runtime_error("input() takes 0 or 1 arguments (%d given)", arg_count);
+        runtime_error(vm, "input() takes 0 or 1 arguments (%d given)", arg_count);
     }
 
     // Print prompt if provided
@@ -726,7 +663,7 @@ value_t builtin_input(slate_vm* vm, int arg_count, value_t* args) {
             printf("%s", prompt.as.string);
             fflush(stdout);
         } else {
-            runtime_error("input() prompt must be a string");
+            runtime_error(vm, "input() prompt must be a string");
         }
     }
 
@@ -754,14 +691,14 @@ value_t builtin_input(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // parse_int(string) - Convert string to integer
-value_t builtin_parse_int(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_parse_int(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("parse_int() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "parse_int() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
     if (arg.type != VAL_STRING) {
-        runtime_error("parse_int() requires a string argument");
+        runtime_error(vm, "parse_int() requires a string argument");
     }
 
     char* endptr;
@@ -772,7 +709,7 @@ value_t builtin_parse_int(slate_vm* vm, int arg_count, value_t* args) {
 
     // Check if entire string was consumed
     if (*endptr != '\0') {
-        runtime_error("'%s' is not a valid integer", str);
+        runtime_error(vm, "'%s' is not a valid integer", str);
     }
 
     // Check if it fits in int32
@@ -786,14 +723,14 @@ value_t builtin_parse_int(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // parse_number(string) - Convert string to number (int or float)
-value_t builtin_parse_number(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_parse_number(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("parse_number() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "parse_number() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
     if (arg.type != VAL_STRING) {
-        runtime_error("parse_number() requires a string argument");
+        runtime_error(vm, "parse_number() requires a string argument");
     }
 
     const char* str = arg.as.string;
@@ -805,7 +742,7 @@ value_t builtin_parse_number(slate_vm* vm, int arg_count, value_t* args) {
         double val = strtod(str, &endptr);
 
         if (*endptr != '\0') {
-            runtime_error("'%s' is not a valid number", str);
+            runtime_error(vm, "'%s' is not a valid number", str);
         }
 
         return make_number(val);
@@ -814,7 +751,7 @@ value_t builtin_parse_number(slate_vm* vm, int arg_count, value_t* args) {
         long long val = strtoll(str, &endptr, 10);
 
         if (*endptr != '\0') {
-            runtime_error("'%s' is not a valid number", str);
+            runtime_error(vm, "'%s' is not a valid number", str);
         }
 
         // Check if it fits in int32
@@ -829,9 +766,9 @@ value_t builtin_parse_number(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // args() - Get command line arguments as array
-value_t builtin_args(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_args(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 0) {
-        runtime_error("args() takes no arguments (%d given)", arg_count);
+        runtime_error(vm, "args() takes no arguments (%d given)", arg_count);
     }
 
     // Create array of command line arguments
@@ -849,56 +786,53 @@ value_t builtin_args(slate_vm* vm, int arg_count, value_t* args) {
 // This will be used as a method on the String prototype
 
 
-
-
-
 // ===================
 // I/O BUILTIN FUNCTIONS
 // ===================
 
 // read_file(filename) - Read file into buffer
-value_t builtin_read_file(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_read_file(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("read_file() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "read_file() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t filename_val = args[0];
     if (filename_val.type != VAL_STRING) {
-        runtime_error("read_file() requires a string filename, not %s", value_type_name(filename_val.type));
+        runtime_error(vm, "read_file() requires a string filename, not %s", value_type_name(filename_val.type));
     }
 
     const char* filename = filename_val.as.string;
     if (!filename) {
-        runtime_error("read_file() requires a non-null filename");
+        runtime_error(vm, "read_file() requires a non-null filename");
     }
 
     db_buffer buf = db_read_file(filename);
     if (!buf) {
-        runtime_error("Failed to read file: %s", filename);
+        runtime_error(vm, "Failed to read file: %s", filename);
     }
 
     return make_buffer(buf);
 }
 
 // write_file(buffer, filename) - Write buffer to file
-value_t builtin_write_file(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_write_file(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
-        runtime_error("write_file() takes exactly 2 arguments (%d given)", arg_count);
+        runtime_error(vm, "write_file() takes exactly 2 arguments (%d given)", arg_count);
     }
 
     value_t buffer_val = args[0];
     value_t filename_val = args[1];
 
     if (buffer_val.type != VAL_BUFFER) {
-        runtime_error("write_file() requires a buffer as first argument, not %s", value_type_name(buffer_val.type));
+        runtime_error(vm, "write_file() requires a buffer as first argument, not %s", value_type_name(buffer_val.type));
     }
     if (filename_val.type != VAL_STRING) {
-        runtime_error("write_file() requires a string filename, not %s", value_type_name(filename_val.type));
+        runtime_error(vm, "write_file() requires a string filename, not %s", value_type_name(filename_val.type));
     }
 
     const char* filename = filename_val.as.string;
     if (!filename) {
-        runtime_error("write_file() requires a non-null filename");
+        runtime_error(vm, "write_file() requires a non-null filename");
     }
 
     bool success = db_write_file(buffer_val.as.buffer, filename);
@@ -909,28 +843,5 @@ value_t builtin_write_file(slate_vm* vm, int arg_count, value_t* args) {
 // Returns the length of the array as an int32
 
 
-
-
-
-
-
-
-
-
-
-
-
 // String method: isEmpty()
 // Returns true if string has no characters
-
-
-
-
-
-
-
-
-
-
-
-

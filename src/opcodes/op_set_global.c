@@ -1,13 +1,14 @@
 #include "vm.h"
+#include "runtime_error.h"
 
-vm_result op_set_global(slate_vm* vm) {
+vm_result op_set_global(vm_t* vm) {
     // Pop the value to store and get the variable name constant
     value_t value = vm_pop(vm);
 
     // Check if trying to assign undefined (not a first-class value)
     if (value.type == VAL_UNDEFINED) {
-        vm_runtime_error_with_debug(vm, "Cannot assign 'undefined' - it is not a value");
         vm_release(value);
+        runtime_error(vm, "Cannot assign 'undefined' - it is not a value");
         return VM_RUNTIME_ERROR;
     }
 
@@ -17,15 +18,15 @@ vm_result op_set_global(slate_vm* vm) {
     // Get the current executing function from the current frame
     function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
     if (name_constant >= current_func->constant_count) {
-        vm_runtime_error_with_debug(vm, "Constant index out of bounds in OP_SET_GLOBAL");
         vm_release(value);
+        runtime_error(vm, "Constant index out of bounds in OP_SET_GLOBAL");
         return VM_RUNTIME_ERROR;
     }
 
     value_t name_val = current_func->constants[name_constant];
     if (name_val.type != VAL_STRING) {
-        vm_runtime_error_with_debug(vm, "Global variable name must be a string");
         vm_release(value);
+        runtime_error(vm, "Global variable name must be a string");
         return VM_RUNTIME_ERROR;
     }
 
@@ -40,8 +41,8 @@ vm_result op_set_global(slate_vm* vm) {
     } else {
         char error_msg[256];
         snprintf(error_msg, sizeof(error_msg), "Undefined variable '%s'", name_val.as.string);
-        vm_runtime_error_with_debug(vm, error_msg);
         vm_release(value);
+        runtime_error(vm, "%s", error_msg);
         return VM_RUNTIME_ERROR;
     }
     return VM_OK;

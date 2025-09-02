@@ -1,7 +1,7 @@
 #include "vm.h"
 #include "runtime_error.h"
 
-vm_result op_get_global(slate_vm* vm) {
+vm_result op_get_global(vm_t* vm) {
     uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
     vm->ip += 2;
     // Get the current executing function from the current frame

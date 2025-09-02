@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_set_debug_location(slate_vm* vm) {
+vm_result op_set_debug_location(vm_t* vm) {
     uint16_t constant_index = *vm->ip | (*(vm->ip + 1) << 8);
     vm->ip += 2;
     uint8_t line = *vm->ip++;

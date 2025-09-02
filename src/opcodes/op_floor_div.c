@@ -1,7 +1,8 @@
 #include "vm.h"
+#include "runtime_error.h"
 #include <math.h>
 
-vm_result op_floor_div(slate_vm* vm) {
+vm_result op_floor_div(vm_t* vm) {
     value_t b = vm_pop(vm);
     value_t a = vm_pop(vm);
 
@@ -17,9 +18,9 @@ vm_result op_floor_div(slate_vm* vm) {
     if ((b.type == VAL_INT32 && b.as.int32 == 0) ||
         (b.type == VAL_NUMBER && b.as.number == 0.0) ||
         (b.type == VAL_BIGINT && di_is_zero(b.as.bigint))) {
-        vm_runtime_error_with_debug(vm, "Division by zero");
         vm_release(a);
         vm_release(b);
+        runtime_error(vm, "Division by zero");
         return VM_RUNTIME_ERROR;
     }
 

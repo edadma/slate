@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_multiply(slate_vm* vm) {
+vm_result op_multiply(vm_t* vm) {
     value_t b = vm_pop(vm);
     value_t a = vm_pop(vm);
     

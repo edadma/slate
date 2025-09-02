@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_instanceof(slate_vm* vm) {
+vm_result op_instanceof(vm_t* vm) {
     value_t class_val = vm_pop(vm);  // The class to check against
     value_t value_val = vm_pop(vm);  // The value to check
     

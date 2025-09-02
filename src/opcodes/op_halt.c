@@ -1,5 +1,5 @@
 #include "vm.h"
 
-vm_result op_halt(slate_vm* vm) {
+vm_result op_halt(vm_t* vm) {
     return VM_OK;
 }

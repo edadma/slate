@@ -6,7 +6,7 @@
 value_t* global_buffer_class = NULL;
 
 // Initialize Buffer class with prototype and methods
-void buffer_class_init(slate_vm* vm) {
+void buffer_class_init(vm_t* vm) {
     // Create the Buffer class with its prototype
     do_object buffer_proto = do_create(NULL);
 

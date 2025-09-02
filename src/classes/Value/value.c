@@ -6,14 +6,14 @@
 #include <stdlib.h>
 
 // Forward declarations for functions still in builtins.c
-value_t builtin_local_date_to_string(slate_vm* vm, int arg_count, value_t* args);
-value_t builtin_local_time_to_string(slate_vm* vm, int arg_count, value_t* args);
-value_t builtin_buffer_method_to_string(slate_vm* vm, int arg_count, value_t* args);
+value_t builtin_local_date_to_string(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_local_time_to_string(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_buffer_method_to_string(vm_t* vm, int arg_count, value_t* args);
 
 // builtin_type() - Get type name of any value
-value_t builtin_type(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_type(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("type() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "type() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t arg = args[0];
@@ -107,9 +107,9 @@ value_t builtin_type(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // builtin_value_to_string() - Convert any value to string representation
-value_t builtin_value_to_string(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_value_to_string(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("toString() takes no arguments (%d given)", arg_count);
+        runtime_error(vm, "toString() takes no arguments (%d given)", arg_count);
     }
     
     value_t receiver = args[0];

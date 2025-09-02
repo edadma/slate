@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_or(slate_vm* vm) {
+vm_result op_or(vm_t* vm) {
     // OR operator has JavaScript-like semantics:
     // Returns first operand if truthy, otherwise returns second operand
     // This should be implemented with short-circuit evaluation, but

@@ -1,6 +1,7 @@
 #include "vm.h"
+#include "runtime_error.h"
 
-vm_result op_right_shift(slate_vm* vm) {
+vm_result op_right_shift(vm_t* vm) {
     value_t b = vm_pop(vm);
     value_t a = vm_pop(vm);
 
@@ -18,9 +19,9 @@ vm_result op_right_shift(slate_vm* vm) {
     
     // Handle negative shift amounts as error
     if (b_int < 0) {
-        vm_runtime_error_with_debug(vm, "Shift amount cannot be negative");
         vm_release(a);
         vm_release(b);
+        runtime_error(vm, "Shift amount cannot be negative");
         return VM_RUNTIME_ERROR;
     }
     

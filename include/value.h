@@ -3,14 +3,14 @@
 
 #include <stdint.h>
 // Include dynamic libraries
-#include "dynamic_string.h"
 #include "dynamic_array.h"
-#include "dynamic_object.h"
-#include "dynamic_int.h"
 #include "dynamic_buffer.h"
+#include "dynamic_int.h"
+#include "dynamic_object.h"
+#include "dynamic_string.h"
 
-// Forward declarations to avoid circular includes  
-typedef struct slate_vm slate_vm;
+// Forward declarations to avoid circular includes
+typedef struct slate_vm vm_t;
 struct debug_location;
 typedef struct debug_location debug_location;
 
@@ -61,7 +61,7 @@ typedef struct duration duration_t;
 typedef struct period period_t;
 
 // Native function pointer type
-typedef value_t (*native_t)(slate_vm* vm, int arg_count, value_t* args);
+typedef value_t (*native_t)(vm_t* vm, int arg_count, value_t* args);
 
 // VM value structure
 struct value {
@@ -143,7 +143,8 @@ struct class {
     size_t ref_count; // Reference count for memory management
     char* name; // Class name (owned string)
     do_object properties; // Hash table of property name -> value_t
-    value_t (*factory)(value_t* args, int arg_count); // Factory function for creating instances (NULL if not callable)
+    value_t (*factory)(vm_t* vm, int arg_count,
+                       value_t* args); // Factory function for creating instances (NULL if not callable)
 };
 
 // Date/Time structures (forward declared, implemented in datetime.c)

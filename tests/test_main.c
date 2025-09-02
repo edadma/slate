@@ -24,6 +24,7 @@ void test_assignment_suite(void);
 void test_class_string_suite(void);
 void test_class_localdate_suite(void);
 void test_class_localtime_suite(void);
+void test_class_local_date_time_suite(void);
 void test_new_operators_suite(void);
 void test_functions_suite(void);
 
@@ -62,6 +63,7 @@ int main(void) {
     test_class_string_suite();
     test_class_localdate_suite();
     test_class_localtime_suite();
+    test_class_local_date_time_suite();
     test_new_operators_suite();
     test_functions_suite();
 

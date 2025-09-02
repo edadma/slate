@@ -6,9 +6,9 @@
 #include <stdlib.h>
 
 // Buffer factory function for class instantiation
-value_t buffer_factory(value_t* args, int arg_count) {
+value_t buffer_factory(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count == 0) {
-        runtime_error("Buffer() requires at least 1 argument");
+        runtime_error(vm, "Buffer() requires at least 1 argument");
         return make_null();
     }
 
@@ -30,7 +30,7 @@ value_t buffer_factory(value_t* args, int arg_count) {
         // Convert array elements to bytes
         uint8_t* bytes = malloc(len);
         if (!bytes) {
-            runtime_error("Failed to allocate memory for buffer");
+            runtime_error(vm, "Failed to allocate memory for buffer");
             return make_null();
         }
 
@@ -38,19 +38,19 @@ value_t buffer_factory(value_t* args, int arg_count) {
             value_t* elem = (value_t*)da_get(arr, i);
             if (!elem) {
                 free(bytes);
-                runtime_error("Invalid array element at index %zu", i);
+                runtime_error(vm, "Invalid array element at index %zu", i);
                 return make_null();
             }
             if (elem->type == VAL_INT32) {
                 if (elem->as.int32 < 0 || elem->as.int32 > 255) {
                     free(bytes);
-                    runtime_error("Array element %d at index %zu is not a valid byte (0-255)", elem->as.int32, i);
+                    runtime_error(vm, "Array element %d at index %zu is not a valid byte (0-255)", elem->as.int32, i);
                     return make_null();
                 }
                 bytes[i] = (uint8_t)elem->as.int32;
             } else {
                 free(bytes);
-                runtime_error("Array element at index %zu must be an integer, not %s", i, value_type_name(elem->type));
+                runtime_error(vm, "Array element at index %zu must be an integer, not %s", i, value_type_name(elem->type));
                 return make_null();
             }
         }
@@ -59,32 +59,32 @@ value_t buffer_factory(value_t* args, int arg_count) {
         free(bytes);
         return make_buffer(buf);
     } else {
-        runtime_error("Buffer() argument must be a string or array, not %s", value_type_name(arg.type));
+        runtime_error(vm, "Buffer() argument must be a string or array, not %s", value_type_name(arg.type));
         return make_null();
     }
 }
 
 // Buffer.fromHex(hex_string) - Create buffer from hex string
-value_t builtin_buffer_from_hex(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_buffer_from_hex(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("buffer_from_hex() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "buffer_from_hex() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t hex_val = args[0];
     if (hex_val.type != VAL_STRING) {
-        runtime_error("buffer_from_hex() requires a string argument, not %s", value_type_name(hex_val.type));
+        runtime_error(vm, "buffer_from_hex() requires a string argument, not %s", value_type_name(hex_val.type));
     }
 
     const char* hex_str = hex_val.as.string;
     if (!hex_str) {
-        runtime_error("buffer_from_hex() requires a non-null string");
+        runtime_error(vm, "buffer_from_hex() requires a non-null string");
     }
 
     size_t len = strlen(hex_str);
     db_buffer buf = db_from_hex(hex_str, len);
 
     if (!buf) {
-        runtime_error("Invalid hex string");
+        runtime_error(vm, "Invalid hex string");
     }
 
     return make_buffer(buf);

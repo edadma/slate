@@ -1,7 +1,7 @@
 #include "vm.h"
 #include "runtime_error.h"
 
-vm_result op_push_constant(slate_vm* vm) {
+vm_result op_push_constant(vm_t* vm) {
     uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
     vm->ip += 2; // Skip the operand bytes
     

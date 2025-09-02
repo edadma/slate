@@ -24,7 +24,6 @@
 #include "library_assert.h"
 
 // Forward declarations
-typedef struct slate_vm slate_vm;
 
 // Debug location for values (NULL when debugging disabled)
 typedef struct debug_location {
@@ -202,7 +201,7 @@ typedef struct slate_vm {
     RunContext context;
     SlateError error;
     jmp_buf trap;
-} slate_vm;
+} vm_t;
 
 // Instruction structure for encoding
 typedef struct instruction {
@@ -211,10 +210,10 @@ typedef struct instruction {
 } instruction;
 
 // VM lifecycle functions
-slate_vm* vm_create(void);
-slate_vm* vm_create_with_args(int argc, char** argv);
-void vm_destroy(slate_vm* vm);
-void vm_reset(slate_vm* vm);
+vm_t* vm_create(void);
+vm_t* vm_create_with_args(int argc, char** argv);
+void vm_destroy(vm_t* vm);
+void vm_reset(vm_t* vm);
 
 // Store global String class (accessed by vm.c for string creation)
 extern value_t* global_string_class;
@@ -234,24 +233,24 @@ extern value_t* global_string_builder_class;
 // Bytecode execution
 typedef enum { VM_OK, VM_COMPILE_ERROR, VM_RUNTIME_ERROR, VM_STACK_OVERFLOW, VM_STACK_UNDERFLOW } vm_result;
 
-vm_result vm_run(slate_vm* vm);
-vm_result vm_execute(slate_vm* vm, function_t* function);
-vm_result vm_interpret(slate_vm* vm, const char* source);
+vm_result vm_run(vm_t* vm);
+vm_result vm_execute(vm_t* vm, function_t* function);
+vm_result vm_interpret(vm_t* vm, const char* source);
 
 
 // Stack operations
-void vm_push(slate_vm* vm, value_t value);
-value_t vm_pop(slate_vm* vm);
-value_t vm_peek(slate_vm* vm, int distance);
+void vm_push(vm_t* vm, value_t value);
+value_t vm_pop(vm_t* vm);
+value_t vm_peek(vm_t* vm, int distance);
 
 // Function calling helper for builtin methods
-value_t vm_call_function(slate_vm* vm, value_t callable, int arg_count, value_t* args);
+value_t vm_call_function(vm_t* vm, value_t callable, int arg_count, value_t* args);
 
 // Function calling helper for calling Slate functions from C code (uses isolated VM)
-value_t vm_call_slate_function_from_c(slate_vm* vm, value_t callable, int arg_count, value_t* args);
+value_t vm_call_slate_function_from_c(vm_t* vm, value_t callable, int arg_count, value_t* args);
 
 // String conversion helper for opcodes
-ds_string value_to_string_representation(slate_vm* vm, value_t value);
+ds_string value_to_string_representation(vm_t* vm, value_t value);
 
 
 // Iterator creation helpers
@@ -303,19 +302,19 @@ int is_falsy(value_t value);
 int is_truthy(value_t value);
 int is_number(value_t value); // Check if value is numeric (int32, bigint, or number)
 int values_equal(value_t a, value_t b);
-void print_value(slate_vm* vm, value_t value);
-void print_for_builtin(slate_vm* vm, value_t value);
+void print_value(vm_t* vm, value_t value);
+void print_for_builtin(vm_t* vm, value_t value);
 double value_to_double(value_t value); // Convert numeric values to double
 bool is_int(value_t value); // Check if value represents an integer
 int value_to_int(value_t value); // Convert numeric values to int
 
 // Constant pool management
-size_t vm_add_constant(slate_vm* vm, value_t value);
-value_t vm_get_constant(slate_vm* vm, size_t index);
+size_t vm_add_constant(vm_t* vm, value_t value);
+value_t vm_get_constant(vm_t* vm, size_t index);
 
 // Function table management
-size_t vm_add_function(slate_vm* vm, function_t* function);
-function_t* vm_get_function(slate_vm* vm, size_t index);
+size_t vm_add_function(vm_t* vm, function_t* function);
+function_t* vm_get_function(vm_t* vm, size_t index);
 
 // Note: Object and array operations now use dynamic_object.h and dynamic_array.h
 // No separate functions needed - we'll use the library APIs directly
@@ -331,8 +330,8 @@ const char* opcode_name(opcode op);
 
 // Debug utilities
 void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset);
-void vm_runtime_error_with_debug(slate_vm* vm, const char* message);
-void vm_runtime_error_with_values(slate_vm* vm, const char* format, const value_t* a, const value_t* b,
+void vm_runtime_error_with_debug(vm_t* vm, const char* message);
+void vm_runtime_error_with_values(vm_t* vm, const char* format, const value_t* a, const value_t* b,
                                   debug_location* location);
 const char* value_type_name(value_type type);
 

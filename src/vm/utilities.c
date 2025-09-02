@@ -6,6 +6,9 @@
 #include "datetime.h"
 #include "builtins.h"
 
+// External reference to global VM pointer (defined in vm/lifecycle.c)
+extern vm_t* g_current_vm;
+
 // Value utility functions
 int is_falsy(value_t value) {
     switch (value.type) {
@@ -124,7 +127,7 @@ int values_equal(value_t a, value_t b) {
     }
 }
 
-void print_value(slate_vm* vm, value_t value) {
+void print_value(vm_t* vm, value_t value) {
     switch (value.type) {
     case VAL_NULL:
         printf("null");
@@ -326,7 +329,7 @@ double value_to_double(value_t value) {
     case VAL_NUMBER:
         return value.as.number;
     default:
-        runtime_error("Cannot convert %s to number", value_type_name(value.type));
+        runtime_error(g_current_vm, "Cannot convert %s to number", value_type_name(value.type));
         return 0.0; // Never reached, but keeps compiler happy
     }
 }
@@ -358,7 +361,7 @@ int value_to_int(value_t value) {
             return result;
         } else {
             char* str = di_to_string(value.as.bigint, 10);
-            runtime_error("BigInt value %s too large for integer", str);
+            runtime_error(g_current_vm, "BigInt value %s too large for integer", str);
             free(str);
             return 0; // Never reached
         }
@@ -367,11 +370,11 @@ int value_to_int(value_t value) {
         if (value.as.number == floor(value.as.number) && value.as.number >= INT_MIN && value.as.number <= INT_MAX) {
             return (int)value.as.number;
         } else {
-            runtime_error("Number %g is not a valid integer", value.as.number);
+            runtime_error(g_current_vm, "Number %g is not a valid integer", value.as.number);
             return 0; // Never reached
         }
     default:
-        runtime_error("Cannot convert %s to integer", value_type_name(value.type));
+        runtime_error(g_current_vm, "Cannot convert %s to integer", value_type_name(value.type));
         return 0; // Never reached, but keeps compiler happy
     }
 }

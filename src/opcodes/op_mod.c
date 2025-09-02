@@ -1,7 +1,7 @@
 #include "vm.h"
 #include <math.h>
 
-vm_result op_mod(slate_vm* vm) {
+vm_result op_mod(vm_t* vm) {
     value_t b = vm_pop(vm);
     value_t a = vm_pop(vm);
 

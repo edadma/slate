@@ -6,21 +6,21 @@
 // Value creation functions with debug info
 
 // Forward declarations
-ds_string value_to_string_representation(slate_vm* vm, value_t value);
-static ds_string display_value_to_string(slate_vm* vm, value_t value);
+ds_string value_to_string_representation(vm_t* vm, value_t value);
+static ds_string display_value_to_string(vm_t* vm, value_t value);
 
 // Context for object property iteration
 struct object_string_context {
     ds_string* result_ptr;
     int count;
-    slate_vm* vm;
+    vm_t* vm;
 };
 
 // Callback function for object property iteration
 static void object_property_to_string_callback(const char* key, void* data, size_t size, void* ctx) {
     struct object_string_context* context = (struct object_string_context*)ctx;
     ds_string* result_ptr = context->result_ptr;
-    slate_vm* vm = context->vm;
+    vm_t* vm = context->vm;
 
     // Add comma separator for subsequent properties
     if (context->count > 0) {
@@ -61,7 +61,7 @@ static void object_property_to_string_callback(const char* key, void* data, size
 }
 
 // Helper function to convert any value to string representation for concatenation
-ds_string value_to_string_representation(slate_vm* vm, value_t value) {
+ds_string value_to_string_representation(vm_t* vm, value_t value) {
     switch (value.type) {
     case VAL_STRING:
         return ds_retain(value.as.string);
@@ -245,7 +245,7 @@ ds_string value_to_string_representation(slate_vm* vm, value_t value) {
 }
 
 // Helper function to convert values to display string (with quotes for strings, for use inside aggregates)
-static ds_string display_value_to_string(slate_vm* vm, value_t value) {
+static ds_string display_value_to_string(vm_t* vm, value_t value) {
     switch (value.type) {
     case VAL_STRING: {
         // Add quotes around strings for display inside aggregates
@@ -268,7 +268,7 @@ static ds_string display_value_to_string(slate_vm* vm, value_t value) {
 }
 
 // Print function specifically for the print() builtin - shows strings without quotes
-void print_for_builtin(slate_vm* vm, value_t value) {
+void print_for_builtin(vm_t* vm, value_t value) {
     switch (value.type) {
     case VAL_STRING:
         // Print strings without quotes for direct printing

@@ -19,7 +19,7 @@ static value_t execute_expression(const char* source) {
     TEST_ASSERT_FALSE(parser.had_error);
     TEST_ASSERT_NOT_NULL(program);
 
-    slate_vm* vm = vm_create();
+    vm_t* vm = vm_create();
     
     codegen_t* codegen = codegen_create(vm);
     function_t* function = codegen_compile(codegen, program);
@@ -58,7 +58,7 @@ static value_t execute_expression_allow_errors(const char* source) {
         return make_null();
     }
 
-    slate_vm* vm = vm_create();
+    vm_t* vm = vm_create();
     vm->context = CTX_TEST;  // Set test context for silent error handling
     
     codegen_t* codegen = codegen_create(vm);
@@ -326,7 +326,7 @@ void test_invalid_increment_decrement_errors() {
     // Create a temporary test program to check compilation errors
     parser_t parser;
     lexer_t lexer;
-    slate_vm* vm = vm_create();
+    vm_t* vm = vm_create();
     vm->context = CTX_TEST;  // Set test context for silent error handling
     
     codegen_t* codegen = codegen_create(vm);

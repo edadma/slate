@@ -1,6 +1,7 @@
 #include "vm.h"
+#include "runtime_error.h"
 
-vm_result op_closure(slate_vm* vm) {
+vm_result op_closure(vm_t* vm) {
     uint16_t constant = *vm->ip | (*(vm->ip + 1) << 8);
     vm->ip += 2;
     
@@ -8,7 +9,7 @@ vm_result op_closure(slate_vm* vm) {
     function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
     value_t index_val = current_func->constants[constant];
     if (index_val.type != VAL_INT32) {
-        vm_runtime_error_with_debug(vm, "Expected function index in OP_CLOSURE");
+        runtime_error(vm, "Expected function index in OP_CLOSURE");
         return VM_RUNTIME_ERROR;
     }
     
@@ -16,14 +17,14 @@ vm_result op_closure(slate_vm* vm) {
     size_t func_index = (size_t)index_val.as.int32;
     function_t* target_func = vm_get_function(vm, func_index);
     if (!target_func) {
-        vm_runtime_error_with_debug(vm, "Invalid function index in OP_CLOSURE");
+        runtime_error(vm, "Invalid function index in OP_CLOSURE");
         return VM_RUNTIME_ERROR;
     }
     
     // For now, create a simple closure (no upvalues)
     closure_t* new_closure = closure_create(target_func);
     if (!new_closure) {
-        vm_runtime_error_with_debug(vm, "Failed to create closure");
+        runtime_error(vm, "Failed to create closure");
         return VM_RUNTIME_ERROR;
     }
     

@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_bitwise_not(slate_vm* vm) {
+vm_result op_bitwise_not(vm_t* vm) {
     value_t a = vm_pop(vm);
 
     // Operand must be an integer for bitwise operations

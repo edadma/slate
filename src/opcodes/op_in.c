@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_in(slate_vm* vm) {
+vm_result op_in(vm_t* vm) {
     value_t object = vm_pop(vm);
     value_t property = vm_pop(vm);
 

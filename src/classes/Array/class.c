@@ -6,7 +6,7 @@
 value_t* global_array_class = NULL;
 
 // Array factory function
-value_t array_factory(value_t* args, int arg_count) {
+value_t array_factory(vm_t* vm, int arg_count, value_t* args) {
     // Case 0: no args -> empty array
     if (arg_count == 0) {
         da_array arr = da_new(sizeof(value_t));
@@ -41,7 +41,7 @@ value_t array_factory(value_t* args, int arg_count) {
 }
 
 // Initialize Array class with prototype and methods
-void array_class_init(slate_vm* vm) {
+void array_class_init(vm_t* vm) {
     // Create the Array class with its prototype
     do_object array_proto = do_create(NULL);
 

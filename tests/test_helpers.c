@@ -18,7 +18,7 @@ value_t test_execute_expression(const char* source) {
     TEST_ASSERT_FALSE(parser.had_error);
     TEST_ASSERT_NOT_NULL(program);
 
-    slate_vm* vm = vm_create();
+    vm_t* vm = vm_create();
     vm->context = CTX_TEST;  // Set test context for silent error handling
     
     codegen_t* codegen = codegen_create(vm);
@@ -69,7 +69,7 @@ bool test_expect_error(const char* source, ErrorKind expected_error) {
     
     TEST_ASSERT_NOT_NULL(program);
 
-    slate_vm* vm = vm_create();
+    vm_t* vm = vm_create();
     vm->context = CTX_TEST;  // Set test context for silent error handling
     
     codegen_t* codegen = codegen_create(vm);

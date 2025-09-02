@@ -6,9 +6,9 @@
 
 // Include dynamic_int.h for BigInt support
 #include "dynamic_int.h"
+#include "value.h"
 
 // Forward declarations
-typedef struct value value_t;
 typedef struct bit_object bit_object;
 
 // AST Node types

@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_set_local(slate_vm* vm) {
+vm_result op_set_local(vm_t* vm) {
     uint8_t slot = *vm->ip++;
     call_frame* frame = &vm->frames[vm->frame_count - 1];
     

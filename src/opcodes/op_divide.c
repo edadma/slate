@@ -1,7 +1,7 @@
 #include "vm.h"
 #include "runtime_error.h"
 
-vm_result op_divide(slate_vm* vm) {
+vm_result op_divide(vm_t* vm) {
     value_t b = vm_pop(vm);
     value_t a = vm_pop(vm);
 

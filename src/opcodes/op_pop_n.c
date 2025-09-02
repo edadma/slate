@@ -1,7 +1,7 @@
 #include "vm.h"
 #include "runtime_error.h"
 
-vm_result op_pop_n(slate_vm* vm) {
+vm_result op_pop_n(vm_t* vm) {
     // Get the count of values to pop (operand)
     uint8_t count = *vm->ip;
     vm->ip++;

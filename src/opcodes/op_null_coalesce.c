@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_null_coalesce(slate_vm* vm) {
+vm_result op_null_coalesce(vm_t* vm) {
     value_t b = vm_pop(vm);  // Right operand (fallback value)
     value_t a = vm_pop(vm);  // Left operand (primary value)
 

@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_not(slate_vm* vm) {
+vm_result op_not(vm_t* vm) {
     value_t a = vm_pop(vm);
     
     // Logical NOT: convert to boolean and negate

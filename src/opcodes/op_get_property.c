@@ -1,7 +1,7 @@
 #include "vm.h"
 #include "runtime_error.h"
 
-vm_result op_get_property(slate_vm* vm) {
+vm_result op_get_property(vm_t* vm) {
     value_t property = vm_pop(vm);
     value_t object = vm_pop(vm);
 

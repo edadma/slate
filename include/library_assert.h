@@ -3,10 +3,10 @@
 #include <stdlib.h>
 
 // Forward declarations to avoid circular dependencies  
-typedef struct slate_vm slate_vm;
+typedef struct slate_vm vm_t;
 
 // Global VM pointer for library assert access
-extern slate_vm* g_current_vm;
+extern vm_t* g_current_vm;
 
 // Wrapper function to handle library assert failures - implemented in runtime_error.c
 void slate_library_assert_failed(const char* condition, const char* file, int line);

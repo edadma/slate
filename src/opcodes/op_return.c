@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_return(slate_vm* vm) {
+vm_result op_return(vm_t* vm) {
     // Get return value from top of stack
     value_t result = vm_pop(vm);
     

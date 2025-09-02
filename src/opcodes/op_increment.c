@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_increment(slate_vm* vm) {
+vm_result op_increment(vm_t* vm) {
     value_t a = vm_pop(vm);
 
     // Operand must be a number

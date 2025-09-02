@@ -5,7 +5,7 @@
 #include <stdbool.h>
 
 // Code generator functions
-codegen_t* codegen_create(slate_vm* vm) {
+codegen_t* codegen_create(vm_t* vm) {
     codegen_t* codegen = malloc(sizeof(codegen_t));
     if (!codegen) return NULL;
     
@@ -23,7 +23,7 @@ codegen_t* codegen_create(slate_vm* vm) {
     return codegen;
 }
 
-codegen_t* codegen_create_with_debug(slate_vm* vm, const char* source_code) {
+codegen_t* codegen_create_with_debug(vm_t* vm, const char* source_code) {
     codegen_t* codegen = malloc(sizeof(codegen_t));
     if (!codegen) return NULL;
     

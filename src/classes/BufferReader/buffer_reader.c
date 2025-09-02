@@ -8,14 +8,14 @@
 value_t* global_buffer_reader_class = NULL;
 
 // buffer_reader(buffer) - Create buffer reader
-value_t builtin_buffer_reader(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_buffer_reader(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("buffer_reader() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "buffer_reader() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t buffer_val = args[0];
     if (buffer_val.type != VAL_BUFFER) {
-        runtime_error("buffer_reader() requires a buffer argument, not %s", value_type_name(buffer_val.type));
+        runtime_error(vm, "buffer_reader() requires a buffer argument, not %s", value_type_name(buffer_val.type));
     }
 
     db_reader reader = db_reader_new(buffer_val.as.buffer);
@@ -23,19 +23,19 @@ value_t builtin_buffer_reader(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // reader_read_uint8(reader) - Read uint8 from reader
-value_t builtin_reader_read_uint8(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_reader_read_uint8(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("reader_read_uint8() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "reader_read_uint8() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t reader_val = args[0];
     if (reader_val.type != VAL_BUFFER_READER) {
-        runtime_error("reader_read_uint8() requires a buffer reader, not %s", value_type_name(reader_val.type));
+        runtime_error(vm, "reader_read_uint8() requires a buffer reader, not %s", value_type_name(reader_val.type));
     }
 
     db_reader reader = reader_val.as.reader;
     if (!db_reader_can_read(reader, 1)) {
-        runtime_error("Cannot read uint8: not enough data remaining");
+        runtime_error(vm, "Cannot read uint8: not enough data remaining");
     }
 
     uint8_t value = db_read_uint8(reader);
@@ -43,19 +43,19 @@ value_t builtin_reader_read_uint8(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // reader_read_uint16_le(reader) - Read uint16 in little-endian from reader
-value_t builtin_reader_read_uint16_le(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_reader_read_uint16_le(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("reader_read_uint16_le() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "reader_read_uint16_le() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t reader_val = args[0];
     if (reader_val.type != VAL_BUFFER_READER) {
-        runtime_error("reader_read_uint16_le() requires a buffer reader, not %s", value_type_name(reader_val.type));
+        runtime_error(vm, "reader_read_uint16_le() requires a buffer reader, not %s", value_type_name(reader_val.type));
     }
 
     db_reader reader = reader_val.as.reader;
     if (!db_reader_can_read(reader, 2)) {
-        runtime_error("Cannot read uint16: not enough data remaining");
+        runtime_error(vm, "Cannot read uint16: not enough data remaining");
     }
 
     uint16_t value = db_read_uint16_le(reader);
@@ -63,19 +63,19 @@ value_t builtin_reader_read_uint16_le(slate_vm* vm, int arg_count, value_t* args
 }
 
 // reader_read_uint32_le(reader) - Read uint32 in little-endian from reader
-value_t builtin_reader_read_uint32_le(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_reader_read_uint32_le(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("reader_read_uint32_le() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "reader_read_uint32_le() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t reader_val = args[0];
     if (reader_val.type != VAL_BUFFER_READER) {
-        runtime_error("reader_read_uint32_le() requires a buffer reader, not %s", value_type_name(reader_val.type));
+        runtime_error(vm, "reader_read_uint32_le() requires a buffer reader, not %s", value_type_name(reader_val.type));
     }
 
     db_reader reader = reader_val.as.reader;
     if (!db_reader_can_read(reader, 4)) {
-        runtime_error("Cannot read uint32: not enough data remaining");
+        runtime_error(vm, "Cannot read uint32: not enough data remaining");
     }
 
     uint32_t value = db_read_uint32_le(reader);
@@ -91,14 +91,14 @@ value_t builtin_reader_read_uint32_le(slate_vm* vm, int arg_count, value_t* args
 }
 
 // reader_position(reader) - Get reader position
-value_t builtin_reader_position(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_reader_position(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("reader_position() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "reader_position() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t reader_val = args[0];
     if (reader_val.type != VAL_BUFFER_READER) {
-        runtime_error("reader_position() requires a buffer reader, not %s", value_type_name(reader_val.type));
+        runtime_error(vm, "reader_position() requires a buffer reader, not %s", value_type_name(reader_val.type));
     }
 
     size_t pos = db_reader_position(reader_val.as.reader);
@@ -106,14 +106,14 @@ value_t builtin_reader_position(slate_vm* vm, int arg_count, value_t* args) {
 }
 
 // reader_remaining(reader) - Get remaining bytes in reader
-value_t builtin_reader_remaining(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_reader_remaining(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("reader_remaining() takes exactly 1 argument (%d given)", arg_count);
+        runtime_error(vm, "reader_remaining() takes exactly 1 argument (%d given)", arg_count);
     }
 
     value_t reader_val = args[0];
     if (reader_val.type != VAL_BUFFER_READER) {
-        runtime_error("reader_remaining() requires a buffer reader, not %s", value_type_name(reader_val.type));
+        runtime_error(vm, "reader_remaining() requires a buffer reader, not %s", value_type_name(reader_val.type));
     }
 
     size_t remaining = db_reader_remaining(reader_val.as.reader);
@@ -125,14 +125,14 @@ value_t builtin_reader_remaining(slate_vm* vm, int arg_count, value_t* args) {
 // ============================================================================
 
 // BufferReader factory function
-value_t buffer_reader_factory(value_t* args, int arg_count) {
+value_t buffer_reader_factory(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        runtime_error("BufferReader() requires 1 argument: buffer");
+        runtime_error(vm, "BufferReader() requires 1 argument: buffer");
     }
     
     value_t buffer_val = args[0];
     if (buffer_val.type != VAL_BUFFER) {
-        runtime_error("BufferReader() requires a buffer argument, not %s", value_type_name(buffer_val.type));
+        runtime_error(vm, "BufferReader() requires a buffer argument, not %s", value_type_name(buffer_val.type));
     }
 
     db_reader reader = db_reader_new(buffer_val.as.buffer);
@@ -147,20 +147,20 @@ value_t buffer_reader_factory(value_t* args, int arg_count) {
 }
 
 // BufferReader instance method: readUint8()
-value_t builtin_buffer_reader_read_uint8(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_buffer_reader_read_uint8(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "BufferReader.readUint8() takes 1 argument (self)");
+        runtime_error(vm, "BufferReader.readUint8() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_BUFFER_READER) {
-        vm_runtime_error_with_debug(vm, "BufferReader.readUint8() can only be called on BufferReader objects");
+        runtime_error(vm, "BufferReader.readUint8() can only be called on BufferReader objects");
         return make_null();
     }
     
     db_reader reader = args[0].as.reader;
     if (!db_reader_can_read(reader, 1)) {
-        vm_runtime_error_with_debug(vm, "Cannot read uint8: not enough data remaining");
+        runtime_error(vm, "Cannot read uint8: not enough data remaining");
         return make_null();
     }
 
@@ -169,20 +169,20 @@ value_t builtin_buffer_reader_read_uint8(slate_vm* vm, int arg_count, value_t* a
 }
 
 // BufferReader instance method: readUint16LE()
-value_t builtin_buffer_reader_read_uint16_le(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_buffer_reader_read_uint16_le(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "BufferReader.readUint16LE() takes 1 argument (self)");
+        runtime_error(vm, "BufferReader.readUint16LE() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_BUFFER_READER) {
-        vm_runtime_error_with_debug(vm, "BufferReader.readUint16LE() can only be called on BufferReader objects");
+        runtime_error(vm, "BufferReader.readUint16LE() can only be called on BufferReader objects");
         return make_null();
     }
     
     db_reader reader = args[0].as.reader;
     if (!db_reader_can_read(reader, 2)) {
-        vm_runtime_error_with_debug(vm, "Cannot read uint16: not enough data remaining");
+        runtime_error(vm, "Cannot read uint16: not enough data remaining");
         return make_null();
     }
 
@@ -191,20 +191,20 @@ value_t builtin_buffer_reader_read_uint16_le(slate_vm* vm, int arg_count, value_
 }
 
 // BufferReader instance method: readUint32LE()
-value_t builtin_buffer_reader_read_uint32_le(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_buffer_reader_read_uint32_le(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "BufferReader.readUint32LE() takes 1 argument (self)");
+        runtime_error(vm, "BufferReader.readUint32LE() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_BUFFER_READER) {
-        vm_runtime_error_with_debug(vm, "BufferReader.readUint32LE() can only be called on BufferReader objects");
+        runtime_error(vm, "BufferReader.readUint32LE() can only be called on BufferReader objects");
         return make_null();
     }
     
     db_reader reader = args[0].as.reader;
     if (!db_reader_can_read(reader, 4)) {
-        vm_runtime_error_with_debug(vm, "Cannot read uint32: not enough data remaining");
+        runtime_error(vm, "Cannot read uint32: not enough data remaining");
         return make_null();
     }
 
@@ -221,14 +221,14 @@ value_t builtin_buffer_reader_read_uint32_le(slate_vm* vm, int arg_count, value_
 }
 
 // BufferReader instance method: position()
-value_t builtin_buffer_reader_position(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_buffer_reader_position(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "BufferReader.position() takes 1 argument (self)");
+        runtime_error(vm, "BufferReader.position() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_BUFFER_READER) {
-        vm_runtime_error_with_debug(vm, "BufferReader.position() can only be called on BufferReader objects");
+        runtime_error(vm, "BufferReader.position() can only be called on BufferReader objects");
         return make_null();
     }
     
@@ -237,14 +237,14 @@ value_t builtin_buffer_reader_position(slate_vm* vm, int arg_count, value_t* arg
 }
 
 // BufferReader instance method: remaining()
-value_t builtin_buffer_reader_remaining(slate_vm* vm, int arg_count, value_t* args) {
+value_t builtin_buffer_reader_remaining(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
-        vm_runtime_error_with_debug(vm, "BufferReader.remaining() takes 1 argument (self)");
+        runtime_error(vm, "BufferReader.remaining() takes 1 argument (self)");
         return make_null();
     }
     
     if (args[0].type != VAL_BUFFER_READER) {
-        vm_runtime_error_with_debug(vm, "BufferReader.remaining() can only be called on BufferReader objects");
+        runtime_error(vm, "BufferReader.remaining() can only be called on BufferReader objects");
         return make_null();
     }
     
@@ -253,7 +253,7 @@ value_t builtin_buffer_reader_remaining(slate_vm* vm, int arg_count, value_t* ar
 }
 
 // BufferReader class initialization
-void buffer_reader_class_init(slate_vm* vm) {
+void buffer_reader_class_init(vm_t* vm) {
     // Create the BufferReader class with its prototype
     do_object buffer_reader_proto = do_create(NULL);
 

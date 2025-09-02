@@ -133,7 +133,7 @@ static void disassemble(const char* source) {
     }
     
     // Generate code
-    slate_vm* temp_vm = vm_create();
+    vm_t* temp_vm = vm_create();
     codegen_t* codegen = codegen_create_with_debug(temp_vm, source);
     function_t* function = codegen_compile(codegen, program);
     
@@ -166,25 +166,25 @@ static void disassemble(const char* source) {
 }
 
 // Forward declaration
-static void interpret_with_vm(const char* source, slate_vm* vm);
-static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_undefined);
-static void interpret_with_vm_mode_parser(const char* source, slate_vm* vm, int show_undefined, parser_mode_t parser_mode);
+static void interpret_with_vm(const char* source, vm_t* vm);
+static void interpret_with_vm_mode(const char* source, vm_t* vm, int show_undefined);
+static void interpret_with_vm_mode_parser(const char* source, vm_t* vm, int show_undefined, parser_mode_t parser_mode);
 
 static void interpret(const char* source) { interpret_with_vm(source, NULL); }
 
-static void interpret_with_vm_mode(const char* source, slate_vm* vm, int show_undefined) {
+static void interpret_with_vm_mode(const char* source, vm_t* vm, int show_undefined) {
     interpret_with_vm_mode_parser(source, vm, show_undefined, PARSER_MODE_STRICT);
 }
 
-static void interpret_with_vm(const char* source, slate_vm* vm) {
+static void interpret_with_vm(const char* source, vm_t* vm) {
     interpret_with_vm_mode(source, vm, 0); // REPL mode - show undefined  
 }
 
-static void interpret_with_vm_lenient(const char* source, slate_vm* vm) {
+static void interpret_with_vm_lenient(const char* source, vm_t* vm) {
     interpret_with_vm_mode_parser(source, vm, 0, PARSER_MODE_LENIENT);
 }
 
-static void interpret_with_vm_mode_parser(const char* source, slate_vm* vm, int show_undefined, parser_mode_t parser_mode) {
+static void interpret_with_vm_mode_parser(const char* source, vm_t* vm, int show_undefined, parser_mode_t parser_mode) {
     // Only show "Interpreting:" for file mode, not REPL (REPL handles this itself)
     if (debug_mode && !vm) {
         printf("Interpreting: %s\n", source);
@@ -236,7 +236,7 @@ static void interpret_with_vm_mode_parser(const char* source, slate_vm* vm, int 
         printf("=== EXECUTION ===\n");
     }
 
-    slate_vm* vm_to_use = vm ? vm : vm_create();
+    vm_t* vm_to_use = vm ? vm : vm_create();
     vm_result result = vm_execute(vm_to_use, function);
 
     if (result == VM_OK) {
@@ -309,7 +309,7 @@ static void repl_with_args(int argc, char** argv) {
     printf("Type 'exit' to quit. Empty line cancels multi-line input.\n\n");
 
     // Create persistent VM for the REPL session with command line arguments
-    slate_vm* vm = vm_create_with_args(argc, argv);
+    vm_t* vm = vm_create_with_args(argc, argv);
     if (!vm) {
         printf("Failed to create VM\n");
         return;
@@ -657,7 +657,7 @@ int main(int argc, char* argv[]) {
         char* source = read_stdin();
         if (source) {
             // Create a shared VM to maintain state and show results
-            slate_vm* vm = vm_create_with_args(script_argc, script_argv);
+            vm_t* vm = vm_create_with_args(script_argc, script_argv);
 
             // Split by lines and interpret each one
             char* line = strtok(source, "\n");
@@ -674,7 +674,7 @@ int main(int argc, char* argv[]) {
         }
     } else if (script_content) {
         // Execute script content directly with result display
-        slate_vm* vm = vm_create_with_args(script_argc, script_argv);
+        vm_t* vm = vm_create_with_args(script_argc, script_argv);
         vm->context = CTX_SCRIPT;  // Set script context for --script option too
         interpret_with_vm_mode(script_content, vm, 1);
         vm_destroy(vm);
@@ -682,7 +682,7 @@ int main(int argc, char* argv[]) {
         // Run file with script arguments
         char* source = read_file(script_file);
         if (source) {
-            slate_vm* vm = vm_create_with_args(script_argc, script_argv);
+            vm_t* vm = vm_create_with_args(script_argc, script_argv);
             vm->context = CTX_SCRIPT;  // Set script context
             
             // In script mode, we don't use setjmp because runtime_error will call exit(1)

@@ -1,6 +1,6 @@
 #include "vm.h"
 
-vm_result op_negate(slate_vm* vm) {
+vm_result op_negate(vm_t* vm) {
     value_t a = vm_pop(vm);
     if (a.type == VAL_INT32) {
         // Check for int32 overflow on negation
