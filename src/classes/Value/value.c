@@ -90,8 +90,11 @@ value_t builtin_type(vm_t* vm, int arg_count, value_t* args) {
     case VAL_LOCAL_DATETIME:
         type_name = "LocalDateTime";
         break;
-    case VAL_ZONED_DATETIME:
-        type_name = "ZonedDateTime";
+    case VAL_ZONE:
+        type_name = "Zone";
+        break;
+    case VAL_DATE:
+        type_name = "Date";
         break;
     case VAL_INSTANT:
         type_name = "Instant";

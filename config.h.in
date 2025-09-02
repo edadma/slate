@@ -16,4 +16,11 @@
 /* MCU optimization mode */
 #cmakedefine MCU_MODE
 
+/* Timezone configuration */
+#cmakedefine FULL_TIMEZONE
+#cmakedefine EMBEDDED_TIMEZONE
+
+/* Embedded timezone set */
+#define EMBEDDED_TIMEZONE_SET "@EMBEDDED_TIMEZONE_SET@"
+
 #endif // CONFIG_H

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <math.h>
 #include "datetime.h"
+#include "date.h"
 #include "instant.h"
 
 // Value creation functions with debug info
@@ -252,8 +253,19 @@ ds_string value_to_string_representation(vm_t* vm, value_t value) {
         }
         return ds_new("<LocalDateTime>");
     }
-    case VAL_ZONED_DATETIME:
-        return ds_new("<ZonedDateTime>");  // TODO: implement string conversion
+    case VAL_ZONE:
+        return ds_new("<Zone>");  // TODO: implement string conversion
+    case VAL_DATE: {
+        if (value.as.date) {
+            char* str = date_to_iso_string(vm, value.as.date);
+            if (str) {
+                ds_string result = ds_new(str);
+                free(str);
+                return result;
+            }
+        }
+        return ds_new("<Date>");
+    }
     case VAL_INSTANT: {
         // Use the toString method for proper ISO 8601 formatting
         value_t str_result = instant_to_string(vm, 1, &value);

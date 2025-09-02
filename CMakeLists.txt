@@ -7,6 +7,21 @@ set(CMAKE_C_STANDARD 11)
 option(DEFAULT_FLOAT32 "Use float32 as default floating point type" OFF)
 option(MCU_MODE "Enable MCU optimizations (implies DEFAULT_FLOAT32)" OFF)
 
+# Timezone configuration options
+option(FULL_TIMEZONE "Use system timezone database for full IANA timezone support" ON)
+option(EMBEDDED_TIMEZONE "Use embedded timezone subset for MCU compatibility" OFF)
+set(EMBEDDED_TIMEZONE_SET "canada" CACHE STRING "Timezone set for embedded builds: canada")
+
+# Override FULL_TIMEZONE if EMBEDDED_TIMEZONE is explicitly enabled
+if(EMBEDDED_TIMEZONE)
+    set(FULL_TIMEZONE OFF)
+endif()
+
+# Validation for timezone options (after override)
+if(FULL_TIMEZONE AND EMBEDDED_TIMEZONE)
+    message(FATAL_ERROR "Cannot enable both FULL_TIMEZONE and EMBEDDED_TIMEZONE. Choose one or neither (for UTC-only mode).")
+endif()
+
 # If MCU mode is enabled, automatically enable float32 as default
 if(MCU_MODE)
     set(DEFAULT_FLOAT32 ON CACHE BOOL "Use float32 as default floating point type" FORCE)
@@ -42,6 +57,8 @@ include_directories(src/classes/Float)
 include_directories(src/classes/LocalDate)
 include_directories(src/classes/LocalTime)
 include_directories(src/classes/LocalDateTime)
+include_directories(src/classes/Zone)
+include_directories(src/classes/Date)
 include_directories(src/classes/Instant)
 
 # Main executable
@@ -85,6 +102,8 @@ add_executable(slate
         src/library_impl.c
         src/line_editor.c
         src/datetime.c
+        src/timezone.c
+        src/date.c
         src/classes/String/factory.c
         src/classes/String/methods.c
         src/classes/StringBuilder/string_builder.c
@@ -110,6 +129,12 @@ add_executable(slate
         src/classes/LocalDateTime/factory.c
         src/classes/LocalDateTime/methods.c
         src/classes/LocalDateTime/class.c
+        src/classes/Zone/factory.c
+        src/classes/Zone/methods.c
+        src/classes/Zone/class.c
+        src/classes/Date/factory.c
+        src/classes/Date/methods.c
+        src/classes/Date/class.c
         src/classes/Instant/factory.c
         src/classes/Instant/methods.c
         src/classes/Instant/class.c
@@ -227,6 +252,7 @@ if (BUILD_TESTS)
             tests/test_class_localtime.c
             tests/test_class_local_date_time.c
             tests/test_class_instant.c
+            tests/test_class_date.c
             tests/test_new_operators.c
             tests/test_functions.c
             tests/test_variable_shadowing.c
@@ -268,6 +294,8 @@ if (BUILD_TESTS)
             src/builtins.c
             src/library_impl.c
             src/datetime.c
+            src/timezone.c
+            src/date.c
             src/classes/String/factory.c
             src/classes/String/methods.c
             src/classes/StringBuilder/string_builder.c
@@ -293,6 +321,12 @@ if (BUILD_TESTS)
         src/classes/LocalDateTime/factory.c
         src/classes/LocalDateTime/methods.c
         src/classes/LocalDateTime/class.c
+        src/classes/Zone/factory.c
+        src/classes/Zone/methods.c
+        src/classes/Zone/class.c
+        src/classes/Date/factory.c
+        src/classes/Date/methods.c
+        src/classes/Date/class.c
         src/classes/Instant/factory.c
         src/classes/Instant/methods.c
         src/classes/Instant/class.c

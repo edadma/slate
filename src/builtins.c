@@ -137,6 +137,9 @@ void builtins_init(vm_t* vm) {
     // Initialize Instant class
     init_instant_class(vm);
 
+    // Initialize Zone and Date classes
+    init_datetime_classes(vm);
+
     // Initialize Buffer class
     buffer_class_init(vm);
 

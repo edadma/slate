@@ -5,6 +5,8 @@
 #include <limits.h>
 #include "datetime.h"
 #include "instant.h"
+#include "timezone.h"
+#include "date.h"
 #include "builtins.h"
 
 // External reference to global VM pointer (defined in vm/lifecycle.c)
@@ -131,11 +133,21 @@ int values_equal(value_t a, value_t b) {
             return 0;
         return local_time_equals(a.as.local_time, b.as.local_time);
     case VAL_LOCAL_DATETIME:
-    case VAL_ZONED_DATETIME:
+        if (a.as.local_datetime == NULL || b.as.local_datetime == NULL)
+            return 0;
+        return local_datetime_equals(a.as.local_datetime, b.as.local_datetime);
+    case VAL_ZONE:
+        // Compare timezone IDs
+        return a.as.zone == b.as.zone || 
+               (a.as.zone && b.as.zone && strcmp(timezone_get_id(a.as.zone), timezone_get_id(b.as.zone)) == 0);
+    case VAL_DATE:
+        if (a.as.date == NULL || b.as.date == NULL)
+            return 0;
+        return date_equals(a.as.date, b.as.date);
     case VAL_DURATION:
     case VAL_PERIOD:
-        // For now, use reference equality for complex types
-        return a.as.local_datetime == b.as.local_datetime;
+        // For now, use reference equality for these types
+        return a.as.duration == b.as.duration;
     case VAL_INSTANT:
         // Direct comparison of epoch milliseconds
         return a.as.instant_millis == b.as.instant_millis;
@@ -339,8 +351,22 @@ void print_value(vm_t* vm, value_t value) {
         }
         break;
     }
-    case VAL_ZONED_DATETIME: {
-        printf("<ZonedDateTime>");  // TODO: implement string conversion
+    case VAL_ZONE: {
+        printf("<Zone>");  // TODO: implement string conversion
+        break;
+    }
+    case VAL_DATE: {
+        if (value.as.date) {
+            char* str = date_to_iso_string(vm, value.as.date);
+            if (str) {
+                printf("%s", str);
+                free(str);
+            } else {
+                printf("<Date>");
+            }
+        } else {
+            printf("<Date>");
+        }
         break;
     }
     case VAL_INSTANT: {

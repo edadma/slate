@@ -1,13 +1,9 @@
 #include "value.h"
+#include "date.h"
 #include <stdlib.h>
 #include <string.h>
 
-// Forward declaration for debug_location (will be properly defined in vm.h)
-struct debug_location {
-    char* filename;
-    int line;
-    int column;
-};
+// debug_location is now properly defined in vm.h via date.h
 
 // Memory management functions
 value_t vm_retain(value_t value) {
@@ -41,8 +37,10 @@ value_t vm_retain(value_t value) {
         value.as.local_time->ref_count++;
     } else if (value.type == VAL_LOCAL_DATETIME) {
         value.as.local_datetime->ref_count++;
-    } else if (value.type == VAL_ZONED_DATETIME) {
-        value.as.zoned_datetime->ref_count++;
+    } else if (value.type == VAL_ZONE) {
+        // Zones are managed by the timezone system, no reference counting
+    } else if (value.type == VAL_DATE) {
+        value.as.date->ref_count++;
     } else if (value.type == VAL_INSTANT) {
         // Direct storage - no reference counting needed
     } else if (value.type == VAL_DURATION) {
@@ -100,8 +98,10 @@ void vm_release(value_t value) {
         local_time_release(value.as.local_time);
     } else if (value.type == VAL_LOCAL_DATETIME && value.as.local_datetime) {
         local_datetime_release(value.as.local_datetime);
-    } else if (value.type == VAL_ZONED_DATETIME && value.as.zoned_datetime) {
-        zoned_datetime_release(value.as.zoned_datetime);
+    } else if (value.type == VAL_ZONE) {
+        // Zones are managed by the timezone system, no release needed
+    } else if (value.type == VAL_DATE && value.as.date) {
+        date_release(value.as.date);
     } else if (value.type == VAL_INSTANT) {
         // Direct storage - no memory to release
     } else if (value.type == VAL_DURATION && value.as.duration) {
@@ -368,11 +368,20 @@ value_t make_local_datetime(local_datetime_t* datetime) {
     return value;
 }
 
-value_t make_zoned_datetime(zoned_datetime_t* datetime) {
+value_t make_zone(const timezone_t* timezone) {
     value_t value;
-    value.type = VAL_ZONED_DATETIME;
-    value.as.zoned_datetime = datetime;
-    value.class = global_zoned_datetime_class;
+    value.type = VAL_ZONE;
+    value.as.zone = timezone;
+    value.class = global_zone_class;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_date(date_t* date) {
+    value_t value;
+    value.type = VAL_DATE;
+    value.as.date = date;
+    value.class = global_date_class;
     value.debug = NULL;
     return value;
 }
@@ -409,9 +418,9 @@ static debug_location* copy_debug_location(debug_location* original) {
     if (!original) return NULL;
     debug_location* copy = malloc(sizeof(debug_location));
     if (copy) {
-        copy->filename = original->filename; // Shallow copy of filename
         copy->line = original->line;
         copy->column = original->column;
+        copy->source_text = original->source_text; // Shallow copy of source text
     }
     return copy;
 }
@@ -566,8 +575,14 @@ value_t make_local_datetime_with_debug(local_datetime_t* datetime, debug_locatio
     return value;
 }
 
-value_t make_zoned_datetime_with_debug(zoned_datetime_t* datetime, debug_location* debug) {
-    value_t value = make_zoned_datetime(datetime);
+value_t make_zone_with_debug(const timezone_t* timezone, debug_location* debug) {
+    value_t value = make_zone(timezone);
+    value.debug = copy_debug_location(debug);
+    return value;
+}
+
+value_t make_date_with_debug(date_t* date, debug_location* debug) {
+    value_t value = make_date(date);
     value.debug = copy_debug_location(debug);
     return value;
 }

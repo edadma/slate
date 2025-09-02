@@ -7,7 +7,7 @@
 extern value_t* global_local_date_class;
 extern value_t* global_local_time_class;
 extern value_t* global_local_datetime_class;
-extern value_t* global_zoned_datetime_class;
+extern value_t* global_date_class;
 extern value_t* global_instant_class;
 extern value_t* global_duration_class;
 extern value_t* global_period_class;
@@ -64,8 +64,7 @@ local_time_t* local_time_retain(local_time_t* time);
 void local_time_release(local_time_t* time);
 local_datetime_t* local_datetime_retain(local_datetime_t* dt);
 void local_datetime_release(local_datetime_t* dt);
-zoned_datetime_t* zoned_datetime_retain(zoned_datetime_t* zdt);
-void zoned_datetime_release(zoned_datetime_t* zdt);
+// zoned_datetime functions removed - use Date class instead
 instant_t* instant_retain(instant_t* instant);
 void instant_release(instant_t* instant);
 duration_t* duration_retain(duration_t* duration);

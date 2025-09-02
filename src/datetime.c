@@ -1,6 +1,9 @@
 #include "datetime.h"
 #include "builtins.h"
 #include "instant.h"
+#include "zone.h"
+#include "timezone.h"
+#include "date_class.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +14,7 @@
 value_t* global_local_date_class = NULL;
 value_t* global_local_time_class = NULL;
 value_t* global_local_datetime_class = NULL;
-value_t* global_zoned_datetime_class = NULL;
+value_t* global_date_class = NULL;
 value_t* global_instant_class = NULL;
 value_t* global_duration_class = NULL;
 value_t* global_period_class = NULL;
@@ -259,20 +262,8 @@ void local_datetime_release(local_datetime_t* dt) {
     }
 }
 
-zoned_datetime_t* zoned_datetime_retain(zoned_datetime_t* zdt) {
-    if (zdt) {
-        zdt->ref_count++;
-    }
-    return zdt;
-}
-
-void zoned_datetime_release(zoned_datetime_t* zdt) {
-    if (zdt && --zdt->ref_count == 0) {
-        local_datetime_release(zdt->dt);
-        free(zdt->zone_id);
-        free(zdt);
-    }
-}
+// Note: date_retain and date_release are now implemented in date.c
+// These old zoned_datetime functions are kept for compatibility but deprecated
 
 instant_t* instant_retain(instant_t* instant) {
     if (instant) {
@@ -714,6 +705,15 @@ bool local_datetime_is_after(const local_datetime_t* a, const local_datetime_t* 
 // ============================================================================
 
 void init_datetime_classes(vm_t* vm) {
+    // Initialize timezone system first
+    init_timezone_system();
+    
+    // Initialize Zone class
+    init_zone_class(vm);
+    
+    // Initialize Date class
+    init_date_class(vm);
+    
     // Initialize Instant class
     init_instant_class(vm);
     

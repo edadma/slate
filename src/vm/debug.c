@@ -159,8 +159,10 @@ const char* value_type_name(value_type type) {
         return "LocalTime";
     case VAL_LOCAL_DATETIME:
         return "LocalDateTime";
-    case VAL_ZONED_DATETIME:
-        return "ZonedDateTime";
+    case VAL_ZONE:
+        return "Zone";
+    case VAL_DATE:
+        return "Date";
     case VAL_INSTANT:
         return "Instant";
     case VAL_DURATION:

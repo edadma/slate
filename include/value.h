@@ -41,7 +41,8 @@ typedef enum {
     VAL_LOCAL_DATE, // Date without time zone (2024-12-25)
     VAL_LOCAL_TIME, // Time without date or time zone (15:30:45)
     VAL_LOCAL_DATETIME, // Date and time without time zone (2024-12-25T15:30:45)
-    VAL_ZONED_DATETIME, // Date and time with time zone (2024-12-25T15:30:45-05:00[America/New_York])
+    VAL_ZONE, // Timezone information (America/Toronto, UTC, etc.)
+    VAL_DATE, // Date and time with timezone (the primary zoned datetime type)
     VAL_INSTANT, // Point in time (Unix timestamp with nanoseconds)
     VAL_DURATION, // Time-based amount (2 hours, 30 minutes)
     VAL_PERIOD // Date-based amount (2 years, 3 months, 5 days)
@@ -56,7 +57,8 @@ typedef struct class class_t;
 typedef struct local_date local_date_t;
 typedef struct local_time local_time_t;
 typedef struct local_datetime local_datetime_t;
-typedef struct zoned_datetime zoned_datetime_t;
+typedef struct timezone timezone_t;
+typedef struct date date_t;
 typedef struct instant instant_t;
 typedef struct duration duration_t;
 typedef struct period period_t;
@@ -91,7 +93,8 @@ struct value {
         local_date_t* local_date; // Date without time zone
         local_time_t* local_time; // Time without date or time zone
         local_datetime_t* local_datetime; // Date and time without time zone
-        zoned_datetime_t* zoned_datetime; // Date and time with time zone
+        const timezone_t* zone; // Timezone information (pointer to timezone data)
+        date_t* date; // Date and time with timezone (zoned datetime)
         int64_t instant_millis; // Point in time (epoch milliseconds, direct storage)
         duration_t* duration; // Time-based amount
         period_t* period; // Date-based amount
@@ -212,7 +215,8 @@ extern value_t* global_buffer_class;
 extern value_t* global_local_date_class;
 extern value_t* global_local_time_class;
 extern value_t* global_local_datetime_class;
-extern value_t* global_zoned_datetime_class;
+extern value_t* global_zone_class;
+extern value_t* global_date_class;
 extern value_t* global_instant_class;
 extern value_t* global_duration_class;
 extern value_t* global_period_class;
@@ -248,7 +252,8 @@ value_t make_buffer_reader(db_reader reader);
 value_t make_local_date(local_date_t* date);
 value_t make_local_time(local_time_t* time);
 value_t make_local_datetime(local_datetime_t* datetime);
-value_t make_zoned_datetime(zoned_datetime_t* datetime);
+value_t make_zone(const timezone_t* timezone);
+value_t make_date(date_t* date);
 value_t make_instant_direct(int64_t epoch_millis);
 value_t make_duration(duration_t* duration);
 value_t make_period(period_t* period);
@@ -279,7 +284,8 @@ value_t make_buffer_reader_with_debug(db_reader reader, debug_location* debug);
 value_t make_local_date_with_debug(local_date_t* date, debug_location* debug);
 value_t make_local_time_with_debug(local_time_t* time, debug_location* debug);
 value_t make_local_datetime_with_debug(local_datetime_t* datetime, debug_location* debug);
-value_t make_zoned_datetime_with_debug(zoned_datetime_t* datetime, debug_location* debug);
+value_t make_zone_with_debug(const timezone_t* timezone, debug_location* debug);
+value_t make_date_with_debug(date_t* date, debug_location* debug);
 value_t make_instant_direct_with_debug(int64_t epoch_millis, debug_location* debug);
 value_t make_duration_with_debug(duration_t* duration, debug_location* debug);
 value_t make_period_with_debug(period_t* period, debug_location* debug);
@@ -293,7 +299,7 @@ void bound_method_release(bound_method_t* method);
 void local_date_release(local_date_t* date);
 void local_time_release(local_time_t* time);
 void local_datetime_release(local_datetime_t* dt);
-void zoned_datetime_release(zoned_datetime_t* zdt);
+// zoned_datetime functions removed - use Date class instead
 void instant_release(instant_t* instant);
 void duration_release(duration_t* duration);
 void period_release(period_t* period);
