@@ -308,6 +308,7 @@ void debug_location_free(debug_location* debug);
 int is_falsy(value_t value);
 int is_truthy(value_t value);
 int is_number(value_t value); // Check if value is numeric (int32, bigint, or number)
+int compare_numbers(value_t a, value_t b); // Compare two numbers: -1 if a < b, 0 if a == b, 1 if a > b
 int values_equal(value_t a, value_t b);
 void print_value(vm_t* vm, value_t value);
 void print_for_builtin(vm_t* vm, value_t value);

@@ -14,8 +14,15 @@ void number_class_init(vm_t* vm) {
         return;
     }
     
-    // Create empty Number class prototype - no methods since none apply to ALL numbers
+    // Create Number class prototype with methods that work across all numeric types
     do_object number_proto = do_create(NULL);
+    
+    // Add methods that work for all numeric types
+    value_t min_method = make_native(builtin_number_min);
+    do_set(number_proto, "min", &min_method, sizeof(value_t));
+    
+    value_t max_method = make_native(builtin_number_max);
+    do_set(number_proto, "max", &max_method, sizeof(value_t));
     
     // Create the Number class
     value_t number_class = make_class("Number", number_proto);

@@ -48,6 +48,108 @@ int is_truthy(value_t value) {
 
 int is_number(value_t value) { return value.type == VAL_INT32 || value.type == VAL_BIGINT || value.type == VAL_FLOAT32 || value.type == VAL_FLOAT64; }
 
+// Generalized numeric comparison function
+// Returns: -1 if a < b, 0 if a == b, 1 if a > b
+int compare_numbers(value_t a, value_t b) {
+    // Handle same-type comparisons first (most efficient)
+    if (a.type == b.type) {
+        switch (a.type) {
+            case VAL_INT32:
+                if (a.as.int32 < b.as.int32) return -1;
+                if (a.as.int32 > b.as.int32) return 1;
+                return 0;
+                
+            case VAL_BIGINT:
+                if (di_lt(a.as.bigint, b.as.bigint)) return -1;
+                if (di_gt(a.as.bigint, b.as.bigint)) return 1;
+                return 0;
+                
+            case VAL_FLOAT32: {
+                float fa = a.as.float32;
+                float fb = b.as.float32;
+                if (fa < fb) return -1;
+                if (fa > fb) return 1;
+                return 0;
+            }
+            
+            case VAL_FLOAT64: {
+                double da = a.as.float64;
+                double db = b.as.float64;
+                if (da < db) return -1;
+                if (da > db) return 1;
+                return 0;
+            }
+            
+            default:
+                return 0; // Should not happen for numeric types
+        }
+    }
+    
+    // Handle cross-type comparisons
+    // Priority order: Check for any floating point first, then handle integer comparisons
+    
+    // If either is floating point, convert both to appropriate floating point type
+    if (a.type == VAL_FLOAT64 || b.type == VAL_FLOAT64 ||
+        a.type == VAL_FLOAT32 || b.type == VAL_FLOAT32) {
+        
+        // Use double for highest precision
+        double a_val = (a.type == VAL_INT32)   ? (double)a.as.int32
+                     : (a.type == VAL_BIGINT)  ? di_to_double(a.as.bigint)
+                     : (a.type == VAL_FLOAT32) ? (double)a.as.float32
+                                               : a.as.float64;
+                                               
+        double b_val = (b.type == VAL_INT32)   ? (double)b.as.int32
+                     : (b.type == VAL_BIGINT)  ? di_to_double(b.as.bigint)
+                     : (b.type == VAL_FLOAT32) ? (double)b.as.float32
+                                               : b.as.float64;
+        
+        if (a_val < b_val) return -1;
+        if (a_val > b_val) return 1;
+        return 0;
+    }
+    
+    // Both are integers (INT32 and/or BIGINT) - handle without floating point
+    if ((a.type == VAL_INT32 || a.type == VAL_BIGINT) &&
+        (b.type == VAL_INT32 || b.type == VAL_BIGINT)) {
+        
+        // Convert both to BigInt for accurate comparison
+        di_int a_big, b_big;
+        int a_needs_release = 0, b_needs_release = 0;
+        
+        if (a.type == VAL_BIGINT) {
+            a_big = a.as.bigint;
+        } else {
+            a_big = di_from_int32(a.as.int32);
+            a_needs_release = 1;
+        }
+        
+        if (b.type == VAL_BIGINT) {
+            b_big = b.as.bigint;
+        } else {
+            b_big = di_from_int32(b.as.int32);
+            b_needs_release = 1;
+        }
+        
+        int result;
+        if (di_lt(a_big, b_big)) {
+            result = -1;
+        } else if (di_gt(a_big, b_big)) {
+            result = 1;
+        } else {
+            result = 0;
+        }
+        
+        // Clean up temporary BigInts
+        if (a_needs_release) di_release(&a_big);
+        if (b_needs_release) di_release(&b_big);
+        
+        return result;
+    }
+    
+    // Should not reach here for valid numeric types
+    return 0;
+}
+
 int values_equal(value_t a, value_t b) {
     // Handle cross-type numeric comparisons
     if (is_number(a) && is_number(b)) {
