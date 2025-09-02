@@ -1,53 +1,15 @@
 #include <stdlib.h>
 #include <string.h>
-#include "codegen.h"
-#include "lexer.h"
-#include "parser.h"
+#include "test_helpers.h"
 #include "unity.h"
-#include "vm.h"
 
-// Helper function to slate while loop code and return result
-static value_t run_while_test(const char* source) {
-    lexer_t lexer;
-    parser_t parser;
-
-    lexer_init(&lexer, source);
-    parser_init(&parser, &lexer);
-
-    ast_program* program = parse_program(&parser);
-    if (parser.had_error || !program) {
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-
-    slate_vm* vm = vm_create();
-    
-    codegen_t* codegen = codegen_create(vm);
-    function_t* function = codegen_compile(codegen, program);
-
-    vm_result result = vm_execute(vm, function);
-
-    value_t return_value = make_null();
-    if (result == VM_OK) {
-        return_value = vm->result;
-        // Retain strings and other reference-counted types to survive cleanup
-        return_value = vm_retain(return_value);
-    }
-
-    vm_destroy(vm);
-    codegen_destroy(codegen);
-    ast_free((ast_node*)program);
-    lexer_cleanup(&lexer);
-
-    return return_value;
-}
 
 // Test basic while loops (existing functionality)
 void test_basic_while_loops(void) {
     value_t result;
 
     // Simple countdown while loop
-    result = run_while_test("var i = 3\n"
+    result = test_execute_expression("var i = 3\n"
                             "while i > 0\n"
                             "    i = i - 1\n"
                             "i");
@@ -56,7 +18,7 @@ void test_basic_while_loops(void) {
     vm_release(result);
 
     // While with end marker
-    result = run_while_test("var i = 5\n"
+    result = test_execute_expression("var i = 5\n"
                             "while i > 0\n"
                             "    i = i - 1\n"
                             "    i\n"
@@ -72,7 +34,7 @@ void test_while_loops_with_modulo(void) {
     value_t result;
 
     // While loop counting multiples of 3 up to 15
-    result = run_while_test("var i = 0\n"
+    result = test_execute_expression("var i = 0\n"
                             "var count = 0\n"
                             "while i < 15\n"
                             "    i = i + 1\n"
@@ -84,7 +46,7 @@ void test_while_loops_with_modulo(void) {
     vm_release(result);
 
     // While loop with modulo for even numbers
-    result = run_while_test("var n = 0\n"
+    result = test_execute_expression("var n = 0\n"
                             "var sum_evens = 0\n"
                             "while n < 10\n"
                             "    if n mod 2 == 0\n"
@@ -96,7 +58,7 @@ void test_while_loops_with_modulo(void) {
     vm_release(result);
 
     // While loop with complex modulo condition
-    result = run_while_test("var x = 1\n"
+    result = test_execute_expression("var x = 1\n"
                             "while x mod 7 != 0 or x <= 10\n"
                             "    x = x + 1\n"
                             "x");
@@ -110,7 +72,7 @@ void test_while_loops_with_do_multiline(void) {
     value_t result;
 
     // Multi-line while with 'do' keyword
-    result = run_while_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                             "var i = 1\n"
                             "while i <= 5 do\n"
                             "    sum = sum + i\n"
@@ -121,7 +83,7 @@ void test_while_loops_with_do_multiline(void) {
     vm_release(result);
 
     // Multi-line while with 'do' and 'end while'
-    result = run_while_test("var product = 1\n"
+    result = test_execute_expression("var product = 1\n"
                             "var i = 1\n"
                             "while i <= 4 do\n"
                             "    product = product * i\n"
@@ -133,7 +95,7 @@ void test_while_loops_with_do_multiline(void) {
     vm_release(result);
 
     // While with 'do' and no 'end while'
-    result = run_while_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                             "while count < 3 do\n"
                             "    count = count + 1\n"
                             "count");
@@ -147,7 +109,7 @@ void test_single_line_while_loops_with_do(void) {
     value_t result;
 
     // Simple single-line while with 'do' - counter
-    result = run_while_test("var x = 10\n"
+    result = test_execute_expression("var x = 10\n"
                             "while x > 7 do x = x - 1\n"
                             "x");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -155,7 +117,7 @@ void test_single_line_while_loops_with_do(void) {
     vm_release(result);
 
     // Single-line while with 'do' - simple increment
-    result = run_while_test("var i = 1\n"
+    result = test_execute_expression("var i = 1\n"
                             "while i < 5 do i = i + 1\n"
                             "i");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -163,7 +125,7 @@ void test_single_line_while_loops_with_do(void) {
     vm_release(result);
 
     // Single-line while with modulo condition
-    result = run_while_test("var n = 1\n"
+    result = test_execute_expression("var n = 1\n"
                             "while n mod 5 != 0 do n = n + 1\n"
                             "n");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -176,7 +138,7 @@ void test_while_syntax_variations(void) {
     value_t result;
 
     // Without 'do', multi-line (original syntax)
-    result = run_while_test("var a = 2\n"
+    result = test_execute_expression("var a = 2\n"
                             "while a < 5\n"
                             "    a = a + 1\n"
                             "a");
@@ -185,7 +147,7 @@ void test_while_syntax_variations(void) {
     vm_release(result);
 
     // With 'do', multi-line
-    result = run_while_test("var b = 2\n"
+    result = test_execute_expression("var b = 2\n"
                             "while b < 5 do\n"
                             "    b = b + 1\n"
                             "b");
@@ -194,7 +156,7 @@ void test_while_syntax_variations(void) {
     vm_release(result);
 
     // With 'do', single-line
-    result = run_while_test("var c = 2\n"
+    result = test_execute_expression("var c = 2\n"
                             "while c < 5 do c = c + 1\n"
                             "c");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -207,7 +169,7 @@ void test_while_loop_edge_cases(void) {
     value_t result;
 
     // While loop that never executes
-    result = run_while_test("var never_run = 42\n"
+    result = test_execute_expression("var never_run = 42\n"
                             "while false do never_run = 0\n"
                             "never_run");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -215,7 +177,7 @@ void test_while_loop_edge_cases(void) {
     vm_release(result);
 
     // While loop with complex boolean expression
-    result = run_while_test("var x = 1\n"
+    result = test_execute_expression("var x = 1\n"
                             "var y = 10\n"
                             "while x < 5 and y > 7 do\n"
                             "    x = x + 1\n"
@@ -226,7 +188,7 @@ void test_while_loop_edge_cases(void) {
     vm_release(result);
 
     // Nested while loops with 'do'
-    result = run_while_test("var total = 0\n"
+    result = test_execute_expression("var total = 0\n"
                             "var i = 1\n"
                             "while i <= 3 do\n"
                             "    var j = 1\n"
@@ -245,7 +207,7 @@ void test_basic_do_while_loops(void) {
     value_t result;
 
     // Basic do-while that executes once
-    result = run_while_test("var x = 5\n"
+    result = test_execute_expression("var x = 5\n"
                             "do\n"
                             "    x = x - 1\n"
                             "while x > 10\n"  // Condition is false from start
@@ -255,7 +217,7 @@ void test_basic_do_while_loops(void) {
     vm_release(result);
 
     // Do-while with multiple iterations
-    result = run_while_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                             "do\n"
                             "    count = count + 1\n"
                             "while count < 3\n"
@@ -265,7 +227,7 @@ void test_basic_do_while_loops(void) {
     vm_release(result);
 
     // Single-line do-while
-    result = run_while_test("var i = 10\n"
+    result = test_execute_expression("var i = 10\n"
                             "do i = i + 5 while i < 20\n"
                             "i");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -278,7 +240,7 @@ void test_do_while_break_continue(void) {
     value_t result;
 
     // Do-while with break
-    result = run_while_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                             "var i = 0\n"
                             "do\n"
                             "    i = i + 1\n"
@@ -291,7 +253,7 @@ void test_do_while_break_continue(void) {
     vm_release(result);
 
     // Do-while with continue
-    result = run_while_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                             "var i = 0\n"
                             "do\n"
                             "    i = i + 1\n"
@@ -309,7 +271,7 @@ void test_do_while_edge_cases(void) {
     value_t result;
 
     // Do-while that executes exactly once (condition always false)
-    result = run_while_test("var executed = 0\n"
+    result = test_execute_expression("var executed = 0\n"
                             "do\n"
                             "    executed = executed + 1\n"
                             "while false\n"
@@ -319,7 +281,7 @@ void test_do_while_edge_cases(void) {
     vm_release(result);
 
     // Nested do-while loops
-    result = run_while_test("var total = 0\n"
+    result = test_execute_expression("var total = 0\n"
                             "var outer = 0\n"
                             "do\n"
                             "    outer = outer + 1\n"
@@ -335,7 +297,7 @@ void test_do_while_edge_cases(void) {
     vm_release(result);
 
     // Do-while with complex condition
-    result = run_while_test("var x = 1\n"
+    result = test_execute_expression("var x = 1\n"
                             "var y = 5\n"
                             "do\n"
                             "    x = x * 2\n"

@@ -1,9 +1,8 @@
-#include "ast.h"
-#include "codegen.h"
+#include "test_helpers.h"
+#include "unity.h"
 #include "lexer.h"
 #include "parser.h"
-#include "unity.h"
-#include "vm.h"
+#include "ast.h"
 
 // Test parsing loop...end syntax
 void test_parse_infinite_loop(void) {
@@ -163,55 +162,13 @@ void test_loop_with_optional_end_marker(void) {
     lexer_cleanup(&lexer);
 }
 
-// Helper function to slate infinite loop test code and return result
-static value_t run_loop_test(const char* source) {
-    lexer_t lexer;
-    parser_t parser;
-
-    lexer_init(&lexer, source);
-    parser_init(&parser, &lexer);
-
-    ast_program* program = parse_program(&parser);
-    if (parser.had_error || !program) {
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-
-    slate_vm* vm = vm_create();
-    
-    codegen_t* codegen = codegen_create(vm);
-    function_t* function = codegen_compile(codegen, program);
-
-    if (codegen->had_error || !function) {
-        codegen_destroy(codegen);
-        ast_free((ast_node*)program);
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-
-    vm_result result = vm_execute(vm, function);
-
-    value_t return_value = make_null();
-    if (result == VM_OK) {
-        return_value = vm->result;
-        // Retain strings and other reference-counted types to survive cleanup
-        return_value = vm_retain(return_value);
-    }
-
-    vm_destroy(vm);
-    codegen_destroy(codegen);
-    ast_free((ast_node*)program);
-    lexer_cleanup(&lexer);
-
-    return return_value;
-}
 
 // Test infinite loop with break - basic execution
 void test_infinite_loop_with_break(void) {
     value_t result;
 
     // Simple infinite loop that breaks after 3 iterations
-    result = run_loop_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                            "loop\n"
                            "    count = count + 1\n"
                            "    if count >= 3 then break\n"
@@ -227,7 +184,7 @@ void test_infinite_loop_complex_break(void) {
     value_t result;
 
     // Loop with mathematical condition
-    result = run_loop_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                            "var i = 1\n"
                            "loop\n"
                            "    sum = sum + i\n"
@@ -245,7 +202,7 @@ void test_single_line_infinite_loop_with_break(void) {
     value_t result;
 
     // Single-line loops are limited - test with proper multiline syntax
-    result = run_loop_test("var x = 0\n"
+    result = test_execute_expression("var x = 0\n"
                            "loop\n"
                            "    x = x + 1\n"
                            "    if x == 1 then break\n"
@@ -260,7 +217,7 @@ void test_nested_infinite_loops_with_break(void) {
     value_t result;
 
     // For now, test a single loop that simulates nested behavior
-    result = run_loop_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                            "var stage = 1\n"
                            "loop\n"
                            "    count = count + 1\n"
@@ -280,7 +237,7 @@ void test_infinite_loop_break_variations(void) {
     value_t result;
 
     // Break with modulo condition
-    result = run_loop_test("var n = 1\n"
+    result = test_execute_expression("var n = 1\n"
                            "loop\n"
                            "    n = n + 1\n"
                            "    if n mod 7 == 0 then break\n"
@@ -291,7 +248,7 @@ void test_infinite_loop_break_variations(void) {
     vm_release(result);
 
     // Break with logical operators
-    result = run_loop_test("var a = 0\n"
+    result = test_execute_expression("var a = 0\n"
                            "var b = 10\n"
                            "loop\n"
                            "    a = a + 1\n"

@@ -1,60 +1,15 @@
 #include <stdlib.h>
 #include <string.h>
-#include "codegen.h"
-#include "lexer.h"
-#include "parser.h"
+#include "test_helpers.h"
 #include "unity.h"
-#include "vm.h"
 
-// Helper function to slate continue statement test code and return result
-static value_t run_continue_test(const char* source) {
-    lexer_t lexer;
-    parser_t parser;
-
-    lexer_init(&lexer, source);
-    parser_init(&parser, &lexer);
-
-    ast_program* program = parse_program(&parser);
-    if (parser.had_error || !program) {
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-
-    slate_vm* vm = vm_create();
-    
-    codegen_t* codegen = codegen_create(vm);
-    function_t* function = codegen_compile(codegen, program);
-
-    if (codegen->had_error || !function) {
-        codegen_destroy(codegen);
-        ast_free((ast_node*)program);
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-
-    vm_result result = vm_execute(vm, function);
-
-    value_t return_value = make_null();
-    if (result == VM_OK) {
-        return_value = vm->result;
-        // Retain strings and other reference-counted types to survive cleanup
-        return_value = vm_retain(return_value);
-    }
-
-    vm_destroy(vm);
-    codegen_destroy(codegen);
-    ast_free((ast_node*)program);
-    lexer_cleanup(&lexer);
-
-    return return_value;
-}
 
 // Test continue in while loop - skip odd numbers
 void test_continue_in_while_loop_skip_odd(void) {
     value_t result;
 
     // Sum only even numbers using continue to skip odd
-    result = run_continue_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                                "var i = 0\n"
                                "while i < 10 do\n"
                                "    i = i + 1\n"
@@ -72,7 +27,7 @@ void test_continue_in_infinite_loop(void) {
     value_t result;
 
     // Use continue to skip certain iterations
-    result = run_continue_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                                "var sum = 0\n"
                                "loop\n"
                                "    count = count + 1\n"
@@ -91,7 +46,7 @@ void test_continue_with_complex_conditions(void) {
     value_t result;
 
     // Continue with multiple conditions
-    result = run_continue_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                                "var processed = 0\n"
                                "while count < 20 do\n"
                                "    count = count + 1\n"
@@ -109,7 +64,7 @@ void test_continue_and_break_in_while(void) {
     value_t result;
 
     // Use both continue and break
-    result = run_continue_test("var i = 0\n"
+    result = test_execute_expression("var i = 0\n"
                                "var sum = 0\n"
                                "while i < 100 do\n"
                                "    i = i + 1\n"
@@ -128,7 +83,7 @@ void test_continue_and_break_in_loop(void) {
     value_t result;
 
     // Continue and break in infinite loop
-    result = run_continue_test("var n = 0\n"
+    result = test_execute_expression("var n = 0\n"
                                "var count = 0\n"
                                "loop\n"
                                "    n = n + 1\n"
@@ -147,7 +102,7 @@ void test_continue_in_single_line_if(void) {
     value_t result;
 
     // Continue in single-line if with then
-    result = run_continue_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                                "var i = 0\n"
                                "while i < 10 do\n"
                                "    i = i + 1\n"
@@ -165,7 +120,7 @@ void test_continue_skip_evens(void) {
     value_t result;
 
     // Sum only odd numbers
-    result = run_continue_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                                "var n = 0\n"
                                "while n < 10 do\n"
                                "    n = n + 1\n"
@@ -182,7 +137,7 @@ void test_continue_skip_evens(void) {
 void test_continue_with_nested_if(void) {
     value_t result;
 
-    result = run_continue_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                                "var sum = 0\n"
                                "while count < 15 do\n"
                                "    count = count + 1\n"
@@ -201,7 +156,7 @@ void test_continue_as_expression(void) {
     value_t result;
 
     // Test that continue works in expression context
-    result = run_continue_test("var i = 0\n"
+    result = test_execute_expression("var i = 0\n"
                                "var skipped = 0\n"
                                "while i < 10 do\n"
                                "    i = i + 1\n"
@@ -219,7 +174,7 @@ void test_continue_at_boundaries(void) {
     value_t result;
 
     // Continue on first iteration
-    result = run_continue_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                                "var i = 0\n"
                                "while i < 5 do\n"
                                "    i = i + 1\n"
@@ -231,7 +186,7 @@ void test_continue_at_boundaries(void) {
     TEST_ASSERT_EQUAL_INT32(14, result.as.int32); // 2+3+4+5 = 14
 
     // Continue on last iteration
-    result = run_continue_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                                "var i = 0\n"
                                "while i < 5 do\n"
                                "    i = i + 1\n"

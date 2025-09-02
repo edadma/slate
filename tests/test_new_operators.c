@@ -1,57 +1,19 @@
 #include "unity.h"
+#include "test_helpers.h"
 #include <stdio.h>
 #include <string.h>
-#include "lexer.h"
-#include "parser.h"
-#include "codegen.h"
-#include "vm.h"
-#include "ast.h"
 
-// Test helper - based on existing run_code function
-static value_t run_expression(const char* source) {
-    lexer_t lexer;
-    parser_t parser;
-
-    lexer_init(&lexer, source);
-    parser_init(&parser, &lexer);
-
-    ast_program* program = parse_program(&parser);
-    if (parser.had_error || !program) {
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-
-    slate_vm* vm = vm_create();
-    
-    codegen_t* codegen = codegen_create(vm);
-    function_t* function = codegen_compile(codegen, program);
-    vm_result result = vm_execute(vm, function);
-
-    value_t return_value = make_null();
-    if (result == VM_OK) {
-        return_value = vm->result;
-        // Retain strings and other reference-counted types to survive cleanup
-        return_value = vm_retain(return_value);
-    }
-
-    vm_destroy(vm);
-    codegen_destroy(codegen);
-    ast_free((ast_node*)program);
-    lexer_cleanup(&lexer);
-
-    return return_value;
-}
 
 // Helper to run test and cleanup
 static void test_expression_equals_int(const char* source, int expected) {
-    value_t result = run_expression(source);
+    value_t result = test_execute_expression(source);
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(expected, result.as.int32);
     vm_release(result);
 }
 
 static void test_expression_equals_bool(const char* source, int expected) {
-    value_t result = run_expression(source);
+    value_t result = test_execute_expression(source);
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(expected, result.as.boolean);
     vm_release(result);
@@ -155,7 +117,7 @@ void test_instanceof_negative_cases() {
 
 void test_instanceof_rejects_primitive_type_names() {
     // This should cause a runtime error
-    value_t result = run_expression("42 instanceof \"number\"");
+    value_t result = test_execute_expression("42 instanceof \"number\"");
     TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type); // Runtime error results in null
     vm_release(result);
 }

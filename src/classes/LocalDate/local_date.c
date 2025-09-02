@@ -3,7 +3,8 @@
 #include "dynamic_object.h"
 #include "datetime.h"
 #include "value.h"
-#include <assert.h>
+#include "runtime_error.h"
+#include "library_assert.h"
 #include <string.h>
 
 // External reference to global LocalDate class storage (declared in datetime.c)
@@ -30,7 +31,15 @@ value_t local_date_factory(value_t* args, int arg_count) {
     }
     
     local_date_t* date = local_date_create(NULL, year, month, day);
-    assert(date != NULL); // Per user: allocation failures are assertion failures
+    if (!date) {
+        if (g_current_vm) {
+            slate_runtime_error(g_current_vm, ERR_OOM, __FILE__, __LINE__, -1, 
+                               "Memory allocation failed");
+        } else {
+            fprintf(stderr, "Memory allocation failed\n");
+            abort();
+        }
+    }
     return make_local_date(date);
 }
 

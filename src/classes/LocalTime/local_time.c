@@ -3,7 +3,8 @@
 #include "dynamic_object.h"
 #include "datetime.h"
 #include "value.h"
-#include <assert.h>
+#include "runtime_error.h"
+#include "library_assert.h"
 #include <string.h>
 
 // External reference to global LocalTime class storage (declared in datetime.c)
@@ -35,7 +36,15 @@ value_t local_time_factory(value_t* args, int arg_count) {
     }
     
     local_time_t* time = local_time_create(NULL, hour, minute, second, millis);
-    assert(time != NULL); // Per user: allocation failures are assertion failures
+    if (!time) {
+        if (g_current_vm) {
+            slate_runtime_error(g_current_vm, ERR_OOM, __FILE__, __LINE__, -1, 
+                               "Memory allocation failed");
+        } else {
+            fprintf(stderr, "Memory allocation failed\n");
+            abort();
+        }
+    }
     return make_local_time(time);
 }
 
@@ -124,7 +133,10 @@ value_t builtin_local_time_plus_hours(slate_vm* vm, int arg_count, value_t* args
     int hours = value_to_int(args[1]);
     
     local_time_t* new_time = local_time_plus_hours(NULL, time, hours);
-    assert(new_time != NULL);
+    if (!new_time) {
+        slate_runtime_error(vm, ERR_OOM, __FILE__, __LINE__, -1, 
+                           "Memory allocation failed");
+    }
     
     return make_local_time(new_time);
 }
@@ -150,7 +162,10 @@ value_t builtin_local_time_plus_minutes(slate_vm* vm, int arg_count, value_t* ar
     int minutes = value_to_int(args[1]);
     
     local_time_t* new_time = local_time_plus_minutes(NULL, time, minutes);
-    assert(new_time != NULL);
+    if (!new_time) {
+        slate_runtime_error(vm, ERR_OOM, __FILE__, __LINE__, -1, 
+                           "Memory allocation failed");
+    }
     
     return make_local_time(new_time);
 }
@@ -176,7 +191,10 @@ value_t builtin_local_time_plus_seconds(slate_vm* vm, int arg_count, value_t* ar
     int seconds = value_to_int(args[1]);
     
     local_time_t* new_time = local_time_plus_seconds(NULL, time, seconds);
-    assert(new_time != NULL);
+    if (!new_time) {
+        slate_runtime_error(vm, ERR_OOM, __FILE__, __LINE__, -1, 
+                           "Memory allocation failed");
+    }
     
     return make_local_time(new_time);
 }
@@ -202,7 +220,10 @@ value_t builtin_local_time_minus_hours(slate_vm* vm, int arg_count, value_t* arg
     int hours = value_to_int(args[1]);
     
     local_time_t* new_time = local_time_plus_hours(NULL, time, -hours);
-    assert(new_time != NULL);
+    if (!new_time) {
+        slate_runtime_error(vm, ERR_OOM, __FILE__, __LINE__, -1, 
+                           "Memory allocation failed");
+    }
     
     return make_local_time(new_time);
 }
@@ -228,7 +249,10 @@ value_t builtin_local_time_minus_minutes(slate_vm* vm, int arg_count, value_t* a
     int minutes = value_to_int(args[1]);
     
     local_time_t* new_time = local_time_plus_minutes(NULL, time, -minutes);
-    assert(new_time != NULL);
+    if (!new_time) {
+        slate_runtime_error(vm, ERR_OOM, __FILE__, __LINE__, -1, 
+                           "Memory allocation failed");
+    }
     
     return make_local_time(new_time);
 }
@@ -254,7 +278,10 @@ value_t builtin_local_time_minus_seconds(slate_vm* vm, int arg_count, value_t* a
     int seconds = value_to_int(args[1]);
     
     local_time_t* new_time = local_time_plus_seconds(NULL, time, -seconds);
-    assert(new_time != NULL);
+    if (!new_time) {
+        slate_runtime_error(vm, ERR_OOM, __FILE__, __LINE__, -1, 
+                           "Memory allocation failed");
+    }
     
     return make_local_time(new_time);
 }
@@ -341,8 +368,10 @@ value_t builtin_local_time_to_string(slate_vm* vm, int arg_count, value_t* args)
     
     local_time_t* time = args[0].as.local_time;
     char* str = local_time_to_string(NULL, time);
-    
-    assert(str != NULL);
+    if (!str) {
+        slate_runtime_error(vm, ERR_OOM, __FILE__, __LINE__, -1, 
+                           "Memory allocation failed");
+    }
     
     value_t result = make_string(str);
     free(str);  // make_string copies the string

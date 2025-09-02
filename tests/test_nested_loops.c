@@ -1,60 +1,15 @@
 #include <stdlib.h>
 #include <string.h>
-#include "codegen.h"
-#include "lexer.h"
-#include "parser.h"
+#include "test_helpers.h"
 #include "unity.h"
-#include "vm.h"
 
-// Helper function to slate nested loop test code and return result
-static value_t run_nested_loop_test(const char* source) {
-    lexer_t lexer;
-    parser_t parser;
-
-    lexer_init(&lexer, source);
-    parser_init(&parser, &lexer);
-
-    ast_program* program = parse_program(&parser);
-    if (parser.had_error || !program) {
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-
-    slate_vm* vm = vm_create();
-    
-    codegen_t* codegen = codegen_create(vm);
-    function_t* function = codegen_compile(codegen, program);
-
-    if (codegen->had_error || !function) {
-        codegen_destroy(codegen);
-        ast_free((ast_node*)program);
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-
-    vm_result result = vm_execute(vm, function);
-
-    value_t return_value = make_null();
-    if (result == VM_OK) {
-        return_value = vm->result;
-        // Retain strings and other reference-counted types to survive cleanup
-        return_value = vm_retain(return_value);
-    }
-
-    vm_destroy(vm);
-    codegen_destroy(codegen);
-    ast_free((ast_node*)program);
-    lexer_cleanup(&lexer);
-
-    return return_value;
-}
 
 // Test nested while loops with continue in inner loop
 void test_nested_while_continue_inner(void) {
     value_t result;
 
     // Continue affects only inner loop
-    result = run_nested_loop_test("var total = 0\n"
+    result = test_execute_expression("var total = 0\n"
                                   "var outer = 0\n"
                                   "while outer < 3 do\n"
                                   "    outer = outer + 1\n"
@@ -77,7 +32,7 @@ void test_nested_while_continue_outer(void) {
     value_t result;
 
     // Continue affects outer loop, skipping inner loop entirely
-    result = run_nested_loop_test("var total = 0\n"
+    result = test_execute_expression("var total = 0\n"
                                   "var outer = 0\n"
                                   "while outer < 5 do\n"
                                   "    outer = outer + 1\n"
@@ -100,7 +55,7 @@ void test_nested_while_break_inner(void) {
     value_t result;
 
     // Break affects only inner loop
-    result = run_nested_loop_test("var total = 0\n"
+    result = test_execute_expression("var total = 0\n"
                                   "var outer = 0\n"
                                   "while outer < 3 do\n"
                                   "    outer = outer + 1\n"
@@ -123,7 +78,7 @@ void test_nested_while_break_outer(void) {
     value_t result;
 
     // Break affects outer loop, stopping everything
-    result = run_nested_loop_test("var total = 0\n"
+    result = test_execute_expression("var total = 0\n"
                                   "var outer = 0\n"
                                   "while outer < 10 do\n"
                                   "    outer = outer + 1\n"
@@ -145,7 +100,7 @@ void test_nested_while_break_outer(void) {
 void test_while_in_infinite_loop(void) {
     value_t result;
 
-    result = run_nested_loop_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                                   "var outer = 0\n"
                                   "loop\n"
                                   "    outer = outer + 1\n"
@@ -169,7 +124,7 @@ void test_while_in_infinite_loop(void) {
 void test_infinite_loop_in_while(void) {
     value_t result;
 
-    result = run_nested_loop_test("var total = 0\n"
+    result = test_execute_expression("var total = 0\n"
                                   "var outer = 0\n"
                                   "while outer < 2 do\n"
                                   "    outer = outer + 1\n"
@@ -193,7 +148,7 @@ void test_infinite_loop_in_while(void) {
 void test_triple_nested_loops(void) {
     value_t result;
 
-    result = run_nested_loop_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                                   "var i = 0\n"
                                   "while i < 2 do\n"
                                   "    i = i + 1\n"
@@ -222,7 +177,7 @@ void test_triple_nested_loops(void) {
 void test_mixed_break_continue_nested(void) {
     value_t result;
 
-    result = run_nested_loop_test("var result = 0\n"
+    result = test_execute_expression("var result = 0\n"
                                   "var outer = 0\n"
                                   "while outer < 5 do\n"
                                   "    outer = outer + 1\n"
@@ -247,7 +202,7 @@ void test_continue_scope_correctness(void) {
     value_t result;
 
     // Continue in innermost loop should not affect outer loops
-    result = run_nested_loop_test("var trace = 0\n"
+    result = test_execute_expression("var trace = 0\n"
                                   "var i = 0\n"
                                   "while i < 3 do\n"
                                   "    i = i + 1\n"

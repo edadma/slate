@@ -1,53 +1,18 @@
 #include <stdlib.h>
 #include <string.h>
-#include "codegen.h"
+#include "test_helpers.h"
+#include "unity.h"
 #include "lexer.h"
 #include "parser.h"
-#include "unity.h"
-#include "vm.h"
+#include "ast.h"
 
-// Helper function to run for loop code and return result
-static value_t run_for_test(const char* source) {
-    lexer_t lexer;
-    parser_t parser;
-
-    lexer_init(&lexer, source);
-    parser_init(&parser, &lexer);
-
-    ast_program* program = parse_program(&parser);
-    if (parser.had_error || !program) {
-        lexer_cleanup(&lexer);
-        return make_null();
-    }
-
-    slate_vm* vm = vm_create();
-    
-    codegen_t* codegen = codegen_create(vm);
-    function_t* function = codegen_compile(codegen, program);
-
-    vm_result result = vm_execute(vm, function);
-
-    value_t return_value = make_null();
-    if (result == VM_OK) {
-        return_value = vm->result;
-        // Retain strings and other reference-counted types to survive cleanup
-        return_value = vm_retain(return_value);
-    }
-
-    vm_destroy(vm);
-    codegen_destroy(codegen);
-    ast_free((ast_node*)program);
-    lexer_cleanup(&lexer);
-
-    return return_value;
-}
 
 // Test basic for loop with do keyword
 void test_basic_for_loop_with_do(void) {
     value_t result;
 
     // Simple sum loop
-    result = run_for_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                          "for var i = 0; i < 5; i += 1 do sum = sum + i\n"
                          "sum");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -58,7 +23,7 @@ void test_basic_for_loop_with_do(void) {
 void test_for_loop_without_do(void) {
     value_t result;
 
-    result = run_for_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                          "for var i = 1; i <= 3; i += 1\n"
                          "    sum = sum + i\n"
                          "sum");
@@ -70,7 +35,7 @@ void test_for_loop_without_do(void) {
 void test_for_loop_decrementing(void) {
     value_t result;
 
-    result = run_for_test("var result = 0\n"
+    result = test_execute_expression("var result = 0\n"
                          "for var i = 5; i > 0; i -= 1 do result = result * 10 + i\n"
                          "result");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -81,7 +46,7 @@ void test_for_loop_decrementing(void) {
 void test_for_loop_no_initializer(void) {
     value_t result;
 
-    result = run_for_test("var i = 0\n"
+    result = test_execute_expression("var i = 0\n"
                          "var sum = 0\n"
                          "for ; i < 3; i += 1 do sum = sum + i\n"
                          "sum");
@@ -93,7 +58,7 @@ void test_for_loop_no_initializer(void) {
 void test_for_loop_no_condition(void) {
     value_t result;
 
-    result = run_for_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                          "for var i = 0; ; i += 1 do\n"  // Added 'do' keyword
                          "    if i >= 3 then break else count = count + 1\n"
                          "count");
@@ -105,7 +70,7 @@ void test_for_loop_no_condition(void) {
 void test_for_loop_no_increment(void) {
     value_t result;
 
-    result = run_for_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                          "for var i = 0; i < 3;\n"
                          "    sum = sum + i\n"
                          "    i = i + 1\n"  // Manual increment in body
@@ -118,7 +83,7 @@ void test_for_loop_no_increment(void) {
 void test_for_loop_complex_expressions(void) {
     value_t result;
 
-    result = run_for_test("var result = 0\n"
+    result = test_execute_expression("var result = 0\n"
                          "for var i = 2 * 3; i < 5 + 5; i += 2 do result = result + i\n"
                          "result");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -130,7 +95,7 @@ void test_nested_for_loops(void) {
     value_t result;
 
     // Test multiple loop variables working together  
-    result = run_for_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                          "for var count = 0; count < 6; count += 1 do sum = sum + count\n"
                          "sum");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -142,7 +107,7 @@ void test_for_loop_scope_isolation(void) {
     value_t result;
 
     // Test that loop variable doesn't leak out
-    result = run_for_test("var x = 100\n"
+    result = test_execute_expression("var x = 100\n"
                          "for var i = 0; i < 3; i += 1 do i\n"
                          "x");  // Should return x, not i (i is out of scope)
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -153,7 +118,7 @@ void test_for_loop_scope_isolation(void) {
 void test_for_loop_with_break(void) {
     value_t result;
 
-    result = run_for_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                          "for var i = 0; i < 10; i += 1\n"
                          "    if i == 3 then break else count = count + 1\n"
                          "count");
@@ -165,7 +130,7 @@ void test_for_loop_with_break(void) {
 void test_for_loop_with_break_do_syntax(void) {
     value_t result;
 
-    result = run_for_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                          "for var i = 0; i < 10; i += 1 do\n"
                          "    if i == 3 then break else count = count + 1\n"
                          "count");
@@ -177,7 +142,7 @@ void test_for_loop_with_break_do_syntax(void) {
 void test_for_loop_with_continue(void) {
     value_t result;
 
-    result = run_for_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                          "for var i = 0; i < 5; i += 1\n"
                          "    if i == 2 then continue else sum = sum + i\n"
                          "sum");
@@ -189,7 +154,7 @@ void test_for_loop_with_continue(void) {
 void test_for_loop_with_continue_do_syntax(void) {
     value_t result;
 
-    result = run_for_test("var sum = 0\n"
+    result = test_execute_expression("var sum = 0\n"
                          "for var i = 0; i < 5; i += 1 do\n"
                          "    if i == 2 then continue else sum = sum + i\n"
                          "sum");
@@ -201,7 +166,7 @@ void test_for_loop_with_continue_do_syntax(void) {
 void test_for_loop_empty_components(void) {
     value_t result;
 
-    result = run_for_test("var count = 0\n"
+    result = test_execute_expression("var count = 0\n"
                          "for ;; do\n"  // Added 'do' keyword
                          "    count = count + 1\n"
                          "    if count >= 5 then break else count\n"
@@ -214,7 +179,7 @@ void test_for_loop_empty_components(void) {
 void test_for_loop_inner_scope_variables(void) {
     value_t result;
 
-    result = run_for_test("var outer = 0\n"
+    result = test_execute_expression("var outer = 0\n"
                          "for var i = 0; i < 2; i += 1\n"
                          "    var inner = i * 10\n"
                          "    outer = outer + inner\n"
@@ -227,7 +192,7 @@ void test_for_loop_inner_scope_variables(void) {
 void test_for_loop_multiple_statements_in_body(void) {
     value_t result;
 
-    result = run_for_test("var result = 0\n"
+    result = test_execute_expression("var result = 0\n"
                          "for var i = 1; i <= 3; i += 1 do\n"
                          "    var temp = i * i\n"
                          "    result = result + temp\n"
@@ -240,7 +205,7 @@ void test_for_loop_multiple_statements_in_body(void) {
 void test_for_loop_expression_as_body(void) {
     value_t result;
 
-    result = run_for_test("var last = 0\n"
+    result = test_execute_expression("var last = 0\n"
                          "for var i = 1; i <= 3; i += 1 do last = i\n"
                          "last");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
@@ -251,7 +216,7 @@ void test_for_loop_expression_as_body(void) {
 void test_for_loop_with_string_concatenation(void) {
     value_t result;
 
-    result = run_for_test("var result = \"\"\n"
+    result = test_execute_expression("var result = \"\"\n"
                          "for var i = 0; i < 3; i += 1 do result = result + i\n"
                          "result");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
@@ -263,7 +228,7 @@ void test_for_loop_with_string_concatenation(void) {
 void test_for_loop_compound_assignment_variations(void) {
     value_t result;
 
-    result = run_for_test("var result = 1\n"
+    result = test_execute_expression("var result = 1\n"
                          "for var i = 1; i <= 3; i *= 2 do result = result * i\n"
                          "result");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
