@@ -389,6 +389,6 @@ void test_class_localtime_suite(void) {
     RUN_TEST(test_localtime_comparisons);
     RUN_TEST(test_localtime_string_representation);
     RUN_TEST(test_localtime_type_function);
-    // RUN_TEST(test_localtime_invalid_values); // Commented out: invalid times now cause runtime errors that terminate
+    RUN_TEST(test_localtime_invalid_values);
     RUN_TEST(test_localtime_immutability);
 }

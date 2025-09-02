@@ -882,5 +882,5 @@ void test_conditionals_suite(void) {
     RUN_TEST(test_end_markers);
     RUN_TEST(test_complex_block_expressions);
     RUN_TEST(test_direct_if_blocks);
-    // RUN_TEST(test_edge_cases); // Disabled - indented block parsing issues
+    RUN_TEST(test_edge_cases);
 }

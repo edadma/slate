@@ -166,16 +166,23 @@ void test_integer_equality() {
 
 void test_large_integer_parsing() {
     // Test parsing integers that are too large for int32
-    // These should either become BigInt or fall back to double
+    // These should become BigInt
     
     // This will overflow int32 during parsing
     char large_int[32];
     sprintf(large_int, "%lld", (long long)INT32_MAX + 1000LL);
     
     value_t result = test_execute_expression(large_int);
-    // For now, should fall back to double
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE((double)INT32_MAX + 1000.0, result.as.number);
+    // Should be parsed as BigInt
+    TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
+    
+    // Verify the actual value is correct
+    char* str = di_to_string(result.as.bigint, 10);
+    char expected[32];
+    sprintf(expected, "%lld", (long long)INT32_MAX + 1000LL);
+    TEST_ASSERT_EQUAL_STRING(expected, str);
+    free(str);
+    vm_release(result);
 }
 
 
@@ -189,7 +196,7 @@ void test_class_int_suite(void) {
     RUN_TEST(test_vm_integer_value_creation);
     RUN_TEST(test_integer_truthiness);
     RUN_TEST(test_integer_equality);
-    // RUN_TEST(test_large_integer_parsing);  // Uses execute_expression
+    RUN_TEST(test_large_integer_parsing);
     RUN_TEST(test_hexadecimal_literals);
     RUN_TEST(test_hexadecimal_arithmetic);
 }

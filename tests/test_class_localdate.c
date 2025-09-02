@@ -349,6 +349,6 @@ void test_class_localdate_suite(void) {
     RUN_TEST(test_localdate_year_boundaries);
     RUN_TEST(test_localdate_type_function);
     RUN_TEST(test_localdate_string_representation);
-    // RUN_TEST(test_localdate_invalid_dates); // Commented out: invalid dates now cause runtime errors that terminate
+    RUN_TEST(test_localdate_invalid_dates);
     RUN_TEST(test_localdate_leap_year_cases);
 }
