@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "runtime_error.h"
 
 vm_result op_get_global(slate_vm* vm) {
     uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
@@ -6,14 +7,13 @@ vm_result op_get_global(slate_vm* vm) {
     // Get the current executing function from the current frame
     function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
     if (name_constant >= current_func->constant_count) {
-        printf("Runtime error: Constant index %d out of bounds (max %zu)\n", 
-               name_constant, current_func->constant_count - 1);
-        return VM_RUNTIME_ERROR;
+        slate_runtime_error(vm, ERR_ASSERT, __FILE__, __LINE__, -1, 
+                           "Constant index %d out of bounds (max %zu)", 
+                           name_constant, current_func->constant_count - 1);
     }
     value_t name_val = current_func->constants[name_constant];
     if (name_val.type != VAL_STRING) {
-        printf("Runtime error: Global variable name must be a string\n");
-        return VM_RUNTIME_ERROR;
+        slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Global variable name must be a string");
     }
     char* name = name_val.as.string;
     
@@ -38,8 +38,7 @@ vm_result op_get_global(slate_vm* vm) {
     if (stored_value) {
         vm_push(vm, *stored_value);
     } else {
-        printf("Runtime error: Undefined variable '%s'\n", name);
-        return VM_RUNTIME_ERROR;
+        slate_runtime_error(vm, ERR_REFERENCE, __FILE__, __LINE__, -1, "Undefined variable '%s'", name);
     }
     
     return VM_OK;

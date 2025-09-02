@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "runtime_error.h"
 #include <stdlib.h>
 
 vm_result op_build_array(slate_vm* vm) {
@@ -14,10 +15,9 @@ vm_result op_build_array(slate_vm* vm) {
         elements[i] = vm_pop(vm);
         // Check if trying to store undefined (not a first-class value)
         if (elements[i].type == VAL_UNDEFINED) {
-            printf("Runtime error: Cannot store 'undefined' in array - it is not a value\n");
+            slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Cannot store 'undefined' in array - it is not a value");
             free(elements);
             da_release(&array);
-            return VM_RUNTIME_ERROR;
         }
     }
     

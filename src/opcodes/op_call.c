@@ -63,7 +63,7 @@ vm_result op_call(slate_vm* vm) {
         
         // Check argument count
         if (arg_count != func->parameter_count) {
-            printf("Runtime error: Expected %zu arguments but got %d\n", func->parameter_count, arg_count);
+            slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Expected %zu arguments but got %d", func->parameter_count, arg_count);
             if (callable.type == VAL_FUNCTION) {
                 closure_destroy(closure);
             }
@@ -74,12 +74,11 @@ vm_result op_call(slate_vm* vm) {
                 free(args);
             }
             vm_release(callable);
-            return VM_RUNTIME_ERROR;
         }
         
         // Check if we have room for another call frame
         if (vm->frame_count >= vm->frame_capacity) {
-            printf("Runtime error: Stack overflow\n");
+            slate_runtime_error(vm, ERR_ASSERT, __FILE__, __LINE__, -1, "Stack overflow");
             if (callable.type == VAL_FUNCTION) {
                 closure_destroy(closure);
             }
@@ -90,7 +89,6 @@ vm_result op_call(slate_vm* vm) {
                 free(args);
             }
             vm_release(callable);
-            return VM_RUNTIME_ERROR;
         }
         
         // Push arguments onto the VM stack (they become the function's local variables)
@@ -128,7 +126,7 @@ vm_result op_call(slate_vm* vm) {
     // Handle array indexing (arrays are callable with one integer argument)
     if (callable.type == VAL_ARRAY) {
         if (arg_count != 1) {
-            printf("Runtime error: Array indexing requires exactly one argument\n");
+            slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Array indexing requires exactly one argument");
             if (args) {
                 for (int i = 0; i < arg_count; i++) {
                     vm_release(args[i]);
@@ -136,7 +134,6 @@ vm_result op_call(slate_vm* vm) {
                 free(args);
             }
             vm_release(callable);
-            return VM_RUNTIME_ERROR;
         }
 
         value_t index_val = args[0];
@@ -174,7 +171,7 @@ vm_result op_call(slate_vm* vm) {
     // Handle string indexing (strings are callable with one integer argument)
     if (callable.type == VAL_STRING) {
         if (arg_count != 1) {
-            printf("Runtime error: String indexing requires exactly one argument\n");
+            slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "String indexing requires exactly one argument");
             if (args) {
                 for (int i = 0; i < arg_count; i++) {
                     vm_release(args[i]);
@@ -182,16 +179,14 @@ vm_result op_call(slate_vm* vm) {
                 free(args);
             }
             vm_release(callable);
-            return VM_RUNTIME_ERROR;
         }
 
         value_t index_val = args[0];
         if (index_val.type != VAL_INT32) {
-            printf("Runtime error: String index must be an integer\n");
+            slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "String index must be an integer");
             vm_release(args[0]);
             free(args);
             vm_release(callable);
-            return VM_RUNTIME_ERROR;
         }
 
         int32_t index = index_val.as.int32;

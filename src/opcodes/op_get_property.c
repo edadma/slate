@@ -1,12 +1,12 @@
 #include "vm.h"
+#include "runtime_error.h"
 
 vm_result op_get_property(slate_vm* vm) {
     value_t property = vm_pop(vm);
     value_t object = vm_pop(vm);
 
     if (property.type != VAL_STRING) {
-        printf("Runtime error: Property name must be a string\n");
-        return VM_RUNTIME_ERROR;
+        slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Property name must be a string");
     }
 
     const char* prop_name = property.as.string;

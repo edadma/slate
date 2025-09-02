@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "runtime_error.h"
 
 vm_result op_pop_n(slate_vm* vm) {
     // Get the count of values to pop (operand)
@@ -8,8 +9,7 @@ vm_result op_pop_n(slate_vm* vm) {
     // Pop and release the specified number of values
     for (int i = 0; i < count; i++) {
         if (vm->stack_top <= vm->stack) {
-            printf("Runtime error: Stack underflow in POP_N\n");
-            return VM_RUNTIME_ERROR;
+            slate_runtime_error(vm, ERR_ASSERT, __FILE__, __LINE__, -1, "Stack underflow in POP_N");
         }
         value_t value = vm_pop(vm);
         vm_release(value);

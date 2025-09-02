@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "runtime_error.h"
 
 vm_result op_call_method(slate_vm* vm) {
     uint16_t arg_count = *vm->ip | (*(vm->ip + 1) << 8);
@@ -54,7 +55,7 @@ vm_result op_call_method(slate_vm* vm) {
     }
 
     // If method is not callable
-    printf("Runtime error: Method is not callable\n");
+    slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Method is not callable");
     if (args) {
         for (int i = 0; i < arg_count; i++) {
             vm_release(args[i]);
@@ -63,5 +64,4 @@ vm_result op_call_method(slate_vm* vm) {
     }
     vm_release(method);
     vm_release(receiver);
-    return VM_RUNTIME_ERROR;
 }
