@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "datetime.h"
+#include "instant.h"
 
 // Value creation functions with debug info
 
@@ -233,8 +234,19 @@ ds_string value_to_string_representation(vm_t* vm, value_t value) {
     }
     case VAL_ZONED_DATETIME:
         return ds_new("<ZonedDateTime>");  // TODO: implement string conversion
-    case VAL_INSTANT:
-        return ds_new("<Instant>");  // TODO: implement string conversion
+    case VAL_INSTANT: {
+        // Use the toString method for proper ISO 8601 formatting
+        value_t str_result = instant_to_string(vm, 1, &value);
+        if (str_result.type == VAL_STRING) {
+            ds_string result = ds_new(str_result.as.string);
+            vm_release(str_result);
+            return result;
+        } else {
+            char buffer[64];
+            snprintf(buffer, sizeof(buffer), "<Instant:%ld>", value.as.instant_millis);
+            return ds_new(buffer);
+        }
+    }
     case VAL_DURATION:
         return ds_new("<Duration>");  // TODO: implement string conversion
     case VAL_PERIOD:

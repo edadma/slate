@@ -1,5 +1,6 @@
 #include "datetime.h"
 #include "builtins.h"
+#include "instant.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -713,6 +714,11 @@ bool local_datetime_is_after(const local_datetime_t* a, const local_datetime_t* 
 // ============================================================================
 
 void init_datetime_classes(vm_t* vm) {
-    // TODO: Initialize date/time classes and add to global scope
-    // This will be implemented when we add the class infrastructure
+    // Initialize Instant class
+    init_instant_class(vm);
+    
+    // TODO: Initialize other date/time classes when implemented
+    // init_local_date_class(vm);
+    // init_local_time_class(vm);
+    // init_local_datetime_class(vm);
 }

@@ -4,6 +4,7 @@
 #include <math.h>
 #include <limits.h>
 #include "datetime.h"
+#include "instant.h"
 #include "builtins.h"
 
 // External reference to global VM pointer (defined in vm/lifecycle.c)
@@ -117,11 +118,13 @@ int values_equal(value_t a, value_t b) {
         return local_time_equals(a.as.local_time, b.as.local_time);
     case VAL_LOCAL_DATETIME:
     case VAL_ZONED_DATETIME:
-    case VAL_INSTANT:
     case VAL_DURATION:
     case VAL_PERIOD:
         // For now, use reference equality for complex types
         return a.as.local_datetime == b.as.local_datetime;
+    case VAL_INSTANT:
+        // Direct comparison of epoch milliseconds
+        return a.as.instant_millis == b.as.instant_millis;
     default:
         return 0;
     }
@@ -306,7 +309,14 @@ void print_value(vm_t* vm, value_t value) {
         break;
     }
     case VAL_INSTANT: {
-        printf("<Instant>");  // TODO: implement string conversion
+        // Use the toString method for proper ISO 8601 formatting
+        value_t str_result = instant_to_string(vm, 1, &value);
+        if (str_result.type == VAL_STRING) {
+            printf("%s", str_result.as.string);
+            vm_release(str_result);
+        } else {
+            printf("<Instant:%ld>", value.as.instant_millis);
+        }
         break;
     }
     case VAL_DURATION: {

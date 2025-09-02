@@ -34,9 +34,7 @@ local_time_t* local_time_now(vm_t* vm);
 local_datetime_t* local_datetime_create(vm_t* vm, local_date_t* date, local_time_t* time);
 local_datetime_t* local_datetime_now(vm_t* vm);
 
-// Instant factory functions
-instant_t* instant_create(int64_t epoch_seconds, uint32_t nanos);
-instant_t* instant_now(void);
+// Instant factory functions - now handled by Instant class
 
 // Duration factory functions
 duration_t* duration_create(int64_t seconds, int32_t nanos);
@@ -55,7 +53,7 @@ period_t* period_of_days(int days);
 value_t make_local_date_value(vm_t* vm, int year, int month, int day);
 value_t make_local_time_value(vm_t* vm, int hour, int minute, int second, int millis);
 value_t make_local_datetime_value(vm_t* vm, local_date_t* date, local_time_t* time);
-value_t make_instant_value(int64_t epoch_seconds, uint32_t nanos);
+// make_instant_value - now handled by make_instant_direct
 value_t make_duration_value(int64_t seconds, int32_t nanos);
 value_t make_period_value(int years, int months, int days);
 

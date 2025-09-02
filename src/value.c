@@ -44,7 +44,7 @@ value_t vm_retain(value_t value) {
     } else if (value.type == VAL_ZONED_DATETIME) {
         value.as.zoned_datetime->ref_count++;
     } else if (value.type == VAL_INSTANT) {
-        value.as.instant->ref_count++;
+        // Direct storage - no reference counting needed
     } else if (value.type == VAL_DURATION) {
         value.as.duration->ref_count++;
     } else if (value.type == VAL_PERIOD) {
@@ -102,8 +102,8 @@ void vm_release(value_t value) {
         local_datetime_release(value.as.local_datetime);
     } else if (value.type == VAL_ZONED_DATETIME && value.as.zoned_datetime) {
         zoned_datetime_release(value.as.zoned_datetime);
-    } else if (value.type == VAL_INSTANT && value.as.instant) {
-        instant_release(value.as.instant);
+    } else if (value.type == VAL_INSTANT) {
+        // Direct storage - no memory to release
     } else if (value.type == VAL_DURATION && value.as.duration) {
         duration_release(value.as.duration);
     } else if (value.type == VAL_PERIOD && value.as.period) {
@@ -368,10 +368,10 @@ value_t make_zoned_datetime(zoned_datetime_t* datetime) {
     return value;
 }
 
-value_t make_instant(instant_t* instant) {
+value_t make_instant_direct(int64_t epoch_millis) {
     value_t value;
     value.type = VAL_INSTANT;
-    value.as.instant = instant;
+    value.as.instant_millis = epoch_millis;
     value.class = global_instant_class;
     value.debug = NULL;
     return value;
@@ -557,8 +557,8 @@ value_t make_zoned_datetime_with_debug(zoned_datetime_t* datetime, debug_locatio
     return value;
 }
 
-value_t make_instant_with_debug(instant_t* instant, debug_location* debug) {
-    value_t value = make_instant(instant);
+value_t make_instant_direct_with_debug(int64_t epoch_millis, debug_location* debug) {
+    value_t value = make_instant_direct(epoch_millis);
     value.debug = copy_debug_location(debug);
     return value;
 }

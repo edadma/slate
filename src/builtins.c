@@ -19,6 +19,7 @@
 #include "local_date.h"
 #include "local_datetime.h"
 #include "local_time.h"
+#include "instant.h"
 #include "range.h"
 #include "runtime_error.h"
 #include "value.h"
@@ -131,6 +132,8 @@ void builtins_init(vm_t* vm) {
 
     // Initialize LocalDateTime class
     local_datetime_class_init(vm);
+    // Initialize Instant class
+    init_instant_class(vm);
 
     // Initialize Buffer class
     buffer_class_init(vm);

@@ -90,7 +90,7 @@ struct value {
         local_time_t* local_time; // Time without date or time zone
         local_datetime_t* local_datetime; // Date and time without time zone
         zoned_datetime_t* zoned_datetime; // Date and time with time zone
-        instant_t* instant; // Point in time (Unix timestamp)
+        int64_t instant_millis; // Point in time (epoch milliseconds, direct storage)
         duration_t* duration; // Time-based amount
         period_t* period; // Date-based amount
     } as;
@@ -245,7 +245,7 @@ value_t make_local_date(local_date_t* date);
 value_t make_local_time(local_time_t* time);
 value_t make_local_datetime(local_datetime_t* datetime);
 value_t make_zoned_datetime(zoned_datetime_t* datetime);
-value_t make_instant(instant_t* instant);
+value_t make_instant_direct(int64_t epoch_millis);
 value_t make_duration(duration_t* duration);
 value_t make_period(period_t* period);
 
@@ -275,7 +275,7 @@ value_t make_local_date_with_debug(local_date_t* date, debug_location* debug);
 value_t make_local_time_with_debug(local_time_t* time, debug_location* debug);
 value_t make_local_datetime_with_debug(local_datetime_t* datetime, debug_location* debug);
 value_t make_zoned_datetime_with_debug(zoned_datetime_t* datetime, debug_location* debug);
-value_t make_instant_with_debug(instant_t* instant, debug_location* debug);
+value_t make_instant_direct_with_debug(int64_t epoch_millis, debug_location* debug);
 value_t make_duration_with_debug(duration_t* duration, debug_location* debug);
 value_t make_period_with_debug(period_t* period, debug_location* debug);
 
