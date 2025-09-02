@@ -247,6 +247,9 @@ value_t vm_peek(slate_vm* vm, int distance);
 // Function calling helper for builtin methods
 value_t vm_call_function(slate_vm* vm, value_t callable, int arg_count, value_t* args);
 
+// Function calling helper for calling Slate functions from C code (uses isolated VM)
+value_t vm_call_slate_function_from_c(slate_vm* vm, value_t callable, int arg_count, value_t* args);
+
 // String conversion helper for opcodes
 ds_string value_to_string_representation(slate_vm* vm, value_t value);
 

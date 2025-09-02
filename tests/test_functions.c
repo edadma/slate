@@ -199,6 +199,16 @@ void test_function_recursive_factorial(void) {
     TEST_ASSERT_EQUAL_INT32(120, result.as.int32);
 }
 
+// Test closure constant pool isolation
+void test_closure_constant_isolation(void) {
+    // Each function should have its own constant pool
+    // var f1 = (x) -> x + 100; var f2 = (x) -> x + 200; f1(1) + f2(1)
+    value_t result = run_code("var f1 = (x) -> x + 100; var f2 = (x) -> x + 200; f1(1) + f2(1)");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(302, result.as.int32);  // 101 + 201
+}
+
+
 // Main test suite function
 void test_functions_suite(void) {
     
@@ -238,4 +248,5 @@ void test_functions_suite(void) {
     RUN_TEST(test_lambda_return_value_types);
     RUN_TEST(test_function_call_argument_validation);
     RUN_TEST(test_function_recursive_factorial);
+    RUN_TEST(test_closure_constant_isolation);
 }

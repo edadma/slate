@@ -279,7 +279,7 @@ value_t builtin_array_fill(slate_vm* vm, int arg_count, value_t* args) {
     // Call function f for each element
     for (int32_t i = 0; i < n; i++) {
         // Call function f with no arguments
-        value_t element = vm_call_function(vm, f_val, 0, NULL);
+        value_t element = vm_call_slate_function_from_c(vm, f_val, 0, NULL);
         
         // Add to array (vm_call_function handles retain/release internally)
         da_push(arr, &element);

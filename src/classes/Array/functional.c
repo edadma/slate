@@ -40,7 +40,7 @@ value_t builtin_array_map(slate_vm* vm, int arg_count, value_t* args) {
             receiver                    // array
         };
         
-        value_t mapped_value = vm_call_function(vm, mapper, 3, callback_args);
+        value_t mapped_value = vm_call_slate_function_from_c(vm, mapper, 3, callback_args);
         
         // Add mapped value to result array  
         da_push(result_array, &mapped_value);
@@ -87,7 +87,7 @@ value_t builtin_array_filter(slate_vm* vm, int arg_count, value_t* args) {
             receiver                    // array
         };
         
-        value_t result = vm_call_function(vm, predicate, 3, callback_args);
+        value_t result = vm_call_slate_function_from_c(vm, predicate, 3, callback_args);
         
         // Check if result is truthy
         if (is_truthy(result)) {
@@ -138,7 +138,7 @@ value_t builtin_array_flatmap(slate_vm* vm, int arg_count, value_t* args) {
             receiver                    // array
         };
         
-        value_t mapped_value = vm_call_function(vm, mapper, 3, callback_args);
+        value_t mapped_value = vm_call_slate_function_from_c(vm, mapper, 3, callback_args);
         
         // If mapped value is an array, flatten it (add each element)
         if (mapped_value.type == VAL_ARRAY) {
