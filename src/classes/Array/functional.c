@@ -1,162 +1,156 @@
 #include "array.h"
 #include "builtins.h"
 #include "dynamic_array.h"
+#include "vm.h"
 
-// Array method: map(function)
-// Returns a new array with the function applied to each element
-// JavaScript-style: function receives (element, index, array) as arguments
+static int is_callable(value_t v) {
+    return v.type == VAL_NATIVE || v.type == VAL_CLOSURE ||
+           v.type == VAL_FUNCTION || v.type == VAL_BOUND_METHOD;
+}
+
 value_t builtin_array_map(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
         runtime_error("map() takes exactly 1 argument (%d given)", arg_count - 1);
     }
-    
+
     value_t receiver = args[0];
-    value_t mapper = args[1];
-    
+    value_t mapper   = args[1];
+
     if (receiver.type != VAL_ARRAY) {
         runtime_error("map() can only be called on arrays");
     }
-    
-    // Check if mapper is callable
-    if (mapper.type != VAL_CLOSURE && mapper.type != VAL_NATIVE && mapper.type != VAL_FUNCTION) {
-        runtime_error("map() requires a function as argument");
+    if (!is_callable(mapper)) {
+        runtime_error("map() expects a function");
     }
-    
-    da_array input_array = receiver.as.array;
-    size_t length = da_length(input_array);
-    
-    // Create result array
-    da_array result_array = da_new(sizeof(value_t));
-    
-    // Apply function to each element
-    for (size_t i = 0; i < length; i++) {
-        value_t* elem = (value_t*)da_get(input_array, i);
-        if (!elem) continue;
-        
-        // Prepare arguments for callback: (element, index, array)
-        value_t callback_args[3] = {
-            *elem,                      // element
-            make_int32((int32_t)i),     // index
-            receiver                    // array
-        };
-        
-        value_t mapped_value = vm_call_slate_function_from_c(vm, mapper, 3, callback_args);
-        
-        // Add mapped value to result array  
-        da_push(result_array, &mapped_value);
+
+    da_array in  = receiver.as.array;
+    size_t   len = da_length(in);
+
+    da_array out = da_new(sizeof(value_t));
+    da_reserve(out, len);
+
+    for (size_t i = 0; i < len; i++) {
+        value_t* elem = (value_t*)da_get(in, i);
+
+        // Build (element, index, array)
+        value_t call_args[3];
+        call_args[0] = vm_retain(*elem);               // element
+        call_args[1] = make_int32((int32_t)i);         // index
+        call_args[2] = vm_retain(receiver);            // array
+
+        value_t mapped = vm_call_function(vm, mapper, 3, call_args);
+
+        // Release our retained args (ownership of return is ours)
+        vm_release(call_args[0]);
+        vm_release(call_args[2]);
+
+        // Push the result (copy the value_t; retain if it holds refs)
+        value_t stored = vm_retain(mapped);
+        da_push(out, &stored);
+
+        // We own 'mapped'; releasing our temporary is safe after retain
+        vm_release(mapped);
     }
-    
-    return make_array(result_array);
+
+    return make_array(out);
 }
 
-// Array method: filter(predicate)
-// Returns a new array with only elements where predicate returns true
-// JavaScript-style: function receives (element, index, array) as arguments
 value_t builtin_array_filter(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
         runtime_error("filter() takes exactly 1 argument (%d given)", arg_count - 1);
     }
-    
+
     value_t receiver = args[0];
     value_t predicate = args[1];
-    
+
     if (receiver.type != VAL_ARRAY) {
         runtime_error("filter() can only be called on arrays");
     }
-    
-    // Check if predicate is callable
-    if (predicate.type != VAL_CLOSURE && predicate.type != VAL_NATIVE && predicate.type != VAL_FUNCTION) {
-        runtime_error("filter() requires a function as argument");
+    if (!is_callable(predicate)) {
+        runtime_error("filter() expects a function");
     }
-    
-    da_array input_array = receiver.as.array;
-    size_t length = da_length(input_array);
-    
-    // Create result array
-    da_array result_array = da_new(sizeof(value_t));
-    
-    // Filter elements
-    for (size_t i = 0; i < length; i++) {
-        value_t* elem = (value_t*)da_get(input_array, i);
-        if (!elem) continue;
-        
-        // Prepare arguments for callback: (element, index, array)
-        value_t callback_args[3] = {
-            *elem,                      // element
-            make_int32((int32_t)i),     // index
-            receiver                    // array
-        };
-        
-        value_t result = vm_call_slate_function_from_c(vm, predicate, 3, callback_args);
-        
+
+    da_array in = receiver.as.array;
+    size_t len = da_length(in);
+
+    da_array out = da_new(sizeof(value_t));
+
+    for (size_t i = 0; i < len; i++) {
+        value_t* elem = (value_t*)da_get(in, i);
+
+        // Build (element, index, array)
+        value_t call_args[3];
+        call_args[0] = vm_retain(*elem);               // element
+        call_args[1] = make_int32((int32_t)i);         // index
+        call_args[2] = vm_retain(receiver);            // array
+
+        value_t result = vm_call_function(vm, predicate, 3, call_args);
+
+        // Release our retained args
+        vm_release(call_args[0]);
+        vm_release(call_args[2]);
+
         // Check if result is truthy
         if (is_truthy(result)) {
             // Retain the element and add to result
             value_t retained = vm_retain(*elem);
-            da_push(result_array, &retained);
+            da_push(out, &retained);
         }
+
+        // Release the result from the function call
+        vm_release(result);
     }
-    
-    return make_array(result_array);
+
+    return make_array(out);
 }
 
-// Array method: flatMap(function)
-// Maps each element using a mapping function, then flattens the result by one level
-// JavaScript-style: function receives (element, index, array) as arguments
 value_t builtin_array_flatmap(slate_vm* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
         runtime_error("flatMap() takes exactly 1 argument (%d given)", arg_count - 1);
     }
-    
+
     value_t receiver = args[0];
-    value_t mapper = args[1];
-    
+    value_t mapper   = args[1];
+
     if (receiver.type != VAL_ARRAY) {
         runtime_error("flatMap() can only be called on arrays");
     }
-    
-    // Check if mapper is callable
-    if (mapper.type != VAL_CLOSURE && mapper.type != VAL_NATIVE && mapper.type != VAL_FUNCTION) {
-        runtime_error("flatMap() requires a function as argument");
+    if (!is_callable(mapper)) {
+        runtime_error("flatMap() expects a function");
     }
-    
-    da_array input_array = receiver.as.array;
-    size_t length = da_length(input_array);
-    
-    // Create result array
-    da_array result_array = da_new(sizeof(value_t));
-    
-    // Apply function to each element and flatten
-    for (size_t i = 0; i < length; i++) {
-        value_t* elem = (value_t*)da_get(input_array, i);
-        if (!elem) continue;
-        
-        // Prepare arguments for callback: (element, index, array)
-        value_t callback_args[3] = {
-            *elem,                      // element
-            make_int32((int32_t)i),     // index
-            receiver                    // array
-        };
-        
-        value_t mapped_value = vm_call_slate_function_from_c(vm, mapper, 3, callback_args);
-        
-        // If mapped value is an array, flatten it (add each element)
-        if (mapped_value.type == VAL_ARRAY) {
-            da_array mapped_array = mapped_value.as.array;
-            size_t mapped_length = da_length(mapped_array);
-            
-            for (size_t j = 0; j < mapped_length; j++) {
-                value_t* mapped_elem = (value_t*)da_get(mapped_array, j);
-                if (mapped_elem) {
-                    value_t retained = vm_retain(*mapped_elem);
-                    da_push(result_array, &retained);
-                }
+
+    da_array in      = receiver.as.array;
+    size_t   len     = da_length(in);
+    da_array result  = da_new(sizeof(value_t));
+
+    for (size_t i = 0; i < len; i++) {
+        value_t* elem = (value_t*)da_get(in, i);
+
+        value_t call_args[3];
+        call_args[0] = vm_retain(*elem);
+        call_args[1] = make_int32((int32_t)i);
+        call_args[2] = vm_retain(receiver);
+
+        value_t mapped = vm_call_function(vm, mapper, 3, call_args);
+
+        vm_release(call_args[0]);
+        vm_release(call_args[2]);
+
+        if (mapped.type == VAL_ARRAY && mapped.as.array) {
+            da_array mapped_arr = mapped.as.array;
+            size_t    mlen      = da_length(mapped_arr);
+            for (size_t j = 0; j < mlen; j++) {
+                value_t* me = (value_t*)da_get(mapped_arr, j);
+                value_t   c = vm_retain(*me);
+                da_push(result, &c);
             }
         } else {
-            // If not an array, just add the value directly
-            da_push(result_array, &mapped_value);
+            value_t c = vm_retain(mapped);
+            da_push(result, &c);
         }
+
+        vm_release(mapped);
     }
-    
-    return make_array(result_array);
+
+    return make_array(result);
 }
