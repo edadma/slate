@@ -1,4 +1,6 @@
 #include "codegen.h"
+#include "runtime_error.h"
+#include "library_assert.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -103,8 +105,11 @@ void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
     if (node->op == UN_PRE_INCREMENT || node->op == UN_PRE_DECREMENT ||
         node->op == UN_POST_INCREMENT || node->op == UN_POST_DECREMENT) {
         if (!is_lvalue(node->operand)) {
-            printf("Compile error: %s operator can only be applied to l-values (variables, array elements, object properties)\n",
-                   (node->op == UN_PRE_INCREMENT || node->op == UN_POST_INCREMENT) ? "Increment" : "Decrement");
+            // Suppress error messages in test context, but still set error flag
+            if (g_current_vm && g_current_vm->context != CTX_TEST) {
+                printf("Compile error: %s operator can only be applied to l-values (variables, array elements, object properties)\n",
+                       (node->op == UN_PRE_INCREMENT || node->op == UN_POST_INCREMENT) ? "Increment" : "Decrement");
+            }
             codegen->had_error = 1;
             return;
         }
@@ -196,7 +201,10 @@ void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
             }
         } else {
             // TODO: Handle array elements and object properties
-            printf("Compile error: Increment/decrement on array elements and object properties not yet implemented\n");
+            // Suppress error messages in test context, but still set error flag  
+            if (g_current_vm && g_current_vm->context != CTX_TEST) {
+                printf("Compile error: Increment/decrement on array elements and object properties not yet implemented\n");
+            }
             codegen->had_error = 1;
             return;
         }

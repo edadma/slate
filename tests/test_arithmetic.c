@@ -314,6 +314,7 @@ void test_invalid_increment_decrement_errors() {
     parser_t parser;
     lexer_t lexer;
     slate_vm* vm = vm_create();
+    vm->context = CTX_TEST;  // Set test context for silent error handling
     
     codegen_t* codegen = codegen_create(vm);
     
@@ -333,6 +334,7 @@ void test_invalid_increment_decrement_errors() {
     
     // Test 2: --(-2147483648) (decrement on parenthesized literal)
     vm = vm_create();
+    vm->context = CTX_TEST;  // Set test context for silent error handling
     codegen = codegen_create(vm);
     lexer_init(&lexer, "--(-2147483648)");
     parser_init(&parser, &lexer);
@@ -349,6 +351,7 @@ void test_invalid_increment_decrement_errors() {
     
     // Test 3: --(2 + 3) (decrement on expression)
     vm = vm_create();
+    vm->context = CTX_TEST;  // Set test context for silent error handling
     codegen = codegen_create(vm);
     lexer_init(&lexer, "--(2 + 3)");
     parser_init(&parser, &lexer);
@@ -365,6 +368,7 @@ void test_invalid_increment_decrement_errors() {
     
     // Test 4: ++3.14 (increment on float literal)
     vm = vm_create();
+    vm->context = CTX_TEST;  // Set test context for silent error handling
     codegen = codegen_create(vm);
     lexer_init(&lexer, "++3.14");
     parser_init(&parser, &lexer);

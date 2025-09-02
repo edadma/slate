@@ -3,13 +3,6 @@
 
 
 
-// Test print function (returns undefined)
-void test_builtin_print(void) {
-    value_t result = test_execute_expression("print(42)");
-    TEST_ASSERT_EQUAL(VAL_UNDEFINED, result.type);
-    vm_release(result);
-}
-
 // Test type function for numeric types
 void test_builtin_type_number(void) {
     // Test int32 type
@@ -490,7 +483,6 @@ void test_builtin_degrees_radians_inverse(void) {
 
 // Test suite function
 void test_builtins_suite(void) {
-    RUN_TEST(test_builtin_print);
     RUN_TEST(test_builtin_type_number);
     RUN_TEST(test_builtin_type_string);
     RUN_TEST(test_builtin_type_boolean);

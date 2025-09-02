@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "runtime_error.h"
 
 vm_result op_call(slate_vm* vm) {
     uint16_t arg_count = *vm->ip | (*(vm->ip + 1) << 8);
@@ -140,7 +141,7 @@ vm_result op_call(slate_vm* vm) {
 
         value_t index_val = args[0];
         if (index_val.type != VAL_INT32) {
-            printf("Runtime error: Array index must be an integer\n");
+            slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Array index must be an integer");
             vm_release(args[0]);
             free(args);
             vm_release(callable);
@@ -236,7 +237,7 @@ vm_result op_call(slate_vm* vm) {
         // If no factory, fall through to error
     }
 
-    printf("Runtime error: Value is not callable\n");
+    slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Value is not callable");
     if (args) {
         for (int i = 0; i < arg_count; i++) {
             vm_release(args[i]);
