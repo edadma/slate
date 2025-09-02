@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "config.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -38,6 +39,32 @@ ast_bigint* ast_create_bigint(di_int value, int line, int column) {
     return node;
 }
 
+ast_number* ast_create_float32(float value, int line, int column) {
+    ast_number* node = malloc(sizeof(ast_number));
+    if (!node) return NULL;
+    
+    node->base.type = AST_NUMBER;
+    node->base.line = line;
+    node->base.column = column;
+    node->value.float32 = value;
+    node->is_float32 = 1;
+    
+    return node;
+}
+
+ast_number* ast_create_float64(double value, int line, int column) {
+    ast_number* node = malloc(sizeof(ast_number));
+    if (!node) return NULL;
+    
+    node->base.type = AST_NUMBER;
+    node->base.line = line;
+    node->base.column = column;
+    node->value.float64 = value;
+    node->is_float32 = 0;
+    
+    return node;
+}
+
 ast_number* ast_create_number(double value, int line, int column) {
     ast_number* node = malloc(sizeof(ast_number));
     if (!node) return NULL;
@@ -45,7 +72,16 @@ ast_number* ast_create_number(double value, int line, int column) {
     node->base.type = AST_NUMBER;
     node->base.line = line;
     node->base.column = column;
-    node->value = value;
+    
+#ifdef DEFAULT_FLOAT32
+    // Default to float32 in MCU mode
+    node->value.float32 = (float)value;
+    node->is_float32 = 1;
+#else
+    // Default to float64 on PC
+    node->value.float64 = value;
+    node->is_float32 = 0;
+#endif
     
     return node;
 }
@@ -710,7 +746,11 @@ void ast_print(ast_node* node, int indent) {
         
         case AST_NUMBER: {
             ast_number* num_node = (ast_number*)node;
-            printf(": %.6g\n", num_node->value);
+            if (num_node->is_float32) {
+                printf(": %.6gf\n", (double)num_node->value.float32);
+            } else {
+                printf(": %.6g\n", num_node->value.float64);
+            }
             break;
         }
         

@@ -452,6 +452,16 @@ ast_node* parse_primary(parser_t* parser) {
         }
     }
     
+    if (parser_match(parser, TOKEN_FLOAT32)) {
+        float value = token_to_float32(&parser->previous);
+        return (ast_node*)ast_create_float32(value, parser->previous.line, parser->previous.column);
+    }
+    
+    if (parser_match(parser, TOKEN_FLOAT64)) {
+        double value = token_to_number(&parser->previous);
+        return (ast_node*)ast_create_float64(value, parser->previous.line, parser->previous.column);
+    }
+    
     if (parser_match(parser, TOKEN_NUMBER)) {
         double value = token_to_number(&parser->previous);
         return (ast_node*)ast_create_number(value, parser->previous.line, parser->previous.column);

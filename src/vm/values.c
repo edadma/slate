@@ -81,9 +81,14 @@ ds_string value_to_string_representation(vm_t* vm, value_t value) {
             return ds_new("<bigint>");
         }
     }
-    case VAL_NUMBER: {
+    case VAL_FLOAT32: {
         char buffer[32];
-        snprintf(buffer, sizeof(buffer), "%.6g", value.as.number);
+        snprintf(buffer, sizeof(buffer), "%.7g", value.as.float32);
+        return ds_new(buffer);
+    }
+    case VAL_FLOAT64: {
+        char buffer[32];
+        snprintf(buffer, sizeof(buffer), "%.6g", value.as.float64);
         return ds_new(buffer);
     }
     case VAL_BOOLEAN:

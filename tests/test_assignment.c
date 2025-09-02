@@ -29,8 +29,8 @@ void test_vm_compound_assignments(void) {
     vm_release(result);
     // Test /= with integers (should result in float)
     result = run_code("var w = 15; w /= 3; w");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.float64);
     vm_release(result);
     // Test %= with integers
     result = run_code("var m = 17; m %= 5; m");
@@ -39,8 +39,8 @@ void test_vm_compound_assignments(void) {
     vm_release(result);
     // Test **= with integers (power always returns float)
     result = run_code("var p = 3; p **= 2; p");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(9.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(9.0, result.as.float64);
     vm_release(result);
     // Test chained compound assignments
     result = run_code("var chain = 2; chain *= 3; chain += 1; chain");

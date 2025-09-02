@@ -35,6 +35,19 @@ double token_to_number(token_t* token) {
     return value;
 }
 
+// Helper function to extract float32 from token
+float token_to_float32(token_t* token) {
+    if (!token || !token->start) return 0.0f;
+    
+    char* str = token_to_string(token);
+    if (!str) return 0.0f;
+    
+    float value = strtof(str, NULL);
+    free(str);
+    
+    return value;
+}
+
 // Parser initialization
 void parser_init(parser_t* parser, lexer_t* lexer) {
     parser->lexer = lexer;

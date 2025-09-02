@@ -21,9 +21,9 @@ value_t local_date_factory(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "LocalDate() arguments must be numbers");
     }
     
-    int year = (int)value_to_double(args[0]);
-    int month = (int)value_to_double(args[1]);
-    int day = (int)value_to_double(args[2]);
+    int year = (int)value_to_float64(args[0]);
+    int month = (int)value_to_float64(args[1]);
+    int day = (int)value_to_float64(args[2]);
     
     // Validate date components
     if (!is_valid_date(year, month, day)) {

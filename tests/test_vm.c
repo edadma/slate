@@ -105,9 +105,9 @@ void test_vm_value_creation(void) {
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, val.type);
     TEST_ASSERT_EQUAL_INT(0, val.as.boolean);
 
-    val = make_number(3.14);
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, val.type);
-    TEST_ASSERT_EQUAL_DOUBLE(3.14, val.as.number);
+    val = make_float64(3.14);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, val.type);
+    TEST_ASSERT_EQUAL_DOUBLE(3.14, val.as.float64);
 
     val = make_string("test");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, val.type);
@@ -120,11 +120,11 @@ void test_vm_value_equality(void) {
     value_t a, b;
 
     // Numbers
-    a = make_number(42);
-    b = make_number(42);
+    a = make_float64(42);
+    b = make_float64(42);
     TEST_ASSERT_TRUE(values_equal(a, b));
 
-    b = make_number(43);
+    b = make_float64(43);
     TEST_ASSERT_FALSE(values_equal(a, b));
 
     // Strings
@@ -154,7 +154,7 @@ void test_vm_value_equality(void) {
     TEST_ASSERT_TRUE(values_equal(a, b));
 
     // Different types
-    a = make_number(42);
+    a = make_float64(42);
     b = make_string("42");
     TEST_ASSERT_FALSE(values_equal(a, b));
     free_value(b);
@@ -165,8 +165,8 @@ void test_vm_is_falsy(void) {
     TEST_ASSERT_TRUE(is_falsy(make_null()));
     TEST_ASSERT_TRUE(is_falsy(make_boolean(0)));
     TEST_ASSERT_FALSE(is_falsy(make_boolean(1)));
-    TEST_ASSERT_TRUE(is_falsy(make_number(0))); // 0 is falsy
-    TEST_ASSERT_FALSE(is_falsy(make_number(42)));
+    TEST_ASSERT_TRUE(is_falsy(make_float64(0))); // 0 is falsy
+    TEST_ASSERT_FALSE(is_falsy(make_float64(42)));
 
     value_t str = make_string("");
     TEST_ASSERT_TRUE(is_falsy(str)); // empty string is falsy
@@ -417,7 +417,7 @@ void test_vm_undefined_behavior(void) {
     TEST_ASSERT_TRUE(values_equal(make_undefined(), make_undefined()));
     TEST_ASSERT_FALSE(values_equal(make_undefined(), make_null()));
     TEST_ASSERT_FALSE(values_equal(make_undefined(), make_boolean(0)));
-    TEST_ASSERT_FALSE(values_equal(make_undefined(), make_number(0)));
+    TEST_ASSERT_FALSE(values_equal(make_undefined(), make_float64(0)));
 
     // Property access returns undefined
     result = run_code("[1, 2, 3].nonExistent");

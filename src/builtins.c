@@ -248,8 +248,8 @@ value_t builtin_abs(vm_t* vm, int arg_count, value_t* args) {
     } else if (arg.type == VAL_BIGINT) {
         di_int result = di_abs(arg.as.bigint);
         return make_bigint(result);
-    } else if (arg.type == VAL_NUMBER) {
-        return make_number(fabs(arg.as.number));
+    } else if (arg.type == VAL_FLOAT64) {
+        return make_float64(fabs(arg.as.float64));
     } else {
         runtime_error(vm, "abs() requires a number argument");
     }
@@ -268,13 +268,13 @@ value_t builtin_sqrt(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "sqrt() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
     if (val < 0) {
         runtime_error(vm, "sqrt() of negative number");
     }
 
-    return make_number(sqrt(val));
+    return make_float64(sqrt(val));
 }
 
 // floor(number) - Floor function
@@ -292,13 +292,13 @@ value_t builtin_floor(vm_t* vm, int arg_count, value_t* args) {
     } else if (arg.type == VAL_BIGINT) {
         // BigInts are already "floored"
         return arg;
-    } else if (arg.type == VAL_NUMBER) {
-        double result = floor(arg.as.number);
+    } else if (arg.type == VAL_FLOAT64) {
+        double result = floor(arg.as.float64);
         // Try to return as int32 if it fits
         if (result >= INT32_MIN && result <= INT32_MAX && result == (int32_t)result) {
             return make_int32((int32_t)result);
         } else {
-            return make_number(result);
+            return make_float64(result);
         }
     } else {
         runtime_error(vm, "floor() requires a number argument");
@@ -320,13 +320,13 @@ value_t builtin_ceil(vm_t* vm, int arg_count, value_t* args) {
     } else if (arg.type == VAL_BIGINT) {
         // BigInts are already "ceiled"
         return arg;
-    } else if (arg.type == VAL_NUMBER) {
-        double result = ceil(arg.as.number);
+    } else if (arg.type == VAL_FLOAT64) {
+        double result = ceil(arg.as.float64);
         // Try to return as int32 if it fits
         if (result >= INT32_MIN && result <= INT32_MAX && result == (int32_t)result) {
             return make_int32((int32_t)result);
         } else {
-            return make_number(result);
+            return make_float64(result);
         }
     } else {
         runtime_error(vm, "ceil() requires a number argument");
@@ -348,13 +348,13 @@ value_t builtin_round(vm_t* vm, int arg_count, value_t* args) {
     } else if (arg.type == VAL_BIGINT) {
         // BigInts are already "rounded"
         return arg;
-    } else if (arg.type == VAL_NUMBER) {
-        double result = round(arg.as.number);
+    } else if (arg.type == VAL_FLOAT64) {
+        double result = round(arg.as.float64);
         // Try to return as int32 if it fits
         if (result >= INT32_MIN && result <= INT32_MAX && result == (int32_t)result) {
             return make_int32((int32_t)result);
         } else {
-            return make_number(result);
+            return make_float64(result);
         }
     } else {
         runtime_error(vm, "round() requires a number argument");
@@ -376,8 +376,8 @@ value_t builtin_min(vm_t* vm, int arg_count, value_t* args) {
     }
 
     // Convert both to double for comparison
-    double a_val = value_to_double(a);
-    double b_val = value_to_double(b);
+    double a_val = value_to_float64(a);
+    double b_val = value_to_float64(b);
 
     // Return the smaller value with its original type
     return (a_val < b_val) ? a : b;
@@ -398,8 +398,8 @@ value_t builtin_max(vm_t* vm, int arg_count, value_t* args) {
     }
 
     // Convert both to double for comparison
-    double a_val = value_to_double(a);
-    double b_val = value_to_double(b);
+    double a_val = value_to_float64(a);
+    double b_val = value_to_float64(b);
 
     // Return the larger value with its original type
     return (a_val > b_val) ? a : b;
@@ -411,7 +411,7 @@ value_t builtin_random(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "random() takes no arguments (%d given)", arg_count);
     }
 
-    return make_number((double)rand() / RAND_MAX);
+    return make_float64((double)rand() / RAND_MAX);
 }
 
 // sin(number) - Sine function (radians)
@@ -427,9 +427,9 @@ value_t builtin_sin(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "sin() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
-    return make_number(sin(val));
+    return make_float64(sin(val));
 }
 
 // cos(number) - Cosine function (radians)
@@ -445,9 +445,9 @@ value_t builtin_cos(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "cos() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
-    return make_number(cos(val));
+    return make_float64(cos(val));
 }
 
 // tan(number) - Tangent function (radians)
@@ -463,9 +463,9 @@ value_t builtin_tan(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "tan() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
-    return make_number(tan(val));
+    return make_float64(tan(val));
 }
 
 // exp(number) - Exponential function (e^x)
@@ -481,9 +481,9 @@ value_t builtin_exp(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "exp() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
-    return make_number(exp(val));
+    return make_float64(exp(val));
 }
 
 // ln(number) - Natural logarithm (base e)
@@ -499,14 +499,14 @@ value_t builtin_ln(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "ln() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
     // Check for domain error (ln of non-positive numbers)
     if (val <= 0) {
         runtime_error(vm, "ln() domain error: argument must be positive");
     }
 
-    return make_number(log(val));
+    return make_float64(log(val));
 }
 
 // asin(number) - Inverse sine function (returns radians)
@@ -522,14 +522,14 @@ value_t builtin_asin(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "asin() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
     // Check for domain error (asin domain is [-1, 1])
     if (val < -1.0 || val > 1.0) {
         runtime_error(vm, "asin() domain error: argument must be in range [-1, 1]");
     }
 
-    return make_number(asin(val));
+    return make_float64(asin(val));
 }
 
 // acos(number) - Inverse cosine function (returns radians)
@@ -545,14 +545,14 @@ value_t builtin_acos(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "acos() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
     // Check for domain error (acos domain is [-1, 1])
     if (val < -1.0 || val > 1.0) {
         runtime_error(vm, "acos() domain error: argument must be in range [-1, 1]");
     }
 
-    return make_number(acos(val));
+    return make_float64(acos(val));
 }
 
 // atan(number) - Inverse tangent function (returns radians)
@@ -568,9 +568,9 @@ value_t builtin_atan(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "atan() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
-    return make_number(atan(val));
+    return make_float64(atan(val));
 }
 
 // atan2(y, x) - Two-argument inverse tangent function (returns radians)
@@ -587,10 +587,10 @@ value_t builtin_atan2(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "atan2() requires number arguments");
     }
 
-    double y_val = value_to_double(y);
-    double x_val = value_to_double(x);
+    double y_val = value_to_float64(y);
+    double x_val = value_to_float64(x);
 
-    return make_number(atan2(y_val, x_val));
+    return make_float64(atan2(y_val, x_val));
 }
 
 // degrees(radians) - Convert radians to degrees
@@ -606,9 +606,9 @@ value_t builtin_degrees(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "degrees() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
-    return make_number(val * 180.0 / M_PI);
+    return make_float64(val * 180.0 / M_PI);
 }
 
 // radians(degrees) - Convert degrees to radians
@@ -624,9 +624,9 @@ value_t builtin_radians(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "radians() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
-    return make_number(val * M_PI / 180.0);
+    return make_float64(val * M_PI / 180.0);
 }
 
 // sign(number) - Sign function (-1, 0, or 1)
@@ -642,7 +642,7 @@ value_t builtin_sign(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "sign() requires a number argument");
     }
 
-    double val = value_to_double(arg);
+    double val = value_to_float64(arg);
 
     if (val > 0.0) {
         return make_int32(1);
@@ -748,7 +748,7 @@ value_t builtin_parse_number(vm_t* vm, int arg_count, value_t* args) {
             runtime_error(vm, "'%s' is not a valid number", str);
         }
 
-        return make_number(val);
+        return make_float64(val);
     } else {
         // Parse as integer first, then convert to appropriate type
         long long val = strtoll(str, &endptr, 10);

@@ -10,10 +10,10 @@ vm_result op_less(vm_t* vm) {
         // Convert both to double for comparison (simple but works)
         double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
             : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                             : a.as.number;
+                                             : a.as.float64;
         double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
             : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                             : b.as.number;
+                                             : b.as.float64;
 
         vm_push(vm, make_boolean_with_debug(a_val < b_val, a.debug));
     } else {

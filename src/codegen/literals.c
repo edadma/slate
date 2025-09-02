@@ -27,7 +27,14 @@ void codegen_emit_number(codegen_t* codegen, ast_number* node) {
     // Emit debug location before pushing the value
     codegen_emit_debug_location(codegen, (ast_node*)node);
     
-    size_t constant = chunk_add_constant(codegen->chunk, make_number(node->value));
+    value_t value;
+    if (node->is_float32) {
+        value = make_float32(node->value.float32);
+    } else {
+        value = make_float64(node->value.float64);
+    }
+    
+    size_t constant = chunk_add_constant(codegen->chunk, value);
     codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)constant);
 }
 

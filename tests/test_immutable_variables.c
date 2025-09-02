@@ -137,8 +137,8 @@ void test_val_with_different_types(void) {
     
     // Test val with float
     result = run_code("val pi = 3.14; pi");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.001, 3.14, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 3.14, result.as.float64);
     vm_release(result);
     
     // Test val with boolean

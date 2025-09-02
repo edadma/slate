@@ -25,10 +25,10 @@ value_t local_time_factory(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "LocalTime() millisecond argument must be a number");
     }
     
-    int hour = (int)value_to_double(args[0]);
-    int minute = (int)value_to_double(args[1]);
-    int second = (int)value_to_double(args[2]);
-    int millis = (arg_count == 4) ? (int)value_to_double(args[3]) : 0;
+    int hour = (int)value_to_float64(args[0]);
+    int minute = (int)value_to_float64(args[1]);
+    int second = (int)value_to_float64(args[2]);
+    int millis = (arg_count == 4) ? (int)value_to_float64(args[3]) : 0;
     
     // Validate time components
     if (!is_valid_time(hour, minute, second, millis)) {

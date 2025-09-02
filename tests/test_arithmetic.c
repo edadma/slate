@@ -117,14 +117,14 @@ void test_basic_int32_arithmetic() {
 void test_int32_division_always_float() {
     // Division always produces float, even for exact divisions
     value_t result = execute_expression("15 / 3");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.float64);
     vm_release(result);
 
     // Non-exact division
     result = execute_expression("7 / 2");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(3.5, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(3.5, result.as.float64);
     vm_release(result);
 }
 
@@ -151,20 +151,20 @@ void test_int32_overflow_promotion() {
 void test_mixed_int_float_arithmetic() {
     // int32 + float -> float
     value_t result = execute_expression("42 + 3.14");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(45.14, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(45.14, result.as.float64);
     vm_release(result);
 
     // float + int32 -> float
     result = execute_expression("3.14 + 42");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(45.14, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(45.14, result.as.float64);
     vm_release(result);
 
     // int32 * float -> float
     result = execute_expression("5 * 2.5");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(12.5, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(12.5, result.as.float64);
     vm_release(result);
 }
 
@@ -315,8 +315,8 @@ void test_increment_decrement_comprehensive() {
     // Test increment with floats
     {
         value_t result = execute_expression("var x = 3.14; ++x");
-        TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-        TEST_ASSERT_EQUAL_DOUBLE(4.14, result.as.number);
+        TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+        TEST_ASSERT_EQUAL_DOUBLE(4.14, result.as.float64);
         vm_release(result);
     }
 }
@@ -422,8 +422,8 @@ void test_comprehensive_arithmetic() {
     vm_release(result);
 
     result = execute_expression("15 / 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(5.0, result.as.float64);
     vm_release(result);
 
     result = execute_expression("2 + 3 * 4");
@@ -469,8 +469,8 @@ void test_modulo_operations() {
 
     // Test floating point modulo
     result = execute_expression("15.5 mod 4.2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.01, 2.9, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.01, 2.9, result.as.float64);
     vm_release(result);
 
     // Test modulo precedence (same as multiply/divide)
@@ -497,41 +497,41 @@ void test_power_operations() {
     
     // Test power operator
     result = execute_expression("2 ** 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(8.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(8.0, result.as.float64);
     vm_release(result);
 
     result = execute_expression("5 ** 0");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.float64);
     vm_release(result);
 
     result = execute_expression("4 ** 0.5");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(2.0, result.as.float64);
     vm_release(result);
 
     result = execute_expression("(-2) ** 3");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(-8.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(-8.0, result.as.float64);
     vm_release(result);
 
     // Test power right associativity: 2 ** 3 ** 2 = 2 ** (3 ** 2) = 2 ** 9 = 512
     result = execute_expression("2 ** 3 ** 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(512.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(512.0, result.as.float64);
     vm_release(result);
 
     // Test power precedence: 2 * 3 ** 2 = 2 * (3 ** 2) = 2 * 9 = 18
     result = execute_expression("2 * 3 ** 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(18.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(18.0, result.as.float64);
     vm_release(result);
 
     // Test complex power precedence: 2 + 3 * 4 ** 2 = 2 + 3 * (4 ** 2) = 2 + 3 * 16 = 2 + 48 = 50
     result = execute_expression("2 + 3 * 4 ** 2");
-    TEST_ASSERT_EQUAL_INT(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(50.0, result.as.number);
+    TEST_ASSERT_EQUAL_INT(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(50.0, result.as.float64);
     vm_release(result);
 }
 

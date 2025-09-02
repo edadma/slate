@@ -23,8 +23,8 @@ vm_result op_increment(vm_t* vm) {
     } else if (a.type == VAL_BIGINT) {
         di_int result = di_add_i32(a.as.bigint, 1);
         vm_push(vm, make_bigint_with_debug(result, a.debug));
-    } else { // VAL_NUMBER
-        vm_push(vm, make_number_with_debug(a.as.number + 1.0, a.debug));
+    } else { // VAL_FLOAT64
+        vm_push(vm, make_float64_with_debug(a.as.float64 + 1.0, a.debug));
     }
 
     vm_release(a);

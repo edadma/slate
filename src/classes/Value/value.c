@@ -26,8 +26,11 @@ value_t builtin_type(vm_t* vm, int arg_count, value_t* args) {
     case VAL_BIGINT:
         type_name = "bigint";
         break;
-    case VAL_NUMBER:
-        type_name = "number";
+    case VAL_FLOAT32:
+        type_name = "float32";
+        break;
+    case VAL_FLOAT64:
+        type_name = "float64";
         break;
     case VAL_STRING:
         type_name = "string";
@@ -139,11 +142,19 @@ value_t builtin_value_to_string(vm_t* vm, int arg_count, value_t* args) {
                 return result;
             }
             
-        case VAL_NUMBER:
+        case VAL_FLOAT32:
+            {
+                char buffer[32];
+                // Use %.7g for clean formatting without unnecessary zeros (float32 precision)
+                snprintf(buffer, sizeof(buffer), "%.7g", receiver.as.float32);
+                return make_string(buffer);
+            }
+            
+        case VAL_FLOAT64:
             {
                 char buffer[64];
                 // Use %.15g for clean formatting without unnecessary zeros
-                snprintf(buffer, sizeof(buffer), "%.15g", receiver.as.number);
+                snprintf(buffer, sizeof(buffer), "%.15g", receiver.as.float64);
                 return make_string(buffer);
             }
             

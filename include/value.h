@@ -21,7 +21,8 @@ typedef enum {
     VAL_BOOLEAN,
     VAL_INT32, // 32-bit integer (MCU-friendly default)
     VAL_BIGINT, // Arbitrary precision integer
-    VAL_NUMBER, // Floating point (double)
+    VAL_FLOAT32, // Single precision floating point (32-bit)
+    VAL_FLOAT64, // Double precision floating point (64-bit)
     VAL_STRING,
     VAL_STRING_BUILDER, // String builder for constructing strings
     VAL_ARRAY,
@@ -70,7 +71,8 @@ struct value {
         int boolean;
         int32_t int32; // 32-bit integer (direct storage)
         di_int bigint; // Arbitrary precision integer (ref-counted)
-        double number; // Floating point
+        float float32; // Single precision floating point
+        double float64; // Double precision floating point
         ds_string string; // Using dynamic_string.h!
         ds_builder string_builder; // String builder (using dynamic_string.h!)
         da_array array; // Using dynamic_array.h!
@@ -225,7 +227,8 @@ value_t make_undefined(void);
 value_t make_boolean(int value);
 value_t make_int32(int32_t value);
 value_t make_bigint(di_int bigint);
-value_t make_number(double value);
+value_t make_float32(float value);
+value_t make_float64(double value);
 value_t make_string(const char* value);
 value_t make_string_ds(ds_string string);
 value_t make_string_builder(ds_builder builder);
@@ -255,7 +258,8 @@ value_t make_undefined_with_debug(debug_location* debug);
 value_t make_boolean_with_debug(int value, debug_location* debug);
 value_t make_int32_with_debug(int32_t value, debug_location* debug);
 value_t make_bigint_with_debug(di_int bigint, debug_location* debug);
-value_t make_number_with_debug(double value, debug_location* debug);
+value_t make_float32_with_debug(float value, debug_location* debug);
+value_t make_float64_with_debug(double value, debug_location* debug);
 value_t make_string_with_debug(const char* value, debug_location* debug);
 value_t make_string_ds_with_debug(ds_string string, debug_location* debug);
 value_t make_string_builder_with_debug(ds_builder builder, debug_location* debug);

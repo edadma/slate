@@ -14,8 +14,10 @@ vm_result op_negate(vm_t* vm) {
     } else if (a.type == VAL_BIGINT) {
         di_int negated = di_negate(a.as.bigint);
         vm_push(vm, make_bigint_with_debug(negated, a.debug));
-    } else if (a.type == VAL_NUMBER) {
-        vm_push(vm, make_number_with_debug(-a.as.number, a.debug));
+    } else if (a.type == VAL_FLOAT32) {
+        vm_push(vm, make_float32_with_debug(-a.as.float32, a.debug));
+    } else if (a.type == VAL_FLOAT64) {
+        vm_push(vm, make_float64_with_debug(-a.as.float64, a.debug));
     } else {
         vm_runtime_error_with_values(vm, "Cannot negate %s", &a, NULL, a.debug);
         vm_release(a);

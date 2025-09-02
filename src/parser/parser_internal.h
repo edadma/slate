@@ -8,6 +8,7 @@
 // Parser utilities (shared across all modules)
 char* token_to_string(token_t* token);
 double token_to_number(token_t* token);
+float token_to_float32(token_t* token);
 binary_operator token_to_binary_op(token_type_t type);
 unary_operator token_to_unary_op(token_type_t type);
 

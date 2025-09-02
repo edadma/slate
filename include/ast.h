@@ -16,7 +16,7 @@ typedef enum {
     // Literals
     AST_INTEGER, // 32-bit integer literal
     AST_BIGINT, // Arbitrary precision integer literal
-    AST_NUMBER, // Floating point literal
+    AST_NUMBER, // Floating point literal (precision determined at parse time)
     AST_STRING,
     AST_TEMPLATE_LITERAL, // Template literal with interpolation
     AST_BOOLEAN,
@@ -123,7 +123,11 @@ typedef struct {
 
 typedef struct {
     ast_node base;
-    double value;
+    union {
+        float float32;
+        double float64; 
+    } value;
+    int is_float32; // 1 if float32, 0 if float64
 } ast_number;
 
 typedef struct {
@@ -346,6 +350,8 @@ typedef struct {
 // AST creation functions
 ast_integer* ast_create_integer(int32_t value, int line, int column);
 ast_bigint* ast_create_bigint(di_int value, int line, int column);
+ast_number* ast_create_float32(float value, int line, int column);
+ast_number* ast_create_float64(double value, int line, int column);
 ast_number* ast_create_number(double value, int line, int column);
 ast_string* ast_create_string(const char* value, int line, int column);
 ast_template_literal* ast_create_template_literal(template_part* parts, size_t part_count, int line, int column);

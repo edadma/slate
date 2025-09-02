@@ -7,7 +7,9 @@
 typedef enum {
     // Literals
     TOKEN_INTEGER,       // 123 (no decimal point)
-    TOKEN_NUMBER,        // 3.14 (floating point)
+    TOKEN_FLOAT32,       // 3.14f (single precision)
+    TOKEN_FLOAT64,       // 3.14d (double precision)  
+    TOKEN_NUMBER,        // 3.14 (default precision, configurable)
     TOKEN_STRING,        // "hello"
     TOKEN_IDENTIFIER,    // variable names
     TOKEN_TRUE,          // true

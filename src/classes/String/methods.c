@@ -22,7 +22,7 @@ value_t builtin_string_length(vm_t* vm, int arg_count, value_t* args) {
     if (length <= INT32_MAX) {
         return make_int32((int32_t)length);
     } else {
-        return make_number((double)length);
+        return make_float64((double)length);
     }
 }
 

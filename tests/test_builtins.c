@@ -64,15 +64,15 @@ void test_builtin_abs_zero(void) {
 // Test sqrt function
 void test_builtin_sqrt(void) {
     value_t result = test_execute_expression("sqrt(16)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(4.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(4.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_sqrt_zero(void) {
     value_t result = test_execute_expression("sqrt(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.float64);
     vm_release(result);
 }
 
@@ -161,267 +161,267 @@ void test_builtin_max_negative(void) {
 // Test random function (just check it returns a number in valid range)
 void test_builtin_random(void) {
     value_t result = test_execute_expression("random()");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_TRUE(result.as.number >= 0.0);
-    TEST_ASSERT_TRUE(result.as.number <= 1.0);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_TRUE(result.as.float64 >= 0.0);
+    TEST_ASSERT_TRUE(result.as.float64 <= 1.0);
     vm_release(result);
 }
 
 // Test sin function
 void test_builtin_sin_zero(void) {
     value_t result = test_execute_expression("sin(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_sin_pi_half(void) {
     value_t result = test_execute_expression("sin(3.14159265359/2)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.0, result.as.float64);
     vm_release(result);
 }
 
 // Test cos function
 void test_builtin_cos_zero(void) {
     value_t result = test_execute_expression("cos(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_cos_pi(void) {
     value_t result = test_execute_expression("cos(3.14159265359)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -1.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -1.0, result.as.float64);
     vm_release(result);
 }
 
 // Test tan function
 void test_builtin_tan_zero(void) {
     value_t result = test_execute_expression("tan(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_tan_pi_quarter(void) {
     value_t result = test_execute_expression("tan(3.14159265359/4)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.0, result.as.float64);
     vm_release(result);
 }
 
 // Test trig functions with integer arguments
 void test_builtin_sin_integer(void) {
     value_t result = test_execute_expression("sin(1)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.841471, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.841471, result.as.float64);
     vm_release(result);
 }
 
 // Test exp function
 void test_builtin_exp_zero(void) {
     value_t result = test_execute_expression("exp(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(1.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_exp_one(void) {
     value_t result = test_execute_expression("exp(1)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.718282, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.718282, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_exp_negative(void) {
     value_t result = test_execute_expression("exp(-1)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.367879, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.367879, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_exp_integer(void) {
     value_t result = test_execute_expression("exp(2)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 7.389056, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 7.389056, result.as.float64);
     vm_release(result);
 }
 
 // Test ln function
 void test_builtin_ln_one(void) {
     value_t result = test_execute_expression("ln(1)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_ln_e(void) {
     value_t result = test_execute_expression("ln(2.718282)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_ln_ten(void) {
     value_t result = test_execute_expression("ln(10)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.302585, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.302585, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_ln_half(void) {
     value_t result = test_execute_expression("ln(0.5)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -0.693147, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -0.693147, result.as.float64);
     vm_release(result);
 }
 
 // Test exp and ln inverse relationship
 void test_builtin_exp_ln_inverse(void) {
     value_t result = test_execute_expression("exp(ln(5))");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 5.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 5.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_ln_exp_inverse(void) {
     value_t result = test_execute_expression("ln(exp(3))");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 3.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 3.0, result.as.float64);
     vm_release(result);
 }
 
 // Test asin function
 void test_builtin_asin_zero(void) {
     value_t result = test_execute_expression("asin(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_asin_one(void) {
     value_t result = test_execute_expression("asin(1)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.570796, result.as.number); // π/2
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.570796, result.as.float64); // π/2
     vm_release(result);
 }
 
 void test_builtin_asin_negative(void) {
     value_t result = test_execute_expression("asin(-0.5)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -0.523599, result.as.number); // -π/6
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -0.523599, result.as.float64); // -π/6
     vm_release(result);
 }
 
 // Test acos function
 void test_builtin_acos_one(void) {
     value_t result = test_execute_expression("acos(1)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_acos_zero(void) {
     value_t result = test_execute_expression("acos(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.570796, result.as.number); // π/2
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.570796, result.as.float64); // π/2
     vm_release(result);
 }
 
 void test_builtin_acos_half(void) {
     value_t result = test_execute_expression("acos(0.5)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.047198, result.as.number); // π/3
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.047198, result.as.float64); // π/3
     vm_release(result);
 }
 
 // Test atan function
 void test_builtin_atan_zero(void) {
     value_t result = test_execute_expression("atan(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_atan_one(void) {
     value_t result = test_execute_expression("atan(1)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.785398, result.as.number); // π/4
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.785398, result.as.float64); // π/4
     vm_release(result);
 }
 
 void test_builtin_atan_negative(void) {
     value_t result = test_execute_expression("atan(-1)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -0.785398, result.as.number); // -π/4
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, -0.785398, result.as.float64); // -π/4
     vm_release(result);
 }
 
 // Test atan2 function
 void test_builtin_atan2_positive_x(void) {
     value_t result = test_execute_expression("atan2(1, 1)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.785398, result.as.number); // π/4
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.785398, result.as.float64); // π/4
     vm_release(result);
 }
 
 void test_builtin_atan2_negative_x(void) {
     value_t result = test_execute_expression("atan2(1, -1)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.356194, result.as.number); // 3π/4
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.356194, result.as.float64); // 3π/4
     vm_release(result);
 }
 
 void test_builtin_atan2_origin(void) {
     value_t result = test_execute_expression("atan2(0, 0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.float64);
     vm_release(result);
 }
 
 // Test degrees function
 void test_builtin_degrees_zero(void) {
     value_t result = test_execute_expression("degrees(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_degrees_pi(void) {
     value_t result = test_execute_expression("degrees(3.14159265359)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 180.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 180.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_degrees_pi_half(void) {
     value_t result = test_execute_expression("degrees(1.5707963268)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 90.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 90.0, result.as.float64);
     vm_release(result);
 }
 
 // Test radians function
 void test_builtin_radians_zero(void) {
     value_t result = test_execute_expression("radians(0)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_EQUAL_DOUBLE(0.0, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_radians_180(void) {
     value_t result = test_execute_expression("radians(180)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 3.14159265359, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 3.14159265359, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_radians_90(void) {
     value_t result = test_execute_expression("radians(90)");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.5707963268, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 1.5707963268, result.as.float64);
     vm_release(result);
 }
 
@@ -451,16 +451,16 @@ void test_builtin_sign_zero(void) {
 void test_builtin_trig_inverse_relationships(void) {
     // sin(asin(0.5)) should be 0.5
     value_t result = test_execute_expression("sin(asin(0.5))");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.5, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 0.5, result.as.float64);
     vm_release(result);
 }
 
 void test_builtin_degrees_radians_inverse(void) {
     // radians(degrees(2)) should be 2
     value_t result = test_execute_expression("radians(degrees(2))");
-    TEST_ASSERT_EQUAL(VAL_NUMBER, result.type);
-    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.0, result.as.number);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.000001, 2.0, result.as.float64);
     vm_release(result);
 }
 

@@ -292,7 +292,20 @@ static token_t number_token(lexer_t* lexer) {
         }
     }
     
-    return make_token(lexer, is_float ? TOKEN_NUMBER : TOKEN_INTEGER);
+    // Look for float type suffixes (f/F for float32, d/D for float64)
+    if (is_float) {
+        if (peek(lexer) == 'f' || peek(lexer) == 'F') {
+            advance(lexer); // Consume 'f' or 'F'
+            return make_token(lexer, TOKEN_FLOAT32);
+        } else if (peek(lexer) == 'd' || peek(lexer) == 'D') {
+            advance(lexer); // Consume 'd' or 'D'
+            return make_token(lexer, TOKEN_FLOAT64);
+        } else {
+            return make_token(lexer, TOKEN_NUMBER); // Default float type
+        }
+    } else {
+        return make_token(lexer, TOKEN_INTEGER);
+    }
 }
 
 static token_t identifier_token(lexer_t* lexer) {
@@ -738,6 +751,8 @@ token_t lexer_next_token(lexer_t* lexer) {
 const char* token_type_name(token_type_t type) {
     switch (type) {
         case TOKEN_INTEGER: return "INTEGER";
+        case TOKEN_FLOAT32: return "FLOAT32";
+        case TOKEN_FLOAT64: return "FLOAT64";
         case TOKEN_NUMBER: return "NUMBER";
         case TOKEN_STRING: return "STRING";
         case TOKEN_IDENTIFIER: return "IDENTIFIER";

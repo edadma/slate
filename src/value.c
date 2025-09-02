@@ -159,10 +159,19 @@ value_t make_bigint(di_int bigint) {
     return value;
 }
 
-value_t make_number(double number) {
+value_t make_float32(float float_val) {
     value_t value;
-    value.type = VAL_NUMBER;
-    value.as.number = number;
+    value.type = VAL_FLOAT32;
+    value.as.float32 = float_val;
+    value.class = global_value_class;
+    value.debug = NULL;
+    return value;
+}
+
+value_t make_float64(double double_val) {
+    value_t value;
+    value.type = VAL_FLOAT64;
+    value.as.float64 = double_val;
     value.class = global_value_class;
     value.debug = NULL;
     return value;
@@ -437,8 +446,14 @@ value_t make_bigint_with_debug(di_int bigint, debug_location* debug) {
     return value;
 }
 
-value_t make_number_with_debug(double number, debug_location* debug) {
-    value_t value = make_number(number);
+value_t make_float32_with_debug(float float_val, debug_location* debug) {
+    value_t value = make_float32(float_val);
+    value.debug = copy_debug_location(debug);
+    return value;
+}
+
+value_t make_float64_with_debug(double double_val, debug_location* debug) {
+    value_t value = make_float64(double_val);
     value.debug = copy_debug_location(debug);
     return value;
 }

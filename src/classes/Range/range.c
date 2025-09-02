@@ -134,8 +134,8 @@ value_t builtin_range_is_empty(vm_t* vm, int arg_count, value_t* args) {
         return make_boolean(0);
     }
     
-    double start_val = value_to_double(range->start);
-    double end_val = value_to_double(range->end);
+    double start_val = value_to_float64(range->start);
+    double end_val = value_to_float64(range->end);
     
     if (start_val > end_val) {
         return make_boolean(1); // Empty - start > end
@@ -169,8 +169,8 @@ value_t builtin_range_length(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "length() only supported for numeric ranges");
     }
     
-    double start_val = value_to_double(range->start);
-    double end_val = value_to_double(range->end);
+    double start_val = value_to_float64(range->start);
+    double end_val = value_to_float64(range->end);
     
     if (start_val > end_val) {
         return make_int32(0); // Empty range
@@ -214,9 +214,9 @@ value_t builtin_range_contains(vm_t* vm, int arg_count, value_t* args) {
         return make_boolean(0); // Non-numeric not contained
     }
     
-    double start_val = value_to_double(range->start);
-    double end_val = value_to_double(range->end);
-    double check_val = value_to_double(value);
+    double start_val = value_to_float64(range->start);
+    double end_val = value_to_float64(range->end);
+    double check_val = value_to_float64(value);
     
     if (range->exclusive) {
         return make_boolean(check_val >= start_val && check_val < end_val);

@@ -23,8 +23,10 @@ int is_falsy(value_t value) {
         return value.as.int32 == 0;
     case VAL_BIGINT:
         return di_is_zero(value.as.bigint);
-    case VAL_NUMBER:
-        return value.as.number == 0.0;
+    case VAL_FLOAT32:
+        return value.as.float32 == 0.0f;
+    case VAL_FLOAT64:
+        return value.as.float64 == 0.0;
     case VAL_STRING:
         return value.as.string == NULL || strlen(value.as.string) == 0;
     case VAL_BUFFER:
@@ -42,7 +44,7 @@ int is_truthy(value_t value) {
     return !is_falsy(value);
 }
 
-int is_number(value_t value) { return value.type == VAL_INT32 || value.type == VAL_BIGINT || value.type == VAL_NUMBER; }
+int is_number(value_t value) { return value.type == VAL_INT32 || value.type == VAL_BIGINT || value.type == VAL_FLOAT32 || value.type == VAL_FLOAT64; }
 
 int values_equal(value_t a, value_t b) {
     // Handle cross-type numeric comparisons
@@ -52,17 +54,21 @@ int values_equal(value_t a, value_t b) {
             return a.as.int32 == b.as.int32;
         } else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
             return di_eq(a.as.bigint, b.as.bigint);
-        } else if (a.type == VAL_NUMBER && b.type == VAL_NUMBER) {
-            return a.as.number == b.as.number;
+        } else if (a.type == VAL_FLOAT32 && b.type == VAL_FLOAT32) {
+            return a.as.float32 == b.as.float32;
+        } else if (a.type == VAL_FLOAT64 && b.type == VAL_FLOAT64) {
+            return a.as.float64 == b.as.float64;
         }
         // Cross-type comparisons - convert to common type
-        // For now, convert to double for simplicity
+        // Convert to double for simplicity
         double a_val = (a.type == VAL_INT32) ? (double)a.as.int32
             : (a.type == VAL_BIGINT)         ? di_to_double(a.as.bigint)
-                                             : a.as.number;
+            : (a.type == VAL_FLOAT32)        ? (double)a.as.float32
+                                             : a.as.float64;
         double b_val = (b.type == VAL_INT32) ? (double)b.as.int32
             : (b.type == VAL_BIGINT)         ? di_to_double(b.as.bigint)
-                                             : b.as.number;
+            : (b.type == VAL_FLOAT32)        ? (double)b.as.float32
+                                             : b.as.float64;
         return a_val == b_val;
     }
 
@@ -154,8 +160,11 @@ void print_value(vm_t* vm, value_t value) {
         }
         break;
     }
-    case VAL_NUMBER:
-        printf("%.6g", value.as.number);
+    case VAL_FLOAT32:
+        printf("%.7g", value.as.float32);
+        break;
+    case VAL_FLOAT64:
+        printf("%.6g", value.as.float64);
         break;
     case VAL_STRING:
         printf("\"%s\"", value.as.string ? value.as.string : ""); // DS strings work directly!
@@ -330,14 +339,32 @@ void print_value(vm_t* vm, value_t value) {
     }
 }
 
-double value_to_double(value_t value) {
+float value_to_float32(value_t value) {
+    switch (value.type) {
+    case VAL_INT32:
+        return (float)value.as.int32;
+    case VAL_BIGINT:
+        return (float)di_to_double(value.as.bigint);
+    case VAL_FLOAT32:
+        return value.as.float32;
+    case VAL_FLOAT64:
+        return (float)value.as.float64;
+    default:
+        runtime_error(g_current_vm, "Cannot convert %s to number", value_type_name(value.type));
+        return 0.0f; // Never reached, but keeps compiler happy
+    }
+}
+
+double value_to_float64(value_t value) {
     switch (value.type) {
     case VAL_INT32:
         return (double)value.as.int32;
     case VAL_BIGINT:
         return di_to_double(value.as.bigint);
-    case VAL_NUMBER:
-        return value.as.number;
+    case VAL_FLOAT32:
+        return (double)value.as.float32;
+    case VAL_FLOAT64:
+        return value.as.float64;
     default:
         runtime_error(g_current_vm, "Cannot convert %s to number", value_type_name(value.type));
         return 0.0; // Never reached, but keeps compiler happy
@@ -352,9 +379,9 @@ bool is_int(value_t value) {
         // Check if BigInt fits in int32 range
         int32_t dummy;
         return di_to_int32(value.as.bigint, &dummy);
-    case VAL_NUMBER:
+    case VAL_FLOAT64:
         // Check if the number is a whole number that fits in int range
-        return value.as.number == floor(value.as.number) && value.as.number >= INT_MIN && value.as.number <= INT_MAX;
+        return value.as.float64 == floor(value.as.float64) && value.as.float64 >= INT_MIN && value.as.float64 <= INT_MAX;
     default:
         return false;
     }
@@ -375,12 +402,12 @@ int value_to_int(value_t value) {
             free(str);
             return 0; // Never reached
         }
-    case VAL_NUMBER:
+    case VAL_FLOAT64:
         // Check if it's a valid integer
-        if (value.as.number == floor(value.as.number) && value.as.number >= INT_MIN && value.as.number <= INT_MAX) {
-            return (int)value.as.number;
+        if (value.as.float64 == floor(value.as.float64) && value.as.float64 >= INT_MIN && value.as.float64 <= INT_MAX) {
+            return (int)value.as.float64;
         } else {
-            runtime_error(g_current_vm, "Number %g is not a valid integer", value.as.number);
+            runtime_error(g_current_vm, "Number %g is not a valid integer", value.as.float64);
             return 0; // Never reached
         }
     default:

@@ -1,0 +1,19 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+/* Default floating point type configuration */
+#cmakedefine DEFAULT_FLOAT32
+#ifdef DEFAULT_FLOAT32
+    #define DEFAULT_FLOAT_TYPE VAL_FLOAT32
+    #define MAKE_DEFAULT_FLOAT(val) make_float32(val)
+    #define MAKE_DEFAULT_FLOAT_WITH_DEBUG(val, debug) make_float32_with_debug(val, debug)
+#else
+    #define DEFAULT_FLOAT_TYPE VAL_FLOAT64
+    #define MAKE_DEFAULT_FLOAT(val) make_float64(val)
+    #define MAKE_DEFAULT_FLOAT_WITH_DEBUG(val, debug) make_float64_with_debug(val, debug)
+#endif
+
+/* MCU optimization mode */
+#cmakedefine MCU_MODE
+
+#endif // CONFIG_H

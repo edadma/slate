@@ -121,8 +121,10 @@ const char* value_type_name(value_type type) {
         return "int32";
     case VAL_BIGINT:
         return "bigint";
-    case VAL_NUMBER:
-        return "number";
+    case VAL_FLOAT32:
+        return "float32";
+    case VAL_FLOAT64:
+        return "float64";
     case VAL_STRING:
         return "string";
     case VAL_STRING_BUILDER:

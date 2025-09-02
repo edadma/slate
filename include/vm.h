@@ -312,7 +312,8 @@ int is_number(value_t value); // Check if value is numeric (int32, bigint, or nu
 int values_equal(value_t a, value_t b);
 void print_value(vm_t* vm, value_t value);
 void print_for_builtin(vm_t* vm, value_t value);
-double value_to_double(value_t value); // Convert numeric values to double
+float value_to_float32(value_t value); // Convert numeric values to float32
+double value_to_float64(value_t value); // Convert numeric values to float64
 bool is_int(value_t value); // Check if value represents an integer
 int value_to_int(value_t value); // Convert numeric values to int
 

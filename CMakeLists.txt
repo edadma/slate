@@ -3,8 +3,21 @@ project(slate C)
 
 set(CMAKE_C_STANDARD 11)
 
+# Build configuration options
+option(DEFAULT_FLOAT32 "Use float32 as default floating point type" OFF)
+option(MCU_MODE "Enable MCU optimizations (implies DEFAULT_FLOAT32)" OFF)
+
+# If MCU mode is enabled, automatically enable float32 as default
+if(MCU_MODE)
+    set(DEFAULT_FLOAT32 ON CACHE BOOL "Use float32 as default floating point type" FORCE)
+endif()
+
+# Generate configuration header
+configure_file(config.h.in ${CMAKE_BINARY_DIR}/config.h)
+
 # Include directories
 include_directories(include)
+include_directories(${CMAKE_BINARY_DIR})
 include_directories(src/parser)
 include_directories(src/vm)
 include_directories(src/codegen)

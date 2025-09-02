@@ -157,10 +157,10 @@ void test_integer_equality() {
     TEST_ASSERT_FALSE(values_equal(a, c));
     
     // Test cross-type numeric equality (int32 vs number)
-    value_t num = make_number(42.0);
+    value_t num = make_float64(42.0);
     TEST_ASSERT_TRUE(values_equal(a, num));  // Should be equal
     
-    value_t float_num = make_number(42.5);
+    value_t float_num = make_float64(42.5);
     TEST_ASSERT_FALSE(values_equal(a, float_num));  // Should not be equal
 }
 
