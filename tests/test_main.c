@@ -27,6 +27,7 @@ void test_class_localtime_suite(void);
 void test_class_local_date_time_suite(void);
 void test_new_operators_suite(void);
 void test_functions_suite(void);
+void test_variable_shadowing_suite(void);
 
 void setUp(void) {
     // Setup code that runs before each test
@@ -66,6 +67,7 @@ int main(void) {
     test_class_local_date_time_suite();
     test_new_operators_suite();
     test_functions_suite();
+    test_variable_shadowing_suite();
 
     return UNITY_END();
 }

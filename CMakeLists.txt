@@ -204,6 +204,7 @@ if (BUILD_TESTS)
             tests/test_class_local_date_time.c
             tests/test_new_operators.c
             tests/test_functions.c
+            tests/test_variable_shadowing.c
             deps/cargs/src/cargs.c
             src/lexer.c
             src/parser/parser.c
