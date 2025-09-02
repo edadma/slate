@@ -48,6 +48,7 @@ void parser_pushback(parser_t* parser); // Push current token back for re-readin
 ast_node* parse_statement(parser_t* parser);
 ast_node* parse_declaration(parser_t* parser);
 ast_node* parse_var_declaration(parser_t* parser);
+ast_node* parse_val_declaration(parser_t* parser);
 ast_node* parse_expression_statement(parser_t* parser);
 ast_node* parse_if_expression(parser_t* parser);
 ast_node* parse_indented_block(parser_t* parser);

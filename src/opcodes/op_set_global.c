@@ -33,6 +33,16 @@ vm_result op_set_global(vm_t* vm) {
     // Check if variable exists
     value_t* stored_value = (value_t*)do_get(vm->globals, name_val.as.string);
     if (stored_value) {
+        // Check if variable is immutable
+        bool* immutable_flag = (bool*)do_get(vm->global_immutability, name_val.as.string);
+        if (immutable_flag && *immutable_flag) {
+            char error_msg[256];
+            snprintf(error_msg, sizeof(error_msg), "Cannot assign to immutable variable '%s'", name_val.as.string);
+            vm_release(value);
+            runtime_error(vm, "%s", error_msg);
+            return VM_RUNTIME_ERROR;
+        }
+        
         // Release the old value first (proper reference counting)
         vm_release(*stored_value);
 

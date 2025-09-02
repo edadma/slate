@@ -21,11 +21,14 @@ void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node)
         size_t constant = chunk_add_constant(codegen->chunk, make_string(node->name));
         codegen_emit_op_operand(codegen, OP_DEFINE_GLOBAL, (uint16_t)constant);
         
+        // Emit immutability flag (1 byte)
+        chunk_write_byte(codegen->chunk, node->is_immutable ? 1 : 0);
+        
         // Set result register with the initialization value
         codegen_emit_op(codegen, OP_SET_RESULT);
     } else {
         // Local variable declaration - modify declare function to allow re-initialization
-        int slot = codegen_declare_variable(codegen, node->name);
+        int slot = codegen_declare_variable(codegen, node->name, node->is_immutable);
         if (slot < 0) {
             return; // Error already reported
         }

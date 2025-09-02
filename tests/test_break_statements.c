@@ -95,12 +95,12 @@ void test_break_with_various_operators(void) {
     value_t result;
 
     // Test break with different operators
-    result = test_execute_expression("var val = 1\n"
-                            "while val <= 20 do\n"
-                            "    val = val * 2\n"
-                            "    if val > 15 then break\n"
+    result = test_execute_expression("var value = 1\n"
+                            "while value <= 20 do\n"
+                            "    value = value * 2\n"
+                            "    if value > 15 then break\n"
                             "end while\n"
-                            "val");
+                            "value");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(16, result.as.int32); // 1, 2, 4, 8, 16 (breaks here)
     vm_release(result);

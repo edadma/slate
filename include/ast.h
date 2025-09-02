@@ -250,6 +250,7 @@ typedef struct {
     ast_node base;
     char* name;
     ast_node* initializer; // May be NULL
+    int is_immutable; // 1 for val, 0 for var
 } ast_var_declaration;
 
 // Assignment node
@@ -366,7 +367,7 @@ ast_call* ast_create_call(ast_node* function, ast_node** arguments, size_t arg_c
 ast_member* ast_create_member(ast_node* object, const char* property, int line, int column);
 ast_object_literal* ast_create_object_literal(object_property* properties, size_t property_count, int line, int column);
 
-ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int line, int column);
+ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int is_immutable, int line, int column);
 ast_assignment* ast_create_assignment(ast_node* target, ast_node* value, int line, int column);
 ast_compound_assignment* ast_create_compound_assignment(ast_node* target, ast_node* value, binary_operator op, int line,
                                                         int column);

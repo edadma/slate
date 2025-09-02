@@ -245,7 +245,7 @@ ast_object_literal* ast_create_object_literal(object_property* properties, size_
     return node;
 }
 
-ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int line, int column) {
+ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int is_immutable, int line, int column) {
     ast_var_declaration* node = malloc(sizeof(ast_var_declaration));
     if (!node) return NULL;
     
@@ -254,6 +254,7 @@ ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* init
     node->base.column = column;
     node->name = strdup_safe(name);
     node->initializer = initializer;
+    node->is_immutable = is_immutable;
     
     return node;
 }

@@ -294,7 +294,7 @@ ast_node* parse_for_statement(parser_t* parser) {
                 init_expr = parse_expression(parser);
             }
             
-            initializer = (ast_node*)ast_create_var_declaration(name, init_expr,
+            initializer = (ast_node*)ast_create_var_declaration(name, init_expr, 0,  // 0 = var (mutable)
                                                                parser->previous.line, parser->previous.column);
         } else {
             // Could be assignment or empty

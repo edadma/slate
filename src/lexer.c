@@ -28,6 +28,7 @@ typedef struct {
 
 static keyword_entry_t keywords[] = {
     {"var", TOKEN_VAR},
+    {"val", TOKEN_VAL},
     {"def", TOKEN_DEF},
     {"function", TOKEN_FUNCTION},
     {"if", TOKEN_IF},
@@ -745,6 +746,7 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_NULL: return "NULL";
         case TOKEN_UNDEFINED: return "UNDEFINED";
         case TOKEN_VAR: return "VAR";
+        case TOKEN_VAL: return "VAL";
         case TOKEN_FUNCTION: return "FUNCTION";
         case TOKEN_IF: return "IF";
         case TOKEN_ELSE: return "ELSE";

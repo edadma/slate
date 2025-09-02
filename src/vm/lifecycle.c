@@ -42,6 +42,13 @@ vm_t* vm_create(void) {
         vm_destroy(vm);
         return NULL;
     }
+    
+    // Create global immutability tracking object
+    vm->global_immutability = do_create(NULL); // No release function needed for bools
+    if (!vm->global_immutability) {
+        vm_destroy(vm);
+        return NULL;
+    }
 
     // Create function table - stores all defined functions with reference counting
     vm->functions = da_new(sizeof(function_t*)); // Store pointers to functions
@@ -106,6 +113,7 @@ void vm_destroy(vm_t* vm) {
     free(vm->frames);
     free(vm->constants);
     do_release(&vm->globals);
+    do_release(&vm->global_immutability);
     
     // Release function table (functions handle their own ref counting)
     da_release(&vm->functions);

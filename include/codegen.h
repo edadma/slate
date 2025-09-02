@@ -57,6 +57,7 @@ typedef struct {
     int depth;           // Scope depth (0 = global)
     int slot;            // Stack slot index
     int is_initialized; // Has been initialized
+    int is_immutable;   // 1 for val, 0 for var
 } local_var_t;
 
 // Scope management state
@@ -157,7 +158,7 @@ loop_context_t* codegen_current_loop(codegen_t* codegen);
 // Scope management for local variables
 void codegen_begin_scope(codegen_t* codegen);
 void codegen_end_scope(codegen_t* codegen);
-int codegen_declare_variable(codegen_t* codegen, const char* name);
+int codegen_declare_variable(codegen_t* codegen, const char* name, int is_immutable);
 int codegen_resolve_variable(codegen_t* codegen, const char* name, int* is_local);
 void codegen_init_scope_manager(codegen_t* codegen);
 void codegen_cleanup_scope_manager(codegen_t* codegen);

@@ -8,6 +8,10 @@ ast_node* parse_declaration(parser_t* parser) {
         return parse_var_declaration(parser);
     }
     
+    if (parser_match(parser, TOKEN_VAL)) {
+        return parse_val_declaration(parser);
+    }
+    
     if (parser_match(parser, TOKEN_DEF)) {
         return parse_def_declaration(parser);
     }
@@ -31,7 +35,32 @@ ast_node* parse_var_declaration(parser_t* parser) {
         parser_match(parser, TOKEN_NEWLINE);
     }
     
-    return (ast_node*)ast_create_var_declaration(name, initializer, 
+    return (ast_node*)ast_create_var_declaration(name, initializer, 0,  // 0 = var (mutable)
+                                                parser->previous.line, parser->previous.column);
+}
+
+// Parse immutable variable declaration
+ast_node* parse_val_declaration(parser_t* parser) {
+    parser_consume(parser, TOKEN_IDENTIFIER, "Expected variable name.");
+    
+    char* name = token_to_string(&parser->previous);
+    ast_node* initializer = NULL;
+    
+    // val declarations must have initializers
+    if (!parser_match(parser, TOKEN_ASSIGN)) {
+        parser_error(parser, "Immutable variable must be initialized");
+        free(name);
+        return NULL;
+    }
+    
+    initializer = parse_expression(parser);
+    
+    // Allow semicolon or newline to terminate statement
+    if (!parser_match(parser, TOKEN_SEMICOLON)) {
+        parser_match(parser, TOKEN_NEWLINE);
+    }
+    
+    return (ast_node*)ast_create_var_declaration(name, initializer, 1,  // 1 = val (immutable)
                                                 parser->previous.line, parser->previous.column);
 }
 
@@ -88,5 +117,6 @@ ast_node* parse_def_declaration(parser_t* parser) {
     }
     
     // Return this as a variable declaration with the function as initializer
-    return (ast_node*)ast_create_var_declaration(func_name, func_node, name_line, name_column);
+    return (ast_node*)ast_create_var_declaration(func_name, func_node, 1,  // 1 = immutable (like val)
+                                                name_line, name_column);
 }

@@ -17,6 +17,7 @@ typedef enum {
     
     // Keywords
     TOKEN_VAR,           // var
+    TOKEN_VAL,           // val
     TOKEN_DEF,           // def
     TOKEN_FUNCTION,      // function
     TOKEN_IF,            // if

@@ -316,7 +316,7 @@ static void repl_with_args(int argc, char** argv) {
     }
     
     // Set REPL context for error handling
-    vm->context = CTX_REPL;
+    vm->context = CTX_INTERACTIVE;
 
     for (;;) {
         // Show appropriate prompt
@@ -658,6 +658,7 @@ int main(int argc, char* argv[]) {
         if (source) {
             // Create a shared VM to maintain state and show results
             vm_t* vm = vm_create_with_args(script_argc, script_argv);
+            vm->context = CTX_INTERACTIVE;  // Set REPL context to allow redeclaration
 
             // Split by lines and interpret each one
             char* line = strtok(source, "\n");

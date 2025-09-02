@@ -12,21 +12,14 @@ typedef enum {
     ERR_RANGE,
     ERR_IO,
     ERR_ASSERT,
-    ERR_ARITHMETIC,  // For division by zero and similar
+    ERR_ARITHMETIC, // For division by zero and similar
 } ErrorKind;
 
 // Captured error details
 typedef struct {
     ErrorKind kind;
     const char* file;
-    int line;      // 1-based line number
-    int column;    // 1-based column number
+    int line; // 1-based line number
+    int column; // 1-based column number
     char message[256];
 } SlateError;
-
-// Execution context
-typedef enum {
-    CTX_REPL,
-    CTX_SCRIPT,
-    CTX_TEST,
-} RunContext;

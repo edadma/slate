@@ -10,6 +10,10 @@ vm_result op_define_global(vm_t* vm) {
 
     uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
     vm->ip += 2;
+    
+    // Read immutability flag (1 byte)
+    uint8_t is_immutable = *vm->ip;
+    vm->ip++;
 
     // Get the current executing function from the current frame
     function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
@@ -26,17 +30,63 @@ vm_result op_define_global(vm_t* vm) {
         return VM_RUNTIME_ERROR;
     }
 
-    // Store in globals object - we need to store a copy of the value
-    value_t* stored_value = malloc(sizeof(value_t));
-    if (!stored_value) {
+    // Check if variable already exists (prevent redeclaration in scripts, allow in REPL)
+    value_t* existing_value = (value_t*)do_get(vm->globals, name_val.as.string);
+    if (existing_value && vm->context == CTX_SCRIPT) {
+        char error_msg[256];
+        snprintf(error_msg, sizeof(error_msg), "Variable '%s' is already declared", name_val.as.string);
         vm_release(value);
-        runtime_error(vm, "Memory allocation failed");
+        runtime_error(vm, "%s", error_msg);
         return VM_RUNTIME_ERROR;
     }
-    *stored_value = value;
 
-    // ds_string can be used directly as char* - no ds_cstr needed
-    // do_set needs key, data pointer, and size
-    do_set(vm->globals, name_val.as.string, stored_value, sizeof(value_t));
+    // Handle variable storage (new declaration or REPL redeclaration)
+    value_t* stored_value;
+    bool* immutable_flag;
+    
+    if (existing_value) {
+        // REPL mode redeclaration - reuse existing storage
+        vm_release(*existing_value);  // Release old value
+        *existing_value = value;      // Store new value
+        stored_value = existing_value;
+        
+        // Update immutability flag
+        immutable_flag = (bool*)do_get(vm->global_immutability, name_val.as.string);
+        if (immutable_flag) {
+            *immutable_flag = (bool)is_immutable;
+        } else {
+            // This shouldn't happen, but handle gracefully
+            immutable_flag = malloc(sizeof(bool));
+            if (!immutable_flag) {
+                runtime_error(vm, "Memory allocation failed for immutability flag");
+                return VM_RUNTIME_ERROR;
+            }
+            *immutable_flag = (bool)is_immutable;
+            do_set(vm->global_immutability, name_val.as.string, immutable_flag, sizeof(bool));
+        }
+    } else {
+        // New declaration - allocate new storage
+        stored_value = malloc(sizeof(value_t));
+        if (!stored_value) {
+            vm_release(value);
+            runtime_error(vm, "Memory allocation failed");
+            return VM_RUNTIME_ERROR;
+        }
+        *stored_value = value;
+        
+        // ds_string can be used directly as char* - no ds_cstr needed
+        // do_set needs key, data pointer, and size
+        do_set(vm->globals, name_val.as.string, stored_value, sizeof(value_t));
+        
+        // Store immutability flag in parallel object
+        immutable_flag = malloc(sizeof(bool));
+        if (!immutable_flag) {
+            vm_release(value);
+            runtime_error(vm, "Memory allocation failed for immutability flag");
+            return VM_RUNTIME_ERROR;
+        }
+        *immutable_flag = (bool)is_immutable;
+        do_set(vm->global_immutability, name_val.as.string, immutable_flag, sizeof(bool));
+    }
     return VM_OK;
 }

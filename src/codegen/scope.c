@@ -49,7 +49,7 @@ void codegen_end_scope(codegen_t* codegen) {
     codegen->scope.scope_depth--;
 }
 
-int codegen_declare_variable(codegen_t* codegen, const char* name) {
+int codegen_declare_variable(codegen_t* codegen, const char* name, int is_immutable) {
     // Check if variable already exists in current scope
     for (int i = codegen->scope.local_count - 1; i >= 0; i--) {
         local_var_t* local = &codegen->scope.locals[i];
@@ -81,6 +81,7 @@ int codegen_declare_variable(codegen_t* codegen, const char* name) {
     local->depth = codegen->scope.scope_depth;
     local->slot = codegen->scope.local_count; // Stack slot index relative to frame->slots
     local->is_initialized = 0; // Will be set to 1 after initialization
+    local->is_immutable = is_immutable; // Store immutability flag
     
     return codegen->scope.local_count++;
 }

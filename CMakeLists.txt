@@ -205,6 +205,7 @@ if (BUILD_TESTS)
             tests/test_new_operators.c
             tests/test_functions.c
             tests/test_variable_shadowing.c
+            tests/test_immutable_variables.c
             deps/cargs/src/cargs.c
             src/lexer.c
             src/parser/parser.c

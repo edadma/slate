@@ -14,6 +14,13 @@
 #include "dynamic_object.h"
 #include "dynamic_buffer.h"
 
+// Execution context
+typedef enum {
+    CTX_INTERACTIVE,
+    CTX_SCRIPT,
+    CTX_TEST,
+} RunContext;
+
 // Include value system
 #include "value.h"
 
@@ -180,6 +187,7 @@ typedef struct slate_vm {
 
     // Global variables
     do_object globals; // Global variable table
+    do_object global_immutability; // Global variable immutability flags (variable_name -> bool)
 
     // Function table - stores all defined functions with proper reference counting
     da_array functions; // Global function table

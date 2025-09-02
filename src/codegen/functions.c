@@ -56,7 +56,7 @@ function_t* codegen_compile_function(codegen_t* parent_codegen, ast_function* fu
     // Begin function scope and add parameters as local variables
     codegen_begin_scope(func_codegen);
     for (size_t i = 0; i < func_node->param_count; i++) {
-        int slot = codegen_declare_variable(func_codegen, func_node->parameters[i]);
+        int slot = codegen_declare_variable(func_codegen, func_node->parameters[i], 0);  // 0 = mutable parameters
         if (slot == -1) {
             codegen_error(func_codegen, "Failed to declare parameter");
             function_destroy(function);

@@ -127,7 +127,7 @@ void slate_runtime_error(vm_t* vm, ErrorKind kind, const char* file, int line, i
 
     // Handle based on context
     switch (vm->context) {
-    case CTX_REPL:
+    case CTX_INTERACTIVE:
         // Print error with caret and continue REPL
         print_error_with_caret(stderr, &vm->error, debug_loc);
         longjmp(vm->trap, 1);
