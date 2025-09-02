@@ -13,8 +13,8 @@ extern value_t run_code(const char* source);
 void test_localdate_creation(void) {
     value_t result;
     
-    // Test LocalDate_of creation
-    result = run_code("LocalDate_of(2024, 12, 25)");
+    // Test LocalDate.of creation
+    result = run_code("LocalDate.of(2024, 12, 25)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2024, result.as.local_date->year);
@@ -22,8 +22,8 @@ void test_localdate_creation(void) {
     TEST_ASSERT_EQUAL_INT32(25, result.as.local_date->day);
     vm_release(result);
     
-    // Test LocalDate_now creation (should not crash)
-    result = run_code("LocalDate_now()");
+    // Test LocalDate.now creation (should not crash)
+    result = run_code("LocalDate.now()");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     vm_release(result);
@@ -52,7 +52,7 @@ void test_localdate_factory_syntax(void) {
     vm_release(result);
     
     // Test compatibility: both syntaxes should work the same
-    value_t old_syntax = run_code("LocalDate_of(2025, 6, 15)");
+    value_t old_syntax = run_code("LocalDate.of(2025, 6, 15)");
     value_t new_syntax = run_code("LocalDate(2025, 6, 15)");
     
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, old_syntax.type);
@@ -70,25 +70,25 @@ void test_localdate_getters(void) {
     value_t result;
     
     // Test year() method
-    result = run_code("LocalDate_of(2024, 3, 15).year()");
+    result = run_code("LocalDate.of(2024, 3, 15).year()");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(2024, result.as.int32);
     vm_release(result);
     
     // Test month() method
-    result = run_code("LocalDate_of(2024, 3, 15).month()");
+    result = run_code("LocalDate.of(2024, 3, 15).month()");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
     vm_release(result);
     
     // Test day() method
-    result = run_code("LocalDate_of(2024, 3, 15).day()");
+    result = run_code("LocalDate.of(2024, 3, 15).day()");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(15, result.as.int32);
     vm_release(result);
     
     // Test dayOfWeek() method (March 15, 2024 is a Friday = 5)
-    result = run_code("LocalDate_of(2024, 3, 15).dayOfWeek()");
+    result = run_code("LocalDate.of(2024, 3, 15).dayOfWeek()");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(5, result.as.int32);
     vm_release(result);
@@ -99,7 +99,7 @@ void test_localdate_arithmetic(void) {
     value_t result;
     
     // Test plusDays() method
-    result = run_code("LocalDate_of(2024, 3, 15).plusDays(7)");
+    result = run_code("LocalDate.of(2024, 3, 15).plusDays(7)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2024, result.as.local_date->year);
@@ -108,7 +108,7 @@ void test_localdate_arithmetic(void) {
     vm_release(result);
     
     // Test minusDays() method
-    result = run_code("LocalDate_of(2024, 3, 15).minusDays(10)");
+    result = run_code("LocalDate.of(2024, 3, 15).minusDays(10)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2024, result.as.local_date->year);
@@ -117,7 +117,7 @@ void test_localdate_arithmetic(void) {
     vm_release(result);
     
     // Test plusMonths() method
-    result = run_code("LocalDate_of(2024, 3, 15).plusMonths(2)");
+    result = run_code("LocalDate.of(2024, 3, 15).plusMonths(2)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2024, result.as.local_date->year);
@@ -126,7 +126,7 @@ void test_localdate_arithmetic(void) {
     vm_release(result);
     
     // Test minusMonths() method
-    result = run_code("LocalDate_of(2024, 5, 15).minusMonths(3)");
+    result = run_code("LocalDate.of(2024, 5, 15).minusMonths(3)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2024, result.as.local_date->year);
@@ -135,7 +135,7 @@ void test_localdate_arithmetic(void) {
     vm_release(result);
     
     // Test plusYears() method
-    result = run_code("LocalDate_of(2024, 3, 15).plusYears(5)");
+    result = run_code("LocalDate.of(2024, 3, 15).plusYears(5)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2029, result.as.local_date->year);
@@ -144,7 +144,7 @@ void test_localdate_arithmetic(void) {
     vm_release(result);
     
     // Test minusYears() method
-    result = run_code("LocalDate_of(2024, 3, 15).minusYears(10)");
+    result = run_code("LocalDate.of(2024, 3, 15).minusYears(10)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2014, result.as.local_date->year);
@@ -158,7 +158,7 @@ void test_localdate_month_edge_cases(void) {
     value_t result;
     
     // Test January 31 + 1 month = February 29 (2024 is leap year)
-    result = run_code("LocalDate_of(2024, 1, 31).plusMonths(1)");
+    result = run_code("LocalDate.of(2024, 1, 31).plusMonths(1)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2024, result.as.local_date->year);
@@ -167,7 +167,7 @@ void test_localdate_month_edge_cases(void) {
     vm_release(result);
     
     // Test January 31 + 1 month in non-leap year = February 28
-    result = run_code("LocalDate_of(2023, 1, 31).plusMonths(1)");
+    result = run_code("LocalDate.of(2023, 1, 31).plusMonths(1)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2023, result.as.local_date->year);
@@ -176,7 +176,7 @@ void test_localdate_month_edge_cases(void) {
     vm_release(result);
     
     // Test May 31 + 1 month = June 30 (June has 30 days)
-    result = run_code("LocalDate_of(2024, 5, 31).plusMonths(1)");
+    result = run_code("LocalDate.of(2024, 5, 31).plusMonths(1)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2024, result.as.local_date->year);
@@ -190,37 +190,37 @@ void test_localdate_comparisons(void) {
     value_t result;
     
     // Test equals() method - same dates
-    result = run_code("LocalDate_of(2024, 3, 15).equals(LocalDate_of(2024, 3, 15))");
+    result = run_code("LocalDate.of(2024, 3, 15).equals(LocalDate.of(2024, 3, 15))");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_TRUE(result.as.boolean);
     vm_release(result);
     
     // Test equals() method - different dates
-    result = run_code("LocalDate_of(2024, 3, 15).equals(LocalDate_of(2024, 3, 16))");
+    result = run_code("LocalDate.of(2024, 3, 15).equals(LocalDate.of(2024, 3, 16))");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_FALSE(result.as.boolean);
     vm_release(result);
     
     // Test isBefore() method - true case
-    result = run_code("LocalDate_of(2024, 3, 14).isBefore(LocalDate_of(2024, 3, 15))");
+    result = run_code("LocalDate.of(2024, 3, 14).isBefore(LocalDate.of(2024, 3, 15))");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_TRUE(result.as.boolean);
     vm_release(result);
     
     // Test isBefore() method - false case
-    result = run_code("LocalDate_of(2024, 3, 15).isBefore(LocalDate_of(2024, 3, 14))");
+    result = run_code("LocalDate.of(2024, 3, 15).isBefore(LocalDate.of(2024, 3, 14))");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_FALSE(result.as.boolean);
     vm_release(result);
     
     // Test isAfter() method - true case
-    result = run_code("LocalDate_of(2024, 3, 16).isAfter(LocalDate_of(2024, 3, 15))");
+    result = run_code("LocalDate.of(2024, 3, 16).isAfter(LocalDate.of(2024, 3, 15))");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_TRUE(result.as.boolean);
     vm_release(result);
     
     // Test isAfter() method - false case
-    result = run_code("LocalDate_of(2024, 3, 15).isAfter(LocalDate_of(2024, 3, 16))");
+    result = run_code("LocalDate.of(2024, 3, 15).isAfter(LocalDate.of(2024, 3, 16))");
     TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
     TEST_ASSERT_FALSE(result.as.boolean);
     vm_release(result);
@@ -231,7 +231,7 @@ void test_localdate_year_boundaries(void) {
     value_t result;
     
     // Test crossing year boundary with days
-    result = run_code("LocalDate_of(2023, 12, 28).plusDays(7)");
+    result = run_code("LocalDate.of(2023, 12, 28).plusDays(7)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2024, result.as.local_date->year);
@@ -240,7 +240,7 @@ void test_localdate_year_boundaries(void) {
     vm_release(result);
     
     // Test crossing year boundary backwards with days
-    result = run_code("LocalDate_of(2024, 1, 5).minusDays(10)");
+    result = run_code("LocalDate.of(2024, 1, 5).minusDays(10)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2023, result.as.local_date->year);
@@ -249,7 +249,7 @@ void test_localdate_year_boundaries(void) {
     vm_release(result);
     
     // Test crossing year boundary with months
-    result = run_code("LocalDate_of(2023, 10, 15).plusMonths(5)");
+    result = run_code("LocalDate.of(2023, 10, 15).plusMonths(5)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2024, result.as.local_date->year);
@@ -262,7 +262,7 @@ void test_localdate_year_boundaries(void) {
 void test_localdate_type_function(void) {
     value_t result;
     
-    result = run_code("type(LocalDate_of(2024, 3, 15))");
+    result = run_code("type(LocalDate.of(2024, 3, 15))");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
     TEST_ASSERT_NOT_NULL(result.as.string);
     TEST_ASSERT_EQUAL_STRING("LocalDate", result.as.string);
@@ -274,14 +274,14 @@ void test_localdate_string_representation(void) {
     value_t result;
     
     // Test basic date formatting
-    result = run_code("\"\" + LocalDate_of(2024, 3, 15)");
+    result = run_code("\"\" + LocalDate.of(2024, 3, 15)");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
     TEST_ASSERT_NOT_NULL(result.as.string);
     TEST_ASSERT_EQUAL_STRING("2024-03-15", result.as.string);
     vm_release(result);
     
     // Test single digit month and day padding
-    result = run_code("\"\" + LocalDate_of(2024, 1, 5)");
+    result = run_code("\"\" + LocalDate.of(2024, 1, 5)");
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
     TEST_ASSERT_NOT_NULL(result.as.string);
     TEST_ASSERT_EQUAL_STRING("2024-01-05", result.as.string);
@@ -294,14 +294,14 @@ void test_localdate_invalid_dates(void) {
     
     // Test invalid month (should clamp or handle gracefully)
     // Note: This tests implementation behavior - may need adjustment based on actual error handling
-    result = run_code("LocalDate_of(2024, 13, 15)");
+    result = run_code("LocalDate.of(2024, 13, 15)");
     // Implementation may return null, throw error, or clamp - adjust assertion as needed
     if (result.type != VAL_NULL) {
         vm_release(result);
     }
     
     // Test invalid day (should clamp or handle gracefully)  
-    result = run_code("LocalDate_of(2024, 2, 30)");
+    result = run_code("LocalDate.of(2024, 2, 30)");
     // Implementation may return null, throw error, or clamp - adjust assertion as needed
     if (result.type != VAL_NULL) {
         vm_release(result);
@@ -313,14 +313,14 @@ void test_localdate_leap_year_cases(void) {
     value_t result;
     
     // Test leap year day of week calculation (Feb 29, 2024)
-    result = run_code("LocalDate_of(2024, 2, 29).dayOfWeek()");
+    result = run_code("LocalDate.of(2024, 2, 29).dayOfWeek()");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     // February 29, 2024 is a Thursday = 4
     TEST_ASSERT_EQUAL_INT32(4, result.as.int32);
     vm_release(result);
     
     // Test leap year + 4 years = next leap year
-    result = run_code("LocalDate_of(2024, 2, 29).plusYears(4)");
+    result = run_code("LocalDate.of(2024, 2, 29).plusYears(4)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2028, result.as.local_date->year);
@@ -329,7 +329,7 @@ void test_localdate_leap_year_cases(void) {
     vm_release(result);
     
     // Test leap year + 1 year = February 28 (clamped)
-    result = run_code("LocalDate_of(2024, 2, 29).plusYears(1)");
+    result = run_code("LocalDate.of(2024, 2, 29).plusYears(1)");
     TEST_ASSERT_EQUAL_INT(VAL_LOCAL_DATE, result.type);
     TEST_ASSERT_NOT_NULL(result.as.local_date);
     TEST_ASSERT_EQUAL_INT32(2025, result.as.local_date->year);

@@ -12,6 +12,8 @@
 #include "local_date.h"
 #include "local_time.h"
 #include <assert.h>
+#include "runtime_error.h"
+#include "library_assert.h"
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -30,17 +32,23 @@ static int random_initialized = 0;
 
 
 
-// Runtime error handling - exits with non-zero code for now, will throw exception later
+// Runtime error handling - uses context-aware error system
 void runtime_error(const char* message, ...) {
     va_list args;
     va_start(args, message);
-
-    fprintf(stderr, "Runtime error: ");
-    vfprintf(stderr, message, args);
-    fprintf(stderr, "\n");
-
+    
+    char formatted_message[256];
+    vsnprintf(formatted_message, sizeof(formatted_message), message, args);
     va_end(args);
-    exit(1); // Non-zero exit code
+
+    if (g_current_vm) {
+        // Use the new context-aware error system
+        slate_runtime_error(g_current_vm, ERR_TYPE, __FILE__, __LINE__, -1, "%s", formatted_message);
+    } else {
+        // Fallback for cases without VM
+        fprintf(stderr, "Runtime error: %s\n", formatted_message);
+        exit(1);
+    }
 }
 
 // Register a built-in function in the VM's global namespace

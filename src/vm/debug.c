@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "codegen.h"
+#include "runtime_error.h"
 
 // Debug location management
 debug_location* debug_location_create(int line, int column, const char* source_text) {
@@ -82,70 +83,19 @@ void* vm_get_debug_info_at(function_t* function, size_t bytecode_offset) {
     return best_entry ? debug : NULL;
 }
 
-// Print enhanced runtime error with instruction location
+// Enhanced runtime error using context-aware error system
 void vm_runtime_error_with_debug(slate_vm* vm, const char* message) {
-    if (vm->frame_count == 0) {
-        printf("Runtime error: %s\n", message);
-        exit(1);
-    }
-
-    // Get the current function from the top call frame
-    call_frame* frame = &vm->frames[vm->frame_count - 1];
-    function_t* function = frame->closure->function;
-
-    // Use the stored current instruction pointer
-    size_t instruction_offset = vm->current_instruction - vm->bytecode;
-
-    // Show the instruction that failed
-    opcode failed_op = (opcode)*vm->current_instruction;
-    printf("Runtime error: %s\n", message);
-    printf("    at instruction %04zu: %s\n", instruction_offset, opcode_name(failed_op));
-
-    // If we have debug info with source code, try to show it
-    if (function->debug) {
-        debug_info* debug = (debug_info*)function->debug;
-
-        if (debug->count > 0 && debug->source_code) {
-            // Find the debug info for this instruction
-            debug_info_entry* entry = NULL;
-            for (size_t i = 0; i < debug->count; i++) {
-                if (debug->entries[i].bytecode_offset <= instruction_offset) {
-                    entry = &debug->entries[i];
-                } else {
-                    break;
-                }
-            }
-
-            if (entry) {
-                size_t line_length;
-                const char* line_start = get_source_line(debug->source_code, entry->line, &line_length);
-
-                if (line_start) {
-                    printf("    %.*s\n", (int)line_length, line_start);
-
-                    // Print caret pointing to the column (adjust by -1 since columns seem to be 1-based)
-                    printf("    ");
-                    int caret_pos = entry->column > 0 ? entry->column - 1 : 0;
-                    for (int i = 0; i < caret_pos; i++) {
-                        printf(" ");
-                    }
-                    printf("^\n");
-                }
-            }
-        }
-    }
-    
-    // Terminate program execution
-    exit(1);
+    // Use the new context-aware error system which handles CTX_TEST silently
+    slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "%s", message);
 }
 
 // Enhanced error reporting using value debug information
 void vm_runtime_error_with_values(slate_vm* vm, const char* format, const value_t* a, const value_t* b,
                                   debug_location* location) {
-    // Print basic error message with value types
-    printf("Runtime error: ");
-    printf(format, value_type_name(a->type), b ? value_type_name(b->type) : "");
-    printf("\n");
+    // Format the error message with value types
+    char formatted_message[256];
+    snprintf(formatted_message, sizeof(formatted_message), format, 
+             value_type_name(a->type), b ? value_type_name(b->type) : "");
 
     // Use the best debug location available (preference order: location param, a->debug, b->debug, current_debug)
     debug_location* debug_to_use = location;
@@ -156,19 +106,12 @@ void vm_runtime_error_with_values(slate_vm* vm, const char* format, const value_
     if (!debug_to_use)
         debug_to_use = vm->current_debug;
 
-    // If we have debug info, show source location
-    if (debug_to_use && debug_to_use->source_text) {
-        printf("    at line %d, column %d:\n", debug_to_use->line, debug_to_use->column);
-        printf("    %s\n", debug_to_use->source_text);
+    // Extract line and column from debug location for the new error system
+    int line = debug_to_use ? debug_to_use->line : -1;
+    int column = debug_to_use ? debug_to_use->column : -1;
 
-        // Print caret pointing to the column
-        printf("    ");
-        int caret_pos = debug_to_use->column > 0 ? debug_to_use->column - 1 : 0;
-        for (int i = 0; i < caret_pos; i++) {
-            printf(" ");
-        }
-        printf("^\n");
-    }
+    // Use the new context-aware error system
+    slate_runtime_error(vm, ERR_TYPE, __FILE__, line, column, "%s", formatted_message);
 }
 
 // Helper function to get value type name for error messages
