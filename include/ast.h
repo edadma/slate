@@ -233,11 +233,12 @@ typedef struct {
     size_t arg_count;
 } ast_call;
 
-// Member access node (obj.prop)
+// Member access node (obj.prop or obj?.prop)
 typedef struct {
     ast_node base;
     ast_node* object;
     char* property;
+    int is_optional; // true for optional chaining (?.)
 } ast_member;
 
 // Object literal property
@@ -395,7 +396,7 @@ ast_function* ast_create_function(char** parameters, size_t param_count, ast_nod
                                   int column);
 ast_call* ast_create_call(ast_node* function, ast_node** arguments, size_t arg_count, int line, int column);
 
-ast_member* ast_create_member(ast_node* object, const char* property, int line, int column);
+ast_member* ast_create_member(ast_node* object, const char* property, int is_optional, int line, int column);
 ast_object_literal* ast_create_object_literal(object_property* properties, size_t property_count, int line, int column);
 
 ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int is_immutable, int line, int column);

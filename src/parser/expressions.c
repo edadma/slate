@@ -350,7 +350,13 @@ ast_node* parse_call(parser_t* parser) {
         } else if (parser_match(parser, TOKEN_DOT)) {
             parser_consume(parser, TOKEN_IDENTIFIER, "Expected property name after '.'.");
             char* name = token_to_string(&parser->previous);
-            expr = (ast_node*)ast_create_member(expr, name, 
+            expr = (ast_node*)ast_create_member(expr, name, 0, // not optional
+                                               parser->previous.line, parser->previous.column);
+            free(name);
+        } else if (parser_match(parser, TOKEN_OPTIONAL_CHAIN)) {
+            parser_consume(parser, TOKEN_IDENTIFIER, "Expected property name after '?.'.");
+            char* name = token_to_string(&parser->previous);
+            expr = (ast_node*)ast_create_member(expr, name, 1, // is optional
                                                parser->previous.line, parser->previous.column);
             free(name);
         } else {

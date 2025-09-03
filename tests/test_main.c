@@ -31,6 +31,7 @@ void test_new_operators_suite(void);
 void test_functions_suite(void);
 void test_variable_shadowing_suite(void);
 void test_immutable_variables_suite(void);
+void test_optional_chaining_suite(void);
 
 void setUp(void) {
     // Setup code that runs before each test
@@ -74,6 +75,7 @@ int main(void) {
     test_functions_suite();
     test_variable_shadowing_suite();
     test_immutable_variables_suite();
+    test_optional_chaining_suite();
 
     return UNITY_END();
 }

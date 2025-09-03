@@ -84,18 +84,23 @@ void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node) {
         // Object property assignment: obj.prop = value
         ast_member* member = (ast_member*)node->target;
         
-        // Generate in order: object, property_name, value
-        codegen_emit_expression(codegen, member->object);
-        
-        size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member->property));
-        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);
-        
-        codegen_emit_expression(codegen, node->value);
-        
-        // Stack: [object, property_name, value] - matches OP_SET_PROPERTY
-        // OP_SET_PROPERTY will push the assigned value back, then we need to pop it for statements
-        codegen_emit_op(codegen, OP_SET_PROPERTY);
-        codegen_emit_op(codegen, OP_POP);  // Discard the returned value in statement context
+        if (member->is_optional) {
+            // Optional assignment should not be allowed
+            codegen_error(codegen, "Cannot use optional chaining in assignment target");
+        } else {
+            // Generate in order: object, property_name, value
+            codegen_emit_expression(codegen, member->object);
+            
+            size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member->property));
+            codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);
+            
+            codegen_emit_expression(codegen, node->value);
+            
+            // Stack: [object, property_name, value] - matches OP_SET_PROPERTY
+            // OP_SET_PROPERTY will push the assigned value back, then we need to pop it for statements
+            codegen_emit_op(codegen, OP_SET_PROPERTY);
+            codegen_emit_op(codegen, OP_POP);  // Discard the returned value in statement context
+        }
         
     } else if (node->target->type == AST_CALL) {
         // Array element assignment: arr(index) = value

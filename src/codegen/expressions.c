@@ -75,13 +75,62 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
         
         case AST_MEMBER: {
             ast_member* member_node = (ast_member*)expr;
-            // Generate object expression
-            codegen_emit_expression(codegen, member_node->object);
-            // Generate property name as string constant
-            size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member_node->property));
-            codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);
-            // Emit property access operation
-            codegen_emit_op(codegen, OP_GET_PROPERTY);
+            
+            if (member_node->is_optional) {
+                // Optional chaining: obj?.prop
+                // 1. Evaluate object
+                codegen_emit_expression(codegen, member_node->object);
+                
+                // 2. Duplicate for null/undefined check
+                codegen_emit_op(codegen, OP_DUP);
+                
+                // 3. Check if null
+                codegen_emit_op(codegen, OP_PUSH_NULL);
+                codegen_emit_op(codegen, OP_EQUAL);
+                
+                // 4. If null, jump to push undefined
+                size_t null_jump = codegen_emit_jump(codegen, OP_JUMP_IF_TRUE);
+                
+                // 5. Check if undefined (object still on stack from DUP)
+                codegen_emit_op(codegen, OP_DUP);
+                codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
+                codegen_emit_op(codegen, OP_EQUAL);
+                
+                // 6. If undefined, jump to push undefined  
+                size_t undefined_jump = codegen_emit_jump(codegen, OP_JUMP_IF_TRUE);
+                
+                // 7. Not null/undefined: do normal property access
+                // Object is already on stack
+                size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member_node->property));
+                codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);
+                codegen_emit_op(codegen, OP_GET_PROPERTY);
+                
+                // 8. Jump to end
+                size_t end_jump = codegen_emit_jump(codegen, OP_JUMP);
+                
+                // 9. Patch null jump: pop object and push undefined
+                codegen_patch_jump(codegen, null_jump);
+                codegen_emit_op(codegen, OP_POP); // Pop the object
+                codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
+                
+                // 10. Jump to end
+                size_t null_end_jump = codegen_emit_jump(codegen, OP_JUMP);
+                
+                // 11. Patch undefined jump: pop object and push undefined
+                codegen_patch_jump(codegen, undefined_jump);
+                codegen_emit_op(codegen, OP_POP); // Pop the object
+                codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
+                
+                // 12. Patch end jumps
+                codegen_patch_jump(codegen, end_jump);
+                codegen_patch_jump(codegen, null_end_jump);
+            } else {
+                // Normal property access: obj.prop
+                codegen_emit_expression(codegen, member_node->object);
+                size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member_node->property));
+                codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);
+                codegen_emit_op(codegen, OP_GET_PROPERTY);
+            }
             break;
         }
         
@@ -138,20 +187,25 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
                 }
                 
             } else if (assign->target->type == AST_MEMBER) {
-                // Object property assignment: obj.prop = value
+                // Object property assignment: obj.prop = value or obj?.prop = value
                 ast_member* member = (ast_member*)assign->target;
                 
-                // Generate in order: object, property_name, value
-                codegen_emit_expression(codegen, member->object);
-                
-                size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member->property));
-                codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);
-                
-                codegen_emit_expression(codegen, assign->value);
-                
-                // Stack: [object, property_name, value] - matches OP_SET_PROPERTY
-                // OP_SET_PROPERTY pops [object, property_name, value] and pushes the assigned value back
-                codegen_emit_op(codegen, OP_SET_PROPERTY);
+                if (member->is_optional) {
+                    // Optional assignment should probably not be allowed
+                    codegen_error(codegen, "Cannot use optional chaining in assignment target");
+                } else {
+                    // Generate in order: object, property_name, value
+                    codegen_emit_expression(codegen, member->object);
+                    
+                    size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member->property));
+                    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);
+                    
+                    codegen_emit_expression(codegen, assign->value);
+                    
+                    // Stack: [object, property_name, value] - matches OP_SET_PROPERTY
+                    // OP_SET_PROPERTY pops [object, property_name, value] and pushes the assigned value back
+                    codegen_emit_op(codegen, OP_SET_PROPERTY);
+                }
                 
             } else if (assign->target->type == AST_CALL) {
                 // Array element assignment: arr(index) = value

@@ -254,7 +254,7 @@ ast_call* ast_create_call(ast_node* function, ast_node** arguments, size_t arg_c
     return node;
 }
 
-ast_member* ast_create_member(ast_node* object, const char* property, int line, int column) {
+ast_member* ast_create_member(ast_node* object, const char* property, int is_optional, int line, int column) {
     ast_member* node = malloc(sizeof(ast_member));
     if (!node) return NULL;
     
@@ -263,6 +263,7 @@ ast_member* ast_create_member(ast_node* object, const char* property, int line, 
     node->base.column = column;
     node->object = object;
     node->property = strdup_safe(property);
+    node->is_optional = is_optional;
     
     return node;
 }
