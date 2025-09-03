@@ -128,6 +128,8 @@ function_t* codegen_compile_function(codegen_t* parent_codegen, ast_function* fu
 void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node);
 void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node);
 void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignment* node);
+void codegen_emit_import(codegen_t* codegen, ast_import* node);
+void codegen_emit_package(codegen_t* codegen, ast_package* node);
 void codegen_emit_expression_stmt(codegen_t* codegen, ast_expression_stmt* node);
 void codegen_emit_block(codegen_t* codegen, ast_block* node);
 void codegen_emit_block_expression(codegen_t* codegen, ast_block* node);

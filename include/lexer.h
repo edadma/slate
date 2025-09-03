@@ -105,6 +105,7 @@ typedef enum {
     TOKEN_LEFT_BRACKET,  // [
     TOKEN_RIGHT_BRACKET, // ]
     TOKEN_ARROW,         // ->
+    TOKEN_FAT_ARROW,     // =>
     
     // Template literals
     TOKEN_TEMPLATE_START,      // ` (opening backtick)

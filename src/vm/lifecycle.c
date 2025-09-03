@@ -1,5 +1,6 @@
 #include "vm.h"
 #include "memory.h"
+#include "module.h"
 #include "../opcodes/opcodes.h"
 #include <assert.h>
 #include <math.h>
@@ -82,6 +83,9 @@ vm_t* vm_create(void) {
     // Set global VM pointer for library assert access
     g_current_vm = vm;
 
+    // Initialize module system
+    module_system_init(vm);
+
     vm_reset(vm);
     return vm;
 }
@@ -123,6 +127,9 @@ void vm_destroy(vm_t* vm) {
 
     // Clean up debug location
     debug_location_free(vm->current_debug);
+
+    // Clean up module system
+    module_system_cleanup(vm);
 
     free(vm);
 }

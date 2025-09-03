@@ -527,7 +527,14 @@ token_t lexer_next_token(lexer_t* lexer) {
                     return make_token(lexer, TOKEN_DECREMENT);
                 }
                 return make_token(lexer, TOKEN_MINUS);
-            case '=': return make_token(lexer, match(lexer, '=') ? TOKEN_EQUAL : TOKEN_ASSIGN);
+            case '=': 
+                if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_EQUAL);
+                } else if (match(lexer, '>')) {
+                    return make_token(lexer, TOKEN_FAT_ARROW);
+                } else {
+                    return make_token(lexer, TOKEN_ASSIGN);
+                }
             case '!': return make_token(lexer, match(lexer, '=') ? TOKEN_NOT_EQUAL : TOKEN_LOGICAL_NOT);
             case '<': 
                 if (match(lexer, '<')) {
@@ -684,7 +691,14 @@ token_t lexer_next_token(lexer_t* lexer) {
                     return make_token(lexer, TOKEN_DECREMENT);
                 }
                 return make_token(lexer, TOKEN_MINUS);
-            case '=': return make_token(lexer, match(lexer, '=') ? TOKEN_EQUAL : TOKEN_ASSIGN);
+            case '=': 
+                if (match(lexer, '=')) {
+                    return make_token(lexer, TOKEN_EQUAL);
+                } else if (match(lexer, '>')) {
+                    return make_token(lexer, TOKEN_FAT_ARROW);
+                } else {
+                    return make_token(lexer, TOKEN_ASSIGN);
+                }
             case '!': return make_token(lexer, match(lexer, '=') ? TOKEN_NOT_EQUAL : TOKEN_LOGICAL_NOT);
             case '<': 
                 if (match(lexer, '<')) {

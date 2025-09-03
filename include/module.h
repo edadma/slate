@@ -5,9 +5,9 @@
 #include "dynamic_object.h"
 #include "dynamic_string.h"
 
-// Forward declarations
-typedef struct vm_t vm_t;
-typedef struct function_t function_t;
+// Forward declarations to avoid circular includes
+struct slate_vm;
+struct function;
 
 // Module state
 typedef enum {
@@ -23,7 +23,7 @@ typedef struct module_t {
     do_object exports;        // Exported symbols
     do_object globals;        // Module's global namespace
     module_state_t state;     // Loading state
-    function_t* init_function; // Module initialization code
+    struct function* init_function; // Module initialization code
     int ref_count;            // Reference counting
 } module_t;
 
@@ -34,13 +34,13 @@ typedef struct module_cache_entry {
 } module_cache_entry;
 
 // Module system functions
-void module_system_init(vm_t* vm);
-void module_system_cleanup(vm_t* vm);
+void module_system_init(struct slate_vm* vm);
+void module_system_cleanup(struct slate_vm* vm);
 
 // Module loading
-module_t* module_load(vm_t* vm, const char* module_path);
-module_t* module_load_from_file(vm_t* vm, const char* file_path);
-module_t* module_load_from_directory(vm_t* vm, const char* dir_path);
+module_t* module_load(struct slate_vm* vm, const char* module_path);
+module_t* module_load_from_file(struct slate_vm* vm, const char* file_path);
+module_t* module_load_from_directory(struct slate_vm* vm, const char* dir_path);
 
 // Module resolution
 char* module_resolve_path(const char* module_name, const char* current_dir);
@@ -58,9 +58,9 @@ value_t module_get_export(module_t* module, const char* name);
 int module_has_export(module_t* module, const char* name);
 
 // Built-in modules
-void module_register_builtin(vm_t* vm, const char* name, module_t* module);
-module_t* module_create_math(vm_t* vm);
-module_t* module_create_io(vm_t* vm);
-module_t* module_create_sys(vm_t* vm);
+void module_register_builtin(struct slate_vm* vm, const char* name, module_t* module);
+module_t* module_create_math(struct slate_vm* vm);
+module_t* module_create_io(struct slate_vm* vm);
+module_t* module_create_sys(struct slate_vm* vm);
 
 #endif // SLATE_MODULE_H

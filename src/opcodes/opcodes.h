@@ -67,4 +67,8 @@ vm_result op_not(vm_t* vm);
 vm_result op_null_coalesce(vm_t* vm);
 vm_result op_instanceof(vm_t* vm);
 
+// Module system opcodes
+vm_result op_import_module(vm_t* vm);
+vm_result op_get_export(vm_t* vm);
+
 #endif // SLATE_OPCODES_H

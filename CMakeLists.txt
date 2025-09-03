@@ -100,6 +100,7 @@ add_executable(slate
         src/value.c
         src/builtins.c
         src/library_impl.c
+        src/module.c
         src/line_editor.c
         src/datetime.c
         src/timezone.c
@@ -196,6 +197,8 @@ add_executable(slate
         src/opcodes/op_not.c
         src/opcodes/op_null_coalesce.c
         src/opcodes/op_instanceof.c
+        src/opcodes/op_import_module.c
+        src/opcodes/op_get_export.c
         deps/cargs/src/cargs.c
 )
 
@@ -293,6 +296,7 @@ if (BUILD_TESTS)
             src/value.c
             src/builtins.c
             src/library_impl.c
+            src/module.c
             src/datetime.c
             src/timezone.c
             src/date.c
@@ -388,6 +392,8 @@ if (BUILD_TESTS)
         src/opcodes/op_not.c
         src/opcodes/op_null_coalesce.c
         src/opcodes/op_instanceof.c
+        src/opcodes/op_import_module.c
+        src/opcodes/op_get_export.c
     )
 
     # Link math library for tests executable

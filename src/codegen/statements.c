@@ -310,3 +310,81 @@ void codegen_emit_block_expression(codegen_t* codegen, ast_block* node) {
     
     codegen->scope.scope_depth--;
 }
+
+void codegen_emit_import(codegen_t* codegen, ast_import* node) {
+    // For now, import statements are processed at compile time and don't generate runtime code
+    // The actual module loading and symbol resolution will happen during VM execution
+    
+    // Add the module path as a constant
+    size_t module_path_constant = chunk_add_constant(codegen->chunk, make_string(node->module_path));
+    
+    if (node->is_wildcard) {
+        // Wildcard import: import module._
+        // This imports all exports from the module into the current namespace
+        codegen_emit_op_operand(codegen, OP_IMPORT_MODULE, (uint16_t)module_path_constant);
+        // The wildcard flag is encoded as 0xFF in the next byte
+        chunk_write_byte(codegen->chunk, 0xFF);
+        chunk_write_byte(codegen->chunk, 0); // No specific specifiers for wildcard
+    } else if (node->specifier_count > 0) {
+        // Specific imports: import module.{name1, name2 => alias}
+        codegen_emit_op_operand(codegen, OP_IMPORT_MODULE, (uint16_t)module_path_constant);
+        
+        // Write the number of specifiers
+        chunk_write_byte(codegen->chunk, (uint8_t)node->specifier_count);
+        
+        // For each specifier, add the name and optional alias as constants
+        for (size_t i = 0; i < node->specifier_count; i++) {
+            import_specifier* spec = &node->specifiers[i];
+            
+            // Add the original name as a constant
+            size_t name_constant = chunk_add_constant(codegen->chunk, make_string(spec->name));
+            chunk_write_byte(codegen->chunk, (uint8_t)name_constant);
+            
+            // Add the alias (or use the same name if no alias)
+            const char* local_name = spec->alias ? spec->alias : spec->name;
+            size_t alias_constant = chunk_add_constant(codegen->chunk, make_string(local_name));
+            chunk_write_byte(codegen->chunk, (uint8_t)alias_constant);
+        }
+    } else {
+        // Namespace import: import module (creates namespace object)
+        codegen_emit_op_operand(codegen, OP_IMPORT_MODULE, (uint16_t)module_path_constant);
+        // The namespace flag is encoded as 0xFE in the next byte
+        chunk_write_byte(codegen->chunk, 0xFE);
+        
+        // Extract the last part of the module path as the namespace name
+        // e.g., "examples.modules.utils" -> "utils"
+        const char* last_dot = strrchr(node->module_path, '.');
+        const char* namespace_name = last_dot ? (last_dot + 1) : node->module_path;
+        
+        // Add namespace name as constant
+        size_t namespace_constant = chunk_add_constant(codegen->chunk, make_string(namespace_name));
+        chunk_write_byte(codegen->chunk, (uint8_t)namespace_constant);
+    }
+    
+    // Import statements don't produce a value, but we need something for the result register
+    codegen_emit_op(codegen, OP_PUSH_NULL);
+    codegen_emit_op(codegen, OP_SET_RESULT);
+}
+
+void codegen_emit_package(codegen_t* codegen, ast_package* node) {
+    // Package declarations are mainly metadata and don't generate runtime code
+    // They could be used to validate that the file is in the correct package structure
+    
+    // For now, we'll just emit a comment-like no-op
+    // In a more sophisticated implementation, this could:
+    // 1. Validate the package name matches the file path
+    // 2. Set up module exports namespace
+    // 3. Register the module with the package system
+    
+    // Add the package name as a constant for potential debugging/reflection use
+    size_t package_constant = chunk_add_constant(codegen->chunk, make_string(node->package_name));
+    
+    // This is essentially a no-op at runtime, but we store the package info
+    // Future enhancement: could emit OP_SET_PACKAGE_INFO or similar
+    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)package_constant);
+    codegen_emit_op(codegen, OP_POP); // Discard the package name
+    
+    // Package statements don't produce a value
+    codegen_emit_op(codegen, OP_PUSH_NULL);
+    codegen_emit_op(codegen, OP_SET_RESULT);
+}

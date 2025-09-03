@@ -461,6 +461,36 @@ ast_program* ast_create_program(ast_node** statements, size_t statement_count, i
     return node;
 }
 
+// Create import node
+ast_import* ast_create_import(const char* module_path, import_specifier* specifiers, size_t specifier_count, 
+                              int is_wildcard, int line, int column) {
+    ast_import* node = malloc(sizeof(ast_import));
+    if (!node) return NULL;
+    
+    node->base.type = AST_IMPORT;
+    node->base.line = line;
+    node->base.column = column;
+    node->module_path = module_path ? strdup(module_path) : NULL;
+    node->specifiers = specifiers;
+    node->specifier_count = specifier_count;
+    node->is_wildcard = is_wildcard;
+    
+    return node;
+}
+
+// Create package node
+ast_package* ast_create_package(const char* package_name, int line, int column) {
+    ast_package* node = malloc(sizeof(ast_package));
+    if (!node) return NULL;
+    
+    node->base.type = AST_PACKAGE;
+    node->base.line = line;
+    node->base.column = column;
+    node->package_name = package_name ? strdup(package_name) : NULL;
+    
+    return node;
+}
+
 // AST cleanup function
 void ast_free(ast_node* node) {
     if (!node) return;
@@ -678,6 +708,25 @@ void ast_free(ast_node* node) {
             free(prog_node->statements);
             break;
         }
+        
+        case AST_IMPORT: {
+            ast_import* import_node = (ast_import*)node;
+            free(import_node->module_path);
+            if (import_node->specifiers) {
+                for (size_t i = 0; i < import_node->specifier_count; i++) {
+                    free(import_node->specifiers[i].name);
+                    free(import_node->specifiers[i].alias);
+                }
+                free(import_node->specifiers);
+            }
+            break;
+        }
+        
+        case AST_PACKAGE: {
+            ast_package* package_node = (ast_package*)node;
+            free(package_node->package_name);
+            break;
+        }
     }
     
     free(node);
@@ -716,6 +765,8 @@ const char* ast_node_type_name(ast_node_type type) {
         case AST_EXPRESSION_STMT: return "EXPRESSION_STMT";
         case AST_BLOCK: return "BLOCK";
         case AST_PROGRAM: return "PROGRAM";
+        case AST_IMPORT: return "IMPORT";
+        case AST_PACKAGE: return "PACKAGE";
         default: return "UNKNOWN";
     }
 }
@@ -880,6 +931,31 @@ void ast_print(ast_node* node, int indent) {
             printf(": %s=\n", (comp_assign_node->op < 6) ? op_names[comp_assign_node->op] : "?");
             ast_print(comp_assign_node->target, indent + 1);
             ast_print(comp_assign_node->value, indent + 1);
+            break;
+        }
+        
+        case AST_IMPORT: {
+            ast_import* import_node = (ast_import*)node;
+            printf(": %s", import_node->module_path ? import_node->module_path : "<null>");
+            if (import_node->is_wildcard) {
+                printf(" [wildcard]\n");
+            } else {
+                printf(" [%zu specifiers]\n", import_node->specifier_count);
+                for (size_t i = 0; i < import_node->specifier_count; i++) {
+                    print_indent(indent + 1);
+                    printf("- %s", import_node->specifiers[i].name ? import_node->specifiers[i].name : "<null>");
+                    if (import_node->specifiers[i].alias) {
+                        printf(" => %s", import_node->specifiers[i].alias);
+                    }
+                    printf("\n");
+                }
+            }
+            break;
+        }
+        
+        case AST_PACKAGE: {
+            ast_package* package_node = (ast_package*)node;
+            printf(": %s\n", package_node->package_name ? package_node->package_name : "<null>");
             break;
         }
         

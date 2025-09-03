@@ -12,14 +12,21 @@ vm_result op_push_constant(vm_t* vm) {
         // Main program execution - use global constants
         if (constant >= vm->constant_count) {
             slate_runtime_error(vm, ERR_ASSERT, __FILE__, __LINE__, -1, "Constant index %d out of bounds (max %zu)", constant, vm->constant_count - 1);
+            return VM_RUNTIME_ERROR;
         }
         val = vm->constants[constant];
     } else {
         // Function execution - use function's own constant pool
         function_t* current_func = vm->frames[vm->frame_count - 1].closure->function;
         
+        if (!current_func) {
+            slate_runtime_error(vm, ERR_ASSERT, __FILE__, __LINE__, -1, "Current function is NULL");
+            return VM_RUNTIME_ERROR;
+        }
+        
         if (constant >= current_func->constant_count) {
             slate_runtime_error(vm, ERR_ASSERT, __FILE__, __LINE__, -1, "Constant index %d out of bounds (max %zu)", constant, current_func->constant_count - 1);
+            return VM_RUNTIME_ERROR;
         }
         val = current_func->constants[constant];
     }

@@ -225,6 +225,14 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             codegen_emit_compound_assignment(codegen, (ast_compound_assignment*)stmt);
             break;
             
+        case AST_IMPORT:
+            codegen_emit_import(codegen, (ast_import*)stmt);
+            break;
+            
+        case AST_PACKAGE:
+            codegen_emit_package(codegen, (ast_package*)stmt);
+            break;
+            
         default:
             codegen_error(codegen, "Unknown statement type");
             break;

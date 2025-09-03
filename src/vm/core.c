@@ -1,5 +1,9 @@
 #include "vm.h"
+#include "module.h"
 #include "../opcodes/opcodes.h"
+#include "lexer.h"
+#include "parser.h"
+#include "codegen.h"
 #include <stdio.h>
 #include <assert.h>
 
@@ -363,6 +367,18 @@ vm_result vm_run(vm_t* vm) {
             break;
         }
 
+        case OP_IMPORT_MODULE: {
+            vm_result result = op_import_module(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_GET_EXPORT: {
+            vm_result result = op_get_export(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         default:
             printf("DEBUG: Unimplemented opcode in vm_run: %d\n", instruction);
             return VM_RUNTIME_ERROR;
@@ -403,10 +419,40 @@ vm_result vm_execute(vm_t* vm, function_t* function) {
     return result;
 }
 vm_result vm_interpret(vm_t* vm, const char* source) {
-    // This would compile source to bytecode and execute
-    // For now, just a stub
-    (void)vm;
-    (void)source;
-    printf("vm_interpret not yet implemented\n");
-    return VM_COMPILE_ERROR;
+    if (!vm || !source) return VM_RUNTIME_ERROR;
+    
+    // Tokenize
+    lexer_t lexer;
+    lexer_init(&lexer, source);
+    
+    // Parse
+    parser_t parser;
+    parser_init(&parser, &lexer);
+    ast_program* program = parse_program(&parser);
+    
+    if (parser.had_error || !program) {
+        lexer_cleanup(&lexer);
+        return VM_COMPILE_ERROR;
+    }
+    
+    // Generate code
+    codegen_t* codegen = codegen_create(vm);
+    function_t* function = codegen_compile(codegen, program);
+    
+    if (codegen->had_error || !function) {
+        codegen_destroy(codegen);
+        ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
+        return VM_COMPILE_ERROR;
+    }
+    
+    // Execute
+    vm_result result = vm_execute(vm, function);
+    
+    // Cleanup
+    codegen_destroy(codegen);
+    ast_free((ast_node*)program);
+    lexer_cleanup(&lexer);
+    
+    return result;
 }
