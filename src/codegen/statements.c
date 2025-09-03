@@ -136,7 +136,70 @@ void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignmen
     int upvalue_index;
     int slot = codegen_resolve_variable(codegen, var->name, &is_local, &upvalue_index);
     
-    // Get the current value of the variable
+    // Special handling for logical assignment operators (short-circuit evaluation)
+    if (node->op == BIN_LOGICAL_AND || node->op == BIN_LOGICAL_OR) {
+        // Get the current value of the variable
+        chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
+        if (is_local) {
+            codegen_emit_op(codegen, OP_GET_LOCAL);
+            chunk_write_byte(codegen->chunk, (uint8_t)slot);
+        } else if (upvalue_index != -1) {
+            codegen_emit_op(codegen, OP_GET_UPVALUE);
+            chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
+        } else {
+            size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
+            codegen_emit_op_operand(codegen, OP_GET_GLOBAL, (uint16_t)constant);
+        }
+        
+        // Duplicate the current value for condition checking
+        codegen_emit_op(codegen, OP_DUP);
+        
+        // Determine which condition to check
+        size_t skip_jump;
+        if (node->op == BIN_LOGICAL_AND) {
+            // &&= : skip assignment if current value is falsy
+            skip_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
+        } else {
+            // ||= : skip assignment if current value is truthy  
+            skip_jump = codegen_emit_jump(codegen, OP_JUMP_IF_TRUE);
+        }
+        
+        // Pop the duplicated value (condition was met to proceed with assignment)
+        codegen_emit_op(codegen, OP_POP);
+        
+        // Generate the right-hand side value (only if assignment will happen)
+        codegen_emit_expression(codegen, node->value);
+        
+        // Duplicate the result for expression contexts
+        codegen_emit_op(codegen, OP_DUP);
+        
+        // Store the result back to the variable
+        chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
+        if (is_local) {
+            codegen_emit_op(codegen, OP_SET_LOCAL);
+            chunk_write_byte(codegen->chunk, (uint8_t)slot);
+        } else if (upvalue_index != -1) {
+            codegen_emit_op(codegen, OP_SET_UPVALUE);
+            chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
+        } else {
+            size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
+            codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
+        }
+        
+        // Jump to end
+        size_t end_jump = codegen_emit_jump(codegen, OP_JUMP);
+        
+        // Patch the skip jump - keep the original value
+        codegen_patch_jump(codegen, skip_jump);
+        // The original value is already on the stack as the result
+        
+        // Patch the end jump
+        codegen_patch_jump(codegen, end_jump);
+        
+        return;
+    }
+    
+    // Regular compound assignment - get current value
     chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
     if (is_local) {
         codegen_emit_op(codegen, OP_GET_LOCAL);
@@ -166,8 +229,6 @@ void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignmen
         case BIN_LEFT_SHIFT:   codegen_emit_op(codegen, OP_LEFT_SHIFT); break;
         case BIN_RIGHT_SHIFT:  codegen_emit_op(codegen, OP_RIGHT_SHIFT); break;
         case BIN_LOGICAL_RIGHT_SHIFT: codegen_emit_op(codegen, OP_LOGICAL_RIGHT_SHIFT); break;
-        case BIN_LOGICAL_AND:  codegen_emit_op(codegen, OP_AND); break;
-        case BIN_LOGICAL_OR:   codegen_emit_op(codegen, OP_OR); break;
         case BIN_NULL_COALESCE: codegen_emit_op(codegen, OP_NULL_COALESCE); break;
         default:
             codegen_error(codegen, "Unsupported compound assignment operation");

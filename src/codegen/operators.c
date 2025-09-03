@@ -8,10 +8,41 @@
 
 // Operator emission functions
 void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node) {
-    // Generate left operand
-    codegen_emit_expression(codegen, node->left);
+    // Special handling for short-circuit boolean operators
+    if (node->op == BIN_LOGICAL_AND) {
+        // Generate left operand
+        codegen_emit_expression(codegen, node->left);
+        // Duplicate left operand (one for condition, one as potential result)
+        codegen_emit_op(codegen, OP_DUP);
+        // Jump if false, keeping left operand as result
+        size_t short_circuit_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
+        // Pop the duplicated left operand (condition was true)
+        codegen_emit_op(codegen, OP_POP);
+        // Generate right operand (becomes the result)
+        codegen_emit_expression(codegen, node->right);
+        // Patch the short-circuit jump
+        codegen_patch_jump(codegen, short_circuit_jump);
+        return;
+    }
     
-    // Generate right operand  
+    if (node->op == BIN_LOGICAL_OR) {
+        // Generate left operand
+        codegen_emit_expression(codegen, node->left);
+        // Duplicate left operand (one for condition, one as potential result)
+        codegen_emit_op(codegen, OP_DUP);
+        // Jump if true, keeping left operand as result
+        size_t short_circuit_jump = codegen_emit_jump(codegen, OP_JUMP_IF_TRUE);
+        // Pop the duplicated left operand (condition was false)
+        codegen_emit_op(codegen, OP_POP);
+        // Generate right operand (becomes the result)
+        codegen_emit_expression(codegen, node->right);
+        // Patch the short-circuit jump
+        codegen_patch_jump(codegen, short_circuit_jump);
+        return;
+    }
+    
+    // For all other operators, generate both operands first
+    codegen_emit_expression(codegen, node->left);
     codegen_emit_expression(codegen, node->right);
     
     // Generate operator without debug info (operands already have their debug info)
@@ -28,8 +59,6 @@ void codegen_emit_binary_op(codegen_t* codegen, ast_binary_op* node) {
         case BIN_LESS_EQUAL:    codegen_emit_op(codegen, OP_LESS_EQUAL); break;
         case BIN_GREATER:       codegen_emit_op(codegen, OP_GREATER); break;
         case BIN_GREATER_EQUAL: codegen_emit_op(codegen, OP_GREATER_EQUAL); break;
-        case BIN_LOGICAL_AND:   codegen_emit_op(codegen, OP_AND); break;
-        case BIN_LOGICAL_OR:    codegen_emit_op(codegen, OP_OR); break;
         case BIN_BITWISE_AND:   codegen_emit_op(codegen, OP_BITWISE_AND); break;
         case BIN_BITWISE_OR:    codegen_emit_op(codegen, OP_BITWISE_OR); break;
         case BIN_BITWISE_XOR:   codegen_emit_op(codegen, OP_BITWISE_XOR); break;

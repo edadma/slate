@@ -26,7 +26,6 @@ vm_result op_set_upvalue(vm_t* vm);
 vm_result op_build_object(vm_t* vm);
 vm_result op_power(vm_t* vm);
 vm_result op_build_array(vm_t* vm);
-vm_result op_and(vm_t* vm);
 vm_result op_bitwise_and(vm_t* vm);
 
 // New opcodes extracted from vm.c
@@ -65,10 +64,10 @@ vm_result op_call_method(vm_t* vm);
 vm_result op_pop_n_preserve_top(vm_t* vm);
 vm_result op_build_range(vm_t* vm);
 vm_result op_jump_if_false(vm_t* vm);
+vm_result op_jump_if_true(vm_t* vm);
 vm_result op_jump(vm_t* vm);
 vm_result op_loop(vm_t* vm);
 vm_result op_pop_n(vm_t* vm);
-vm_result op_or(vm_t* vm);
 vm_result op_not(vm_t* vm);
 vm_result op_null_coalesce(vm_t* vm);
 vm_result op_instanceof(vm_t* vm);

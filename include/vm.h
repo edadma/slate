@@ -76,8 +76,6 @@ typedef enum {
 
     // Logical operations
     OP_NOT, // Pop a, push !a
-    OP_AND, // Pop b, pop a, push a && b (short-circuit)
-    OP_OR, // Pop b, pop a, push a || b (short-circuit)
     OP_NULL_COALESCE, // Pop b, pop a, push a ?? b (a if not null/undefined, else b)
     OP_IN, // Pop object, pop property, push property in object
     OP_INSTANCEOF, // Pop type, pop value, push value instanceof type

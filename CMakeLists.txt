@@ -165,7 +165,6 @@ add_executable(slate
         src/opcodes/op_power.c
         src/opcodes/op_build_array.c
         src/opcodes/op_set_index.c
-        src/opcodes/op_and.c
         src/opcodes/op_bitwise_and.c
         src/opcodes/op_push_constant.c
         src/opcodes/op_get_global.c
@@ -201,10 +200,10 @@ add_executable(slate
         src/opcodes/op_pop_n_preserve_top.c
         src/opcodes/op_build_range.c
         src/opcodes/op_jump_if_false.c
+        src/opcodes/op_jump_if_true.c
         src/opcodes/op_jump.c
         src/opcodes/op_loop.c
         src/opcodes/op_pop_n.c
-        src/opcodes/op_or.c
         src/opcodes/op_not.c
         src/opcodes/op_null_coalesce.c
         src/opcodes/op_instanceof.c
@@ -370,7 +369,6 @@ if (BUILD_TESTS)
         src/opcodes/op_power.c
         src/opcodes/op_build_array.c
         src/opcodes/op_set_index.c
-        src/opcodes/op_and.c
         src/opcodes/op_bitwise_and.c
         src/opcodes/op_push_constant.c
         src/opcodes/op_get_global.c
@@ -406,10 +404,10 @@ if (BUILD_TESTS)
         src/opcodes/op_pop_n_preserve_top.c
         src/opcodes/op_build_range.c
         src/opcodes/op_jump_if_false.c
+        src/opcodes/op_jump_if_true.c
         src/opcodes/op_jump.c
         src/opcodes/op_loop.c
         src/opcodes/op_pop_n.c
-        src/opcodes/op_or.c
         src/opcodes/op_not.c
         src/opcodes/op_null_coalesce.c
         src/opcodes/op_instanceof.c

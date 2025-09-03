@@ -55,10 +55,6 @@ const char* opcode_name(opcode op) {
         return "GREATER_EQUAL";
     case OP_NOT:
         return "NOT";
-    case OP_AND:
-        return "AND";
-    case OP_OR:
-        return "OR";
     case OP_NULL_COALESCE:
         return "NULL_COALESCE";
     case OP_IN:

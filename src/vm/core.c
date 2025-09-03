@@ -145,17 +145,6 @@ vm_result vm_run(vm_t* vm) {
             break;
         }
 
-        case OP_AND: {
-            vm_result result = op_and(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
-
-        case OP_OR: {
-            vm_result result = op_or(vm);
-            if (result != VM_OK) return result;
-            break;
-        }
 
         case OP_NULL_COALESCE: {
             vm_result result = op_null_coalesce(vm);
@@ -309,6 +298,12 @@ vm_result vm_run(vm_t* vm) {
 
         case OP_JUMP_IF_FALSE: {
             vm_result result = op_jump_if_false(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_JUMP_IF_TRUE: {
+            vm_result result = op_jump_if_true(vm);
             if (result != VM_OK) return result;
             break;
         }

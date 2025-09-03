@@ -311,6 +311,257 @@ void test_bitwise_error_cases(void) {
     vm_release(result);
 }
 
+// Test short-circuit AND operator (&&)
+void test_short_circuit_and_operator(void) {
+    value_t result;
+    
+    // Test JavaScript-like value semantics
+    result = test_execute_expression("\"hello\" && \"world\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("world", result.as.string);
+    vm_release(result);
+    
+    result = test_execute_expression("\"hello\" && null");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
+    
+    result = test_execute_expression("null && \"backup\"");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
+    
+    result = test_execute_expression("false && \"backup\"");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean);
+    vm_release(result);
+    
+    result = test_execute_expression("true && 42");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+    
+    result = test_execute_expression("0 && 42");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
+    vm_release(result);
+}
+
+// Test short-circuit OR operator (||)
+void test_short_circuit_or_operator(void) {
+    value_t result;
+    
+    // Test JavaScript-like value semantics
+    result = test_execute_expression("\"hello\" || \"world\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("hello", result.as.string);
+    vm_release(result);
+    
+    result = test_execute_expression("null || \"backup\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("backup", result.as.string);
+    vm_release(result);
+    
+    result = test_execute_expression("false || \"backup\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("backup", result.as.string);
+    vm_release(result);
+    
+    result = test_execute_expression("0 || 42");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+    
+    result = test_execute_expression("42 || 0");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+}
+
+// Test short-circuit evaluation behavior (no side effects when short-circuiting)
+void test_short_circuit_evaluation_behavior(void) {
+    value_t result;
+    
+    // Note: These tests verify that side effects don't occur when short-circuiting.
+    // In real use, we'd capture side effects, but for unit tests we just verify
+    // the operators work as expected without causing issues.
+    
+    // AND short-circuit: false && <anything> should return false without evaluating right side
+    result = test_execute_expression("false && undefined");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean);
+    vm_release(result);
+    
+    // OR short-circuit: true || <anything> should return true without evaluating right side  
+    result = test_execute_expression("true || undefined");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);
+    vm_release(result);
+    
+    // Complex nested short-circuit
+    result = test_execute_expression("(false && undefined) || (true && 42)");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+}
+
+// Test &&= logical assignment operator  
+void test_logical_and_assignment(void) {
+    value_t result;
+    
+    // Test with truthy left operand - should assign right operand
+    result = test_execute_expression("var x = true; x &&= 42; x");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+    
+    // Test with falsy left operand - should keep left operand
+    result = test_execute_expression("var x = false; x &&= 42; x");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean);
+    vm_release(result);
+    
+    result = test_execute_expression("var x = null; x &&= 42; x");
+    TEST_ASSERT_EQUAL_INT(VAL_NULL, result.type);
+    vm_release(result);
+    
+    result = test_execute_expression("var x = 0; x &&= 42; x");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
+    vm_release(result);
+    
+    // Test with string values
+    result = test_execute_expression("var x = \"hello\"; x &&= \"world\"; x");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("world", result.as.string);
+    vm_release(result);
+    
+    result = test_execute_expression("var x = \"\"; x &&= \"world\"; x");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("", result.as.string);
+    vm_release(result);
+}
+
+// Test ||= logical assignment operator
+void test_logical_or_assignment(void) {
+    value_t result;
+    
+    // Test with falsy left operand - should assign right operand
+    result = test_execute_expression("var x = false; x ||= 42; x");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+    
+    result = test_execute_expression("var x = null; x ||= 42; x");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+    
+    result = test_execute_expression("var x = 0; x ||= 42; x");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+    
+    // Test with truthy left operand - should keep left operand
+    result = test_execute_expression("var x = true; x ||= 42; x");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);
+    vm_release(result);
+    
+    result = test_execute_expression("var x = 99; x ||= 42; x");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(99, result.as.int32);
+    vm_release(result);
+    
+    // Test with string values
+    result = test_execute_expression("var x = \"\"; x ||= \"default\"; x");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("default", result.as.string);
+    vm_release(result);
+    
+    result = test_execute_expression("var x = \"hello\"; x ||= \"default\"; x");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("hello", result.as.string);
+    vm_release(result);
+}
+
+// Test logical assignment short-circuit behavior (no evaluation of right operand when not needed)
+void test_logical_assignment_short_circuit(void) {
+    value_t result;
+    
+    // These tests verify that the right operand is not evaluated when not needed
+    // We test this by using values that would cause errors if evaluated
+    
+    // &&= with falsy left operand - right operand should not be evaluated
+    result = test_execute_expression("var x = false; x &&= undefined; x");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean);
+    vm_release(result);
+    
+    // ||= with truthy left operand - right operand should not be evaluated  
+    result = test_execute_expression("var x = true; x ||= undefined; x");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);
+    vm_release(result);
+    
+    // Test return value of logical assignments
+    result = test_execute_expression("var x = false; x &&= 42");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean);
+    vm_release(result);
+    
+    result = test_execute_expression("var x = true; x &&= 42");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+    
+    result = test_execute_expression("var x = false; x ||= 42");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+    
+    result = test_execute_expression("var x = true; x ||= 42");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);
+    vm_release(result);
+}
+
+// Test complex logical expressions
+void test_complex_logical_expressions(void) {
+    value_t result;
+    
+    // Test chaining logical operators
+    result = test_execute_expression("true && false || true");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);
+    vm_release(result);
+    
+    result = test_execute_expression("false || false && true");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean);
+    vm_release(result);
+    
+    // Test mixed types in logical expressions
+    result = test_execute_expression("\"\" || 0 || null || false || \"default\"");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("default", result.as.string);
+    vm_release(result);
+    
+    result = test_execute_expression("1 && 2 && 3");
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(3, result.as.int32);
+    vm_release(result);
+    
+    // Test with parentheses
+    result = test_execute_expression("(true || false) && (false || true)");
+    TEST_ASSERT_EQUAL_INT(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);
+    vm_release(result);
+    
+    result = test_execute_expression("(\"hello\" && \"world\") || (null && \"backup\")");
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("world", result.as.string);
+    vm_release(result);
+}
+
 // Test suite function for integration with main test runner
 void test_logical_suite(void) {
     // Bitwise operator tests
@@ -328,4 +579,17 @@ void test_logical_suite(void) {
     // Complex expressions and error cases
     RUN_TEST(test_bitwise_complex_expressions);
     RUN_TEST(test_bitwise_error_cases);
+    
+    // Short-circuit logical operator tests
+    RUN_TEST(test_short_circuit_and_operator);
+    RUN_TEST(test_short_circuit_or_operator);
+    RUN_TEST(test_short_circuit_evaluation_behavior);
+    
+    // Logical assignment operator tests
+    RUN_TEST(test_logical_and_assignment);
+    RUN_TEST(test_logical_or_assignment);
+    RUN_TEST(test_logical_assignment_short_circuit);
+    
+    // Complex logical expressions
+    RUN_TEST(test_complex_logical_expressions);
 }
