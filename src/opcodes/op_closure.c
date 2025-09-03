@@ -21,11 +21,40 @@ vm_result op_closure(vm_t* vm) {
         return VM_RUNTIME_ERROR;
     }
     
-    // For now, create a simple closure (no upvalues)
+    // Create closure with upvalues
     closure_t* new_closure = closure_create(target_func);
     if (!new_closure) {
         runtime_error(vm, "Failed to create closure");
         return VM_RUNTIME_ERROR;
+    }
+    
+    // Populate upvalues based on function descriptors
+    if (target_func->upvalue_count > 0) {
+        new_closure->upvalue_count = target_func->upvalue_count;
+        new_closure->upvalues = malloc(sizeof(value_t) * target_func->upvalue_count);
+        if (!new_closure->upvalues) {
+            closure_destroy(new_closure);
+            runtime_error(vm, "Failed to allocate upvalue array");
+            return VM_RUNTIME_ERROR;
+        }
+        
+        // Current closure context for capturing variables
+        call_frame* current_frame = &vm->frames[vm->frame_count - 1];
+        
+        // Capture each upvalue
+        for (size_t i = 0; i < target_func->upvalue_count; i++) {
+            upvalue_desc_t* desc = &target_func->upvalue_descriptors[i];
+            
+            if (desc->is_local) {
+                // Capture from current frame's local variables
+                value_t captured_value = current_frame->slots[desc->index];
+                new_closure->upvalues[i] = vm_retain(captured_value);
+            } else {
+                // Capture from current closure's upvalues
+                value_t captured_value = current_frame->closure->upvalues[desc->index];
+                new_closure->upvalues[i] = vm_retain(captured_value);
+            }
+        }
     }
     
     // Push closure as a value onto the stack

@@ -144,6 +144,12 @@ typedef enum {
 
 
 
+// Upvalue descriptor for function compilation
+typedef struct {
+    int index;      // Index in parent scope (local slot or upvalue index)
+    int is_local;   // 1 if capturing from parent locals, 0 if from parent upvalues
+} upvalue_desc_t;
+
 // Function structure
 typedef struct function {
     uint8_t* bytecode; // Function bytecode
@@ -155,6 +161,8 @@ typedef struct function {
     size_t local_count; // Total local variables (params + locals)
     char* name; // Function name (for debugging)
     void* debug; // Optional debug information (debug_info*)
+    upvalue_desc_t* upvalue_descriptors; // Upvalue capture information
+    size_t upvalue_count; // Number of upvalues this function captures
 } function_t;
 
 // Closure structure (function + captured variables)

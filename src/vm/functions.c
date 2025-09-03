@@ -18,6 +18,8 @@ function_t* function_create(const char* name) {
     function->local_count = 0;
     function->name = name ? strdup(name) : NULL;
     function->debug = NULL; // Initialize debug info
+    function->upvalue_descriptors = NULL;
+    function->upvalue_count = 0;
 
     return function;
 }
@@ -40,6 +42,7 @@ void function_destroy(function_t* function) {
 
     debug_info_destroy(function->debug);
 
+    free(function->upvalue_descriptors);
     free(function->name);
     free(function);
 }

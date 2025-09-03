@@ -118,9 +118,10 @@ void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
         if (node->operand->type == AST_IDENTIFIER) {
             ast_identifier* var = (ast_identifier*)node->operand;
             
-            // Check if it's local or global
+            // Check if it's local, upvalue, or global
             int is_local;
-            int slot = codegen_resolve_variable(codegen, var->name, &is_local);
+            int upvalue_index;
+            int slot = codegen_resolve_variable(codegen, var->name, &is_local, &upvalue_index);
             
             if (is_local) {
                 // Local variable increment/decrement
@@ -160,6 +161,47 @@ void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
                         codegen_emit_op(codegen, OP_DECREMENT);
                         codegen_emit_op(codegen, OP_SET_LOCAL);
                         chunk_write_byte(codegen->chunk, (uint8_t)slot);
+                        break;
+                    default: break;
+                }
+            } else if (upvalue_index != -1) {
+                // Upvalue increment/decrement
+                switch (node->op) {
+                    case UN_PRE_INCREMENT:
+                        // Load, increment, store, leave new value on stack
+                        codegen_emit_op(codegen, OP_GET_UPVALUE);
+                        chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
+                        codegen_emit_op(codegen, OP_INCREMENT);
+                        codegen_emit_op(codegen, OP_DUP);  // Duplicate for return value
+                        codegen_emit_op(codegen, OP_SET_UPVALUE);
+                        chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
+                        break;
+                    case UN_PRE_DECREMENT:
+                        // Load, decrement, store, leave new value on stack
+                        codegen_emit_op(codegen, OP_GET_UPVALUE);
+                        chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
+                        codegen_emit_op(codegen, OP_DECREMENT);
+                        codegen_emit_op(codegen, OP_DUP);  // Duplicate for return value
+                        codegen_emit_op(codegen, OP_SET_UPVALUE);
+                        chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
+                        break;
+                    case UN_POST_INCREMENT:
+                        // Load, duplicate (for return), increment, store
+                        codegen_emit_op(codegen, OP_GET_UPVALUE);
+                        chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
+                        codegen_emit_op(codegen, OP_DUP);  // Original value for return
+                        codegen_emit_op(codegen, OP_INCREMENT);
+                        codegen_emit_op(codegen, OP_SET_UPVALUE);
+                        chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
+                        break;
+                    case UN_POST_DECREMENT:
+                        // Load, duplicate (for return), decrement, store
+                        codegen_emit_op(codegen, OP_GET_UPVALUE);
+                        chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
+                        codegen_emit_op(codegen, OP_DUP);  // Original value for return
+                        codegen_emit_op(codegen, OP_DECREMENT);
+                        codegen_emit_op(codegen, OP_SET_UPVALUE);
+                        chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
                         break;
                     default: break;
                 }

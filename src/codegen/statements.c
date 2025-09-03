@@ -58,14 +58,19 @@ void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node) {
         ast_identifier* var = (ast_identifier*)node->target;
         codegen_emit_op(codegen, OP_DUP);
         
-        // Try to resolve as local variable first
+        // Try 3-level resolution: local -> upvalue -> global
         int is_local;
-        int slot = codegen_resolve_variable(codegen, var->name, &is_local);
+        int upvalue_index;
+        int slot = codegen_resolve_variable(codegen, var->name, &is_local, &upvalue_index);
         
         if (is_local) {
             // Local variable assignment with single byte operand
             codegen_emit_op(codegen, OP_SET_LOCAL);
             chunk_write_byte(codegen->chunk, (uint8_t)slot);
+        } else if (upvalue_index != -1) {
+            // Upvalue assignment with single byte operand
+            codegen_emit_op(codegen, OP_SET_UPVALUE);
+            chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
         } else {
             // Global variable assignment
             size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
@@ -88,15 +93,19 @@ void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignmen
     
     ast_identifier* var = (ast_identifier*)node->target;
     
-    // Try to resolve as local variable first
+    // Try 3-level resolution: local -> upvalue -> global
     int is_local;
-    int slot = codegen_resolve_variable(codegen, var->name, &is_local);
+    int upvalue_index;
+    int slot = codegen_resolve_variable(codegen, var->name, &is_local, &upvalue_index);
     
     // Get the current value of the variable
     chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
     if (is_local) {
         codegen_emit_op(codegen, OP_GET_LOCAL);
         chunk_write_byte(codegen->chunk, (uint8_t)slot);
+    } else if (upvalue_index != -1) {
+        codegen_emit_op(codegen, OP_GET_UPVALUE);
+        chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
     } else {
         size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
         codegen_emit_op_operand(codegen, OP_GET_GLOBAL, (uint16_t)constant);
@@ -135,6 +144,9 @@ void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignmen
     if (is_local) {
         codegen_emit_op(codegen, OP_SET_LOCAL);
         chunk_write_byte(codegen->chunk, (uint8_t)slot);
+    } else if (upvalue_index != -1) {
+        codegen_emit_op(codegen, OP_SET_UPVALUE);
+        chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
     } else {
         size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
         codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);

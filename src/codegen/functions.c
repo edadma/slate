@@ -11,9 +11,12 @@ void codegen_emit_template_literal(codegen_t* codegen, ast_template_literal* nod
 function_t* codegen_compile_function(codegen_t* parent_codegen, ast_function* func_node) {
     if (!parent_codegen || !func_node) return NULL;
     
-    // Create a new codegen context for the function
+    // Create a new codegen context for the function with parent reference
     codegen_t* func_codegen = codegen_create(parent_codegen->vm);
     if (!func_codegen) return NULL;
+    
+    // Set up parent-child relationship for upvalue resolution
+    func_codegen->parent = parent_codegen;
     
     // Create function object
     function_t* function = function_create(NULL);
@@ -124,6 +127,23 @@ function_t* codegen_compile_function(codegen_t* parent_codegen, ast_function* fu
     
     // Update local count
     function->local_count = func_codegen->scope.local_count;
+    
+    // Transfer upvalue information
+    function->upvalue_count = func_codegen->scope.upvalue_count;
+    if (function->upvalue_count > 0) {
+        function->upvalue_descriptors = malloc(sizeof(upvalue_desc_t) * function->upvalue_count);
+        if (!function->upvalue_descriptors) {
+            function_destroy(function);
+            codegen_destroy(func_codegen);
+            return NULL;
+        }
+        
+        // Copy upvalue descriptors
+        for (size_t i = 0; i < function->upvalue_count; i++) {
+            function->upvalue_descriptors[i].index = func_codegen->scope.upvalues[i].index;
+            function->upvalue_descriptors[i].is_local = func_codegen->scope.upvalues[i].is_local;
+        }
+    }
     
     // Clean up function codegen context
     codegen_destroy(func_codegen);

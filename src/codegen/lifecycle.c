@@ -11,6 +11,7 @@ codegen_t* codegen_create(vm_t* vm) {
     
     codegen->chunk = chunk_create();
     codegen->vm = vm; // Store VM reference for function table access
+    codegen->parent = NULL; // No parent by default
     codegen->had_error = 0;
     codegen->debug_mode = 0; // No debug info by default
     codegen->loop_contexts = NULL;
@@ -34,6 +35,7 @@ codegen_t* codegen_create_with_debug(vm_t* vm, const char* source_code) {
     }
     
     codegen->vm = vm; // Store VM reference for function table access
+    codegen->parent = NULL; // No parent by default
     codegen->had_error = 0;
     codegen->debug_mode = 1; // Enable debug info
     codegen->loop_contexts = NULL;

@@ -115,14 +115,19 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             if (assign->target->type == AST_IDENTIFIER) {
                 ast_identifier* var = (ast_identifier*)assign->target;
                 
-                // Try to resolve as local variable first
+                // Try 3-level resolution: local -> upvalue -> global
                 int is_local;
-                int slot = codegen_resolve_variable(codegen, var->name, &is_local);
+                int upvalue_index;
+                int slot = codegen_resolve_variable(codegen, var->name, &is_local, &upvalue_index);
                 
                 if (is_local) {
                     // Local variable assignment with single byte operand
                     codegen_emit_op(codegen, OP_SET_LOCAL);
                     chunk_write_byte(codegen->chunk, (uint8_t)slot);
+                } else if (upvalue_index != -1) {
+                    // Upvalue assignment with single byte operand
+                    codegen_emit_op(codegen, OP_SET_UPVALUE);
+                    chunk_write_byte(codegen->chunk, (uint8_t)upvalue_index);
                 } else {
                     // Global variable assignment
                     size_t constant = chunk_add_constant(codegen->chunk, make_string(var->name));
