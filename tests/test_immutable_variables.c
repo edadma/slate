@@ -119,7 +119,7 @@ void test_val_with_expressions(void) {
     vm_release(result);
     
     // Test val with function call
-    result = run_code("val absolute = (-42).abs(); absolute");
+    result = run_code("val absolute = abs(-42); absolute");
     TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
     vm_release(result);

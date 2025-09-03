@@ -127,6 +127,10 @@ typedef enum {
     // Debug operations
     OP_SET_DEBUG_LOCATION, // Set current debug location (operand = constant index to debug info)
     OP_CLEAR_DEBUG_LOCATION, // Clear current debug location
+    
+    // Module operations
+    OP_IMPORT_MODULE,    // Import a module
+    OP_GET_EXPORT,       // Get exported value from module
 
     // Program flow
     OP_HALT // Stop execution
@@ -188,6 +192,11 @@ typedef struct slate_vm {
     // Global variables
     do_object globals; // Global variable table
     do_object global_immutability; // Global variable immutability flags (variable_name -> bool)
+    
+    // Module system
+    do_object module_cache;     // Cache of loaded modules (path -> module_t*)
+    do_object builtin_modules;  // Built-in modules (name -> module_t*)
+    struct module_t* current_module;  // Currently executing module
 
     // Function table - stores all defined functions with proper reference counting
     da_array functions; // Global function table

@@ -61,7 +61,11 @@ typedef enum {
     AST_BLOCK,
 
     // Program
-    AST_PROGRAM
+    AST_PROGRAM,
+
+    // Module system
+    AST_IMPORT,
+    AST_PACKAGE
 } ast_node_type;
 
 // Binary operators
@@ -347,6 +351,27 @@ typedef struct {
     size_t statement_count;
 } ast_program;
 
+// Import specifier (for selective imports)
+typedef struct {
+    char* name;       // Original name
+    char* alias;      // Local alias (NULL if same as name)
+} import_specifier;
+
+// Import node
+typedef struct {
+    ast_node base;
+    char* module_path;              // e.g., "examples.modules.math"
+    import_specifier* specifiers;   // Specific imports (NULL for wildcard)
+    size_t specifier_count;         // 0 for wildcard import
+    int is_wildcard;               // 1 for "import x._"
+} ast_import;
+
+// Package node
+typedef struct {
+    ast_node base;
+    char* package_name;            // e.g., "examples.modules.math"
+} ast_package;
+
 // AST creation functions
 ast_integer* ast_create_integer(int32_t value, int line, int column);
 ast_bigint* ast_create_bigint(di_int value, int line, int column);
@@ -391,6 +416,10 @@ ast_return* ast_create_return(ast_node* value, int line, int column);
 ast_expression_stmt* ast_create_expression_stmt(ast_node* expression, int line, int column);
 ast_block* ast_create_block(ast_node** statements, size_t statement_count, int line, int column);
 ast_program* ast_create_program(ast_node** statements, size_t statement_count, int line, int column);
+
+ast_import* ast_create_import(const char* module_path, import_specifier* specifiers, size_t specifier_count, 
+                              int is_wildcard, int line, int column);
+ast_package* ast_create_package(const char* package_name, int line, int column);
 
 // AST utility functions
 void ast_free(ast_node* node);

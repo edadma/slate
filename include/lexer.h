@@ -41,6 +41,9 @@ typedef enum {
     TOKEN_NOT,           // not (synonym for !)
     TOKEN_IN,            // in (property existence)
     TOKEN_INSTANCEOF,    // instanceof (type checking)
+    TOKEN_IMPORT,        // import (module imports)
+    TOKEN_PACKAGE,       // package (package declaration)
+    TOKEN_PRIVATE,       // private (private members)
     
     // Operators
     TOKEN_PLUS,          // +

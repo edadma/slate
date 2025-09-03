@@ -149,13 +149,31 @@ void builtins_init(vm_t* vm) {
     // Register all built-ins
     register_builtin(vm, "print", builtin_print, 1, 1);
     register_builtin(vm, "type", builtin_type, 1, 1);
-    // abs() is now an instance method: n.abs()
+    
+    // Math functions in global namespace
+    register_builtin(vm, "abs", builtin_abs, 1, 1);
+    register_builtin(vm, "sqrt", builtin_sqrt, 1, 1);
+    register_builtin(vm, "floor", builtin_floor, 1, 1);
+    register_builtin(vm, "ceil", builtin_ceil, 1, 1);
+    register_builtin(vm, "round", builtin_round, 1, 1);
+    register_builtin(vm, "sin", builtin_sin, 1, 1);
+    register_builtin(vm, "cos", builtin_cos, 1, 1);
+    register_builtin(vm, "tan", builtin_tan, 1, 1);
+    register_builtin(vm, "asin", builtin_asin, 1, 1);
+    register_builtin(vm, "acos", builtin_acos, 1, 1);
+    register_builtin(vm, "atan", builtin_atan, 1, 1);
+    register_builtin(vm, "atan2", builtin_atan2, 2, 2);
+    register_builtin(vm, "exp", builtin_exp, 1, 1);
+    register_builtin(vm, "ln", builtin_ln, 1, 1);
+    register_builtin(vm, "degrees", builtin_degrees, 1, 1);
+    register_builtin(vm, "radians", builtin_radians, 1, 1);
+    register_builtin(vm, "sign", builtin_sign, 1, 1);
+    
+    // min/max are both global functions and methods (for convenience)
     register_builtin(vm, "min", builtin_min, 2, 2);
     register_builtin(vm, "max", builtin_max, 2, 2);
     register_builtin(vm, "random", builtin_random, 0, 0);
-    // Math functions are now instance methods: n.sin(), n.cos(), etc.
-    // Math functions degrees, radians, exp, ln are now instance methods
-    // sign() is now an instance method: n.sign()
+    
     register_builtin(vm, "input", builtin_input, 0, 1);
     register_builtin(vm, "parse_int", builtin_parse_int, 1, 1);
     register_builtin(vm, "parse_number", builtin_parse_number, 1, 1);
