@@ -534,9 +534,9 @@ void test_builtins_suite(void) {
     RUN_TEST(test_builtin_atan_zero);
     RUN_TEST(test_builtin_atan_one);
     RUN_TEST(test_builtin_atan_negative);
-    // RUN_TEST(test_builtin_atan2_positive_x);  // atan2 requires two arguments, not implemented yet
-    // RUN_TEST(test_builtin_atan2_negative_x);
-    // RUN_TEST(test_builtin_atan2_origin);
+    RUN_TEST(test_builtin_atan2_positive_x);
+    RUN_TEST(test_builtin_atan2_negative_x);
+    RUN_TEST(test_builtin_atan2_origin);
     RUN_TEST(test_builtin_degrees_zero);
     RUN_TEST(test_builtin_degrees_pi);
     RUN_TEST(test_builtin_degrees_pi_half);
@@ -546,8 +546,8 @@ void test_builtins_suite(void) {
     RUN_TEST(test_builtin_sign_positive);
     RUN_TEST(test_builtin_sign_negative);
     RUN_TEST(test_builtin_sign_zero);
-    // RUN_TEST(test_builtin_trig_inverse_relationships);
-    // RUN_TEST(test_builtin_degrees_radians_inverse);
+    RUN_TEST(test_builtin_trig_inverse_relationships);
+    RUN_TEST(test_builtin_degrees_radians_inverse);
     
     // String tests moved to test_class_string.c
     // Array tests moved to test_class_array.c  

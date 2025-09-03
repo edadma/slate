@@ -251,6 +251,7 @@ if (BUILD_TESTS)
             tests/test_buffer_class.c
             tests/test_class_array.c
             tests/test_class_range.c
+            tests/test_stepped_ranges.c
             tests/test_class_iterator.c
             tests/test_class_object.c
             tests/test_class_int.c

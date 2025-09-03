@@ -165,10 +165,54 @@ value_t builtin_range_length(vm_t* vm, int arg_count, value_t* args) {
     }
     
     // Only support numeric ranges for length calculation
-    if (!is_number(range->start) || !is_number(range->end)) {
+    if (!is_number(range->start) || !is_number(range->end) || !is_number(range->step)) {
         runtime_error(vm, "length() only supported for numeric ranges");
     }
     
+    // For integer ranges with integer steps, calculate precisely
+    if (range->start.type == VAL_INT32 && range->end.type == VAL_INT32 && range->step.type == VAL_INT32) {
+        int32_t start_val = range->start.as.int32;
+        int32_t end_val = range->end.as.int32;
+        int32_t step_val = range->step.as.int32;
+        
+        // Handle edge cases
+        if (step_val == 0) {
+            return make_int32(0); // Should not happen due to validation, but safe fallback
+        }
+        
+        // Check if range direction matches step direction
+        if ((start_val < end_val && step_val < 0) || (start_val > end_val && step_val > 0)) {
+            return make_int32(0); // Empty range
+        }
+        
+        if (start_val == end_val) {
+            return make_int32(range->exclusive ? 0 : 1);
+        }
+        
+        // Calculate number of steps
+        int32_t range_size;
+        if (range->exclusive) {
+            range_size = end_val - start_val;
+        } else {
+            range_size = end_val - start_val + (step_val > 0 ? 1 : -1);
+        }
+        
+        // Handle negative steps (for reverse ranges)
+        if (step_val < 0) {
+            range_size = -range_size;
+            step_val = -step_val;
+        }
+        
+        if (range_size <= 0) {
+            return make_int32(0);
+        }
+        
+        // Number of steps = ceil(range_size / step_val)
+        int32_t num_steps = (range_size + step_val - 1) / step_val;
+        return make_int32(num_steps);
+    }
+    
+    // Fallback for non-integer types - use original logic with step 1
     double start_val = value_to_float64(range->start);
     double end_val = value_to_float64(range->end);
     
@@ -210,10 +254,49 @@ value_t builtin_range_contains(vm_t* vm, int arg_count, value_t* args) {
     }
     
     // Only support numeric values for contains check
-    if (!is_number(range->start) || !is_number(range->end) || !is_number(value)) {
+    if (!is_number(range->start) || !is_number(range->end) || !is_number(value) || !is_number(range->step)) {
         return make_boolean(0); // Non-numeric not contained
     }
     
+    // For integer ranges with integer steps and integer check value, check step alignment
+    if (range->start.type == VAL_INT32 && range->end.type == VAL_INT32 && 
+        range->step.type == VAL_INT32 && value.type == VAL_INT32) {
+        int32_t start_val = range->start.as.int32;
+        int32_t end_val = range->end.as.int32;
+        int32_t step_val = range->step.as.int32;
+        int32_t check_val = value.as.int32;
+        
+        // First check basic bounds
+        bool in_bounds;
+        if (range->exclusive) {
+            if (step_val > 0) {
+                in_bounds = (check_val >= start_val && check_val < end_val);
+            } else {
+                in_bounds = (check_val <= start_val && check_val > end_val);
+            }
+        } else {
+            if (step_val > 0) {
+                in_bounds = (check_val >= start_val && check_val <= end_val);
+            } else {
+                in_bounds = (check_val <= start_val && check_val >= end_val);
+            }
+        }
+        
+        if (!in_bounds) {
+            return make_boolean(0);
+        }
+        
+        // Check if value is reachable with step
+        int32_t diff = check_val - start_val;
+        if (step_val == 0) {
+            return make_boolean(0); // Should not happen, but safe fallback
+        }
+        
+        // Value is reachable if (check_val - start_val) is divisible by step_val
+        return make_boolean(diff % step_val == 0);
+    }
+    
+    // Fallback for non-integer types - use original logic
     double start_val = value_to_float64(range->start);
     double end_val = value_to_float64(range->end);
     double check_val = value_to_float64(value);
@@ -248,7 +331,7 @@ value_t builtin_range_to_array(vm_t* vm, int arg_count, value_t* args) {
     
     // Use iterator pattern for consistent behavior with Iterator.toArray()
     // Create iterator for this range
-    iterator_t* iter = create_range_iterator(range->start, range->end, range->exclusive);
+    iterator_t* iter = create_range_iterator(range->start, range->end, range->exclusive, range->step);
     if (!iter) {
         runtime_error(vm, "Failed to create range iterator");
     }
@@ -284,8 +367,22 @@ value_t builtin_range_reverse(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "Invalid range");
     }
     
-    // Create reversed range: swap start and end, keep exclusivity
-    return make_range(range->end, range->start, range->exclusive);
+    // Create reversed range: swap start and end, negate step, keep exclusivity
+    value_t neg_step;
+    if (range->step.type == VAL_INT32) {
+        neg_step = make_int32(-range->step.as.int32);
+    } else if (range->step.type == VAL_BIGINT) {
+        di_int negated = di_negate(range->step.as.bigint);
+        neg_step = make_bigint(negated);
+    } else if (range->step.type == VAL_FLOAT32) {
+        neg_step = make_float32(-range->step.as.float32);
+    } else if (range->step.type == VAL_FLOAT64) {
+        neg_step = make_float64(-range->step.as.float64);
+    } else {
+        runtime_error(vm, "Invalid step type in range");
+    }
+    
+    return make_range(range->end, range->start, range->exclusive, neg_step);
 }
 
 // range.equals(other) - Deep equality comparison

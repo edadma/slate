@@ -51,6 +51,7 @@ static keyword_entry_t keywords[] = {
     {"import", TOKEN_IMPORT},
     {"package", TOKEN_PACKAGE},
     {"private", TOKEN_PRIVATE},
+    {"step", TOKEN_STEP},
     {"mod", TOKEN_MOD},
     {"true", TOKEN_TRUE},
     {"false", TOKEN_FALSE},
@@ -799,6 +800,7 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_IMPORT: return "IMPORT";
         case TOKEN_PACKAGE: return "PACKAGE";
         case TOKEN_PRIVATE: return "PRIVATE";
+        case TOKEN_STEP: return "STEP";
         case TOKEN_PLUS: return "PLUS";
         case TOKEN_MINUS: return "MINUS";
         case TOKEN_MULTIPLY: return "MULTIPLY";

@@ -207,6 +207,7 @@ typedef struct {
     ast_node* start; // Starting value
     ast_node* end; // Ending value
     int exclusive; // 1 for ..< (exclusive), 0 for .. (inclusive)
+    ast_node* step; // Step value (NULL for default step)
 } ast_range;
 
 // Unary operation node
@@ -389,7 +390,7 @@ ast_array* ast_create_array(ast_node** elements, size_t count, int line, int col
 
 ast_binary_op* ast_create_binary_op(binary_operator op, ast_node* left, ast_node* right, int line, int column);
 ast_ternary* ast_create_ternary(ast_node* condition, ast_node* true_expr, ast_node* false_expr, int line, int column);
-ast_range* ast_create_range(ast_node* start, ast_node* end, int exclusive, int line, int column);
+ast_range* ast_create_range(ast_node* start, ast_node* end, int exclusive, ast_node* step, int line, int column);
 ast_unary_op* ast_create_unary_op(unary_operator op, ast_node* operand, int line, int column);
 
 ast_function* ast_create_function(char** parameters, size_t param_count, ast_node* body, int is_expression, int line,

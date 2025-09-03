@@ -44,6 +44,7 @@ typedef enum {
     TOKEN_IMPORT,        // import (module imports)
     TOKEN_PACKAGE,       // package (package declaration)
     TOKEN_PRIVATE,       // private (private members)
+    TOKEN_STEP,          // step (range step size)
     
     // Operators
     TOKEN_PLUS,          // +

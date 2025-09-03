@@ -289,7 +289,7 @@ ds_string value_to_string_representation(vm_t* vm, value_t value);
 
 // Iterator creation helpers
 iterator_t* create_array_iterator(da_array array);
-iterator_t* create_range_iterator(value_t start, value_t end, int exclusive);
+iterator_t* create_range_iterator(value_t start, value_t end, int exclusive, value_t step);
 int iterator_has_next(iterator_t* iter);
 value_t iterator_next(iterator_t* iter);
 

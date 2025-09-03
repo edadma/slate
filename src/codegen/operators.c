@@ -105,6 +105,16 @@ void codegen_emit_range(codegen_t* codegen, ast_range* node) {
     // Generate end value
     codegen_emit_expression(codegen, node->end);
     
+    // Generate step value (or default if not specified)
+    if (node->step) {
+        codegen_emit_expression(codegen, node->step);
+    } else {
+        // Default step: use INT32(1) for auto-detection
+        codegen_emit_debug_location(codegen, (ast_node*)node);
+        size_t constant = chunk_add_constant(codegen->chunk, make_int32(1));
+        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)constant);
+    }
+    
     // Build range object (operand indicates whether it's exclusive)
     codegen_emit_op_operand(codegen, OP_BUILD_RANGE, (uint16_t)(node->exclusive ? 1 : 0));
 }

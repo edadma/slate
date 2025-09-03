@@ -52,7 +52,7 @@ value_t builtin_iterator(vm_t* vm, int arg_count, value_t* args) {
     case VAL_RANGE:
         if (collection.as.range) {
             iter = create_range_iterator(collection.as.range->start, collection.as.range->end,
-                                         collection.as.range->exclusive);
+                                         collection.as.range->exclusive, collection.as.range->step);
         }
         break;
     default:

@@ -15,7 +15,7 @@ iterator_t* create_array_iterator(da_array array) {
     return iter;
 }
 
-iterator_t* create_range_iterator(value_t start, value_t end, int exclusive) {
+iterator_t* create_range_iterator(value_t start, value_t end, int exclusive, value_t step) {
     iterator_t* iter = malloc(sizeof(iterator_t));
     if (!iter)
         return NULL;
@@ -24,12 +24,24 @@ iterator_t* create_range_iterator(value_t start, value_t end, int exclusive) {
     iter->type = ITER_RANGE;
     iter->data.range_iter.current = vm_retain(start);
     iter->data.range_iter.end = vm_retain(end);
+    iter->data.range_iter.step = vm_retain(step);
     iter->data.range_iter.exclusive = exclusive;
     iter->data.range_iter.finished = 0;
 
-    // Determine if this is a reverse range (start > end)
-    if (start.type == VAL_INT32 && end.type == VAL_INT32) {
-        iter->data.range_iter.reverse = (start.as.int32 > end.as.int32) ? 1 : 0;
+    // Determine if this is a reverse range based on step direction
+    if (start.type == VAL_INT32 && end.type == VAL_INT32 && step.type == VAL_INT32) {
+        int32_t step_val = step.as.int32;
+        int32_t start_val = start.as.int32;
+        int32_t end_val = end.as.int32;
+        
+        // Check if step direction matches range direction
+        if ((start_val <= end_val && step_val > 0) || (start_val > end_val && step_val < 0)) {
+            iter->data.range_iter.reverse = (step_val < 0) ? 1 : 0;
+        } else {
+            // Step direction doesn't match range direction - this will result in empty range
+            iter->data.range_iter.finished = 1;
+            iter->data.range_iter.reverse = 0;
+        }
     } else {
         iter->data.range_iter.reverse = 0; // Default to forward for non-integer ranges
     }
@@ -92,15 +104,9 @@ value_t iterator_next(iterator_t* iter) {
         // Return current value and increment/decrement appropriately
         value_t current = vm_retain(iter->data.range_iter.current);
 
-        // Increment or decrement current based on stored direction (for now, only support integers)
-        if (iter->data.range_iter.current.type == VAL_INT32) {
-            if (iter->data.range_iter.reverse) {
-                // Reverse range: decrement
-                iter->data.range_iter.current.as.int32--;
-            } else {
-                // Forward range: increment
-                iter->data.range_iter.current.as.int32++;
-            }
+        // Update current by step value (for now, only support integers)
+        if (iter->data.range_iter.current.type == VAL_INT32 && iter->data.range_iter.step.type == VAL_INT32) {
+            iter->data.range_iter.current.as.int32 += iter->data.range_iter.step.as.int32;
         } else {
             iter->data.range_iter.finished = 1;
         }
@@ -132,6 +138,7 @@ void iterator_release(iterator_t* iter) {
         } else if (iter->type == ITER_RANGE) {
             vm_release(iter->data.range_iter.current);
             vm_release(iter->data.range_iter.end);
+            vm_release(iter->data.range_iter.step);
         }
 
         // Free the iterator itself

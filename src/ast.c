@@ -184,7 +184,7 @@ ast_binary_op* ast_create_binary_op(binary_operator op, ast_node* left, ast_node
     return node;
 }
 
-ast_range* ast_create_range(ast_node* start, ast_node* end, int exclusive, int line, int column) {
+ast_range* ast_create_range(ast_node* start, ast_node* end, int exclusive, ast_node* step, int line, int column) {
     ast_range* node = malloc(sizeof(ast_range));
     if (!node) return NULL;
     
@@ -194,6 +194,7 @@ ast_range* ast_create_range(ast_node* start, ast_node* end, int exclusive, int l
     node->start = start;
     node->end = end;
     node->exclusive = exclusive;
+    node->step = step;
     
     return node;
 }
@@ -565,6 +566,9 @@ void ast_free(ast_node* node) {
             ast_range* range_node = (ast_range*)node;
             ast_free(range_node->start);
             ast_free(range_node->end);
+            if (range_node->step) {
+                ast_free(range_node->step);
+            }
             break;
         }
         

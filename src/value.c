@@ -83,6 +83,7 @@ void vm_release(value_t value) {
         if (value.as.range->ref_count <= 0) {
             vm_release(value.as.range->start);
             vm_release(value.as.range->end);
+            vm_release(value.as.range->step);
             free(value.as.range);
         }
     } else if (value.type == VAL_ITERATOR && value.as.iterator) {
@@ -241,7 +242,7 @@ value_t make_class(const char* name, do_object properties) {
     return value;
 }
 
-value_t make_range(value_t start, value_t end, int exclusive) {
+value_t make_range(value_t start, value_t end, int exclusive, value_t step) {
     range_t* range = malloc(sizeof(range_t));
     if (!range) {
         return make_null(); // Handle allocation failure
@@ -251,6 +252,7 @@ value_t make_range(value_t start, value_t end, int exclusive) {
     range->start = vm_retain(start);
     range->end = vm_retain(end);
     range->exclusive = exclusive;
+    range->step = vm_retain(step);
 
     value_t value;
     value.type = VAL_RANGE;
@@ -503,8 +505,8 @@ value_t make_class_with_debug(const char* name, do_object properties, debug_loca
     return value;
 }
 
-value_t make_range_with_debug(value_t start, value_t end, int exclusive, debug_location* debug) {
-    value_t value = make_range(start, end, exclusive);
+value_t make_range_with_debug(value_t start, value_t end, int exclusive, value_t step, debug_location* debug) {
+    value_t value = make_range(start, end, exclusive, step);
     value.debug = copy_debug_location(debug);
     return value;
 }

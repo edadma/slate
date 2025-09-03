@@ -103,12 +103,13 @@ struct value {
     debug_location* debug; // Debug info for error reporting (NULL when disabled)
 };
 
-// Range structure for range expressions (1..10, 1..<10)
+// Range structure for range expressions (1..10, 1..<10, 1..10 step 2)
 struct range {
     int ref_count; // Reference count for memory management
     value_t start; // Starting value
     value_t end; // Ending value
     int exclusive; // 1 for ..< (exclusive), 0 for .. (inclusive)
+    value_t step; // Step value (default: INT32(1) or INT32(-1) for auto-detected direction)
 };
 
 // Iterator types
@@ -129,6 +130,7 @@ struct iterator {
         struct {
             value_t current; // Current value
             value_t end; // End value
+            value_t step; // Step value for iteration
             int exclusive; // Whether end is exclusive
             int finished; // Whether iteration is complete
             int reverse; // 1 if iterating backwards (start > end), 0 if forwards
@@ -240,7 +242,7 @@ value_t make_string_builder(ds_builder builder);
 value_t make_array(da_array array);
 value_t make_object(do_object object);
 value_t make_class(const char* name, do_object properties);
-value_t make_range(value_t start, value_t end, int exclusive);
+value_t make_range(value_t start, value_t end, int exclusive, value_t step);
 value_t make_iterator(iterator_t* iterator);
 value_t make_function(struct function* function);
 value_t make_closure(struct closure* closure);
@@ -272,7 +274,7 @@ value_t make_string_builder_with_debug(ds_builder builder, debug_location* debug
 value_t make_array_with_debug(da_array array, debug_location* debug);
 value_t make_object_with_debug(do_object object, debug_location* debug);
 value_t make_class_with_debug(const char* name, do_object properties, debug_location* debug);
-value_t make_range_with_debug(value_t start, value_t end, int exclusive, debug_location* debug);
+value_t make_range_with_debug(value_t start, value_t end, int exclusive, value_t step, debug_location* debug);
 value_t make_iterator_with_debug(iterator_t* iterator, debug_location* debug);
 value_t make_function_with_debug(struct function* function, debug_location* debug);
 value_t make_closure_with_debug(struct closure* closure, debug_location* debug);

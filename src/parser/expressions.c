@@ -239,7 +239,14 @@ ast_node* parse_range(parser_t* parser) {
         int op_line = parser->previous.line;
         int op_column = parser->previous.column;
         ast_node* end = parse_shift(parser);
-        expr = (ast_node*)ast_create_range(expr, end, exclusive, op_line, op_column);
+        
+        // Check for optional step clause: "step <expression>"
+        ast_node* step = NULL;
+        if (parser_match(parser, TOKEN_STEP)) {
+            step = parse_shift(parser);
+        }
+        
+        expr = (ast_node*)ast_create_range(expr, end, exclusive, step, op_line, op_column);
     }
     
     return expr;
