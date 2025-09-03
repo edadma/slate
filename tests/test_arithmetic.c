@@ -598,6 +598,169 @@ void test_comprehensive_unary() {
     vm_release(result);
 }
 
+// Test increment/decrement on array elements
+void test_array_element_increment_decrement() {
+    // Test pre-increment on array element
+    {
+        value_t result = execute_expression("var arr = [1, 2, 3]; ++arr(0)");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(2, result.as.int32);
+        vm_release(result);
+    }
+    
+    // Test that array element is actually modified by pre-increment
+    {
+        value_t result = execute_expression("var arr = [5, 10, 15]; ++arr(1); arr(1)");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(11, result.as.int32);
+        vm_release(result);
+    }
+    
+    // Test post-increment returns old value
+    {
+        value_t result = execute_expression("var arr = [20, 30, 40]; arr(2)++");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(40, result.as.int32);  // Returns old value
+        vm_release(result);
+    }
+    
+    // Test that array element is modified by post-increment
+    {
+        value_t result = execute_expression("var arr = [20, 30, 40]; arr(2)++; arr(2)");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(41, result.as.int32);  // New value
+        vm_release(result);
+    }
+    
+    // Test pre-decrement on array element
+    {
+        value_t result = execute_expression("var arr = [10, 20, 30]; --arr(1)");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(19, result.as.int32);
+        vm_release(result);
+    }
+    
+    // Test post-decrement returns old value
+    {
+        value_t result = execute_expression("var arr = [100, 200, 300]; arr(0)--");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(100, result.as.int32);  // Returns old value
+        vm_release(result);
+    }
+    
+    // Test that array element is modified by post-decrement
+    {
+        value_t result = execute_expression("var arr = [100, 200, 300]; arr(0)--; arr(0)");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(99, result.as.int32);   // New value
+        vm_release(result);
+    }
+}
+
+// Test increment/decrement on object properties
+void test_object_property_increment_decrement() {
+    // Test pre-increment on object property
+    {
+        value_t result = execute_expression("var obj = {x: 5, y: 10}; ++obj.x");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(6, result.as.int32);
+        vm_release(result);
+    }
+    
+    // Test that object property is actually modified by pre-increment
+    {
+        value_t result = execute_expression("var obj = {a: 15, b: 25}; ++obj.b; obj.b");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(26, result.as.int32);
+        vm_release(result);
+    }
+    
+    // Test post-increment returns old value
+    {
+        value_t result = execute_expression("var obj = {count: 50}; obj.count++");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(50, result.as.int32);  // Returns old value
+        vm_release(result);
+    }
+    
+    // Test that object property is modified by post-increment
+    {
+        value_t result = execute_expression("var obj = {count: 50}; obj.count++; obj.count");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(51, result.as.int32);  // New value
+        vm_release(result);
+    }
+    
+    // Test pre-decrement on object property
+    {
+        value_t result = execute_expression("var obj = {value: 100}; --obj.value");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(99, result.as.int32);
+        vm_release(result);
+    }
+    
+    // Test post-decrement returns old value
+    {
+        value_t result = execute_expression("var obj = {score: 75}; obj.score--");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(75, result.as.int32);  // Returns old value
+        vm_release(result);
+    }
+    
+    // Test that object property is modified by post-decrement
+    {
+        value_t result = execute_expression("var obj = {score: 75}; obj.score--; obj.score");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(74, result.as.int32);  // New value
+        vm_release(result);
+    }
+}
+
+// Test comprehensive increment/decrement scenarios with arrays and objects
+void test_increment_decrement_advanced_scenarios() {
+    // Test mixed operations with arrays
+    {
+        value_t result = execute_expression("var arr = [1, 2, 3]; ++arr(0) + arr(1)++");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(4, result.as.int32);  // 2 + 2 (pre-inc returns 2, post-inc returns old 2)
+        vm_release(result);
+    }
+    
+    // Test that both modifications took effect
+    {
+        value_t result = execute_expression("var arr = [1, 2, 3]; ++arr(0) + arr(1)++; arr(0) + arr(1)");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(5, result.as.int32);   // 2 + 3 (both were incremented)
+        vm_release(result);
+    }
+    
+    // Test mixed operations with objects
+    {
+        value_t result = execute_expression("var obj = {a: 10, b: 20}; --obj.a + obj.b--");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(29, result.as.int32);  // 9 + 20 (pre-dec returns 9, post-dec returns old 20)
+        vm_release(result);
+    }
+    
+    // Test increment/decrement with overflow
+    {
+        value_t result = execute_expression("var arr = [2147483647]; ++arr(0)");
+        TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
+        char* str = di_to_string(result.as.bigint, 10);
+        TEST_ASSERT_EQUAL_STRING("2147483648", str);
+        free(str);
+        vm_release(result);
+    }
+    
+    // Test reference semantics - modifying nested object property
+    {
+        value_t result = execute_expression("var outer = {inner: {count: 5}}; ++outer.inner.count");
+        TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+        TEST_ASSERT_EQUAL_INT32(6, result.as.int32);
+        vm_release(result);
+    }
+}
+
 // Test suite function for integration with main test runner
 void test_arithmetic_suite(void) {
     RUN_TEST(test_basic_int32_arithmetic);
@@ -611,6 +774,9 @@ void test_arithmetic_suite(void) {
     RUN_TEST(test_increment_decrement);
     RUN_TEST(test_increment_decrement_comprehensive);
     RUN_TEST(test_invalid_increment_decrement_errors);
+    RUN_TEST(test_array_element_increment_decrement);
+    RUN_TEST(test_object_property_increment_decrement);
+    RUN_TEST(test_increment_decrement_advanced_scenarios);
     RUN_TEST(test_comprehensive_arithmetic);
     RUN_TEST(test_modulo_operations);
     RUN_TEST(test_power_operations);

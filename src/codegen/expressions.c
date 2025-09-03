@@ -105,14 +105,14 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
         case AST_ASSIGNMENT: {
             ast_assignment* assign = (ast_assignment*)expr;
             
-            // Generate code for the value to assign
-            codegen_emit_expression(codegen, assign->value);
-            
-            // For expressions, we need to duplicate the value so it remains on stack
-            codegen_emit_op(codegen, OP_DUP);
-            
-            // Handle assignment target
             if (assign->target->type == AST_IDENTIFIER) {
+                // Variable assignment: var = value
+                // Generate the value first
+                codegen_emit_expression(codegen, assign->value);
+                
+                // For expressions, we need to duplicate the value so it remains on stack
+                codegen_emit_op(codegen, OP_DUP);
+                
                 ast_identifier* var = (ast_identifier*)assign->target;
                 
                 // Try 3-level resolution: local -> upvalue -> global
@@ -136,8 +136,44 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
                     chunk_add_debug_info(codegen->chunk, assign->base.line, assign->base.column);
                     codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
                 }
+                
+            } else if (assign->target->type == AST_MEMBER) {
+                // Object property assignment: obj.prop = value
+                ast_member* member = (ast_member*)assign->target;
+                
+                // Generate in order: object, property_name, value
+                codegen_emit_expression(codegen, member->object);
+                
+                size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member->property));
+                codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);
+                
+                codegen_emit_expression(codegen, assign->value);
+                
+                // Stack: [object, property_name, value] - matches OP_SET_PROPERTY
+                // OP_SET_PROPERTY pops [object, property_name, value] and pushes the assigned value back
+                codegen_emit_op(codegen, OP_SET_PROPERTY);
+                
+            } else if (assign->target->type == AST_CALL) {
+                // Array element assignment: arr(index) = value
+                ast_call* call = (ast_call*)assign->target;
+                
+                // Validate that this is array indexing (exactly one argument)
+                if (call->arg_count != 1) {
+                    codegen_error(codegen, "Array assignment requires exactly one index argument");
+                    break;
+                }
+                
+                // Generate in order: array, index, value
+                codegen_emit_expression(codegen, call->function);      // [array]
+                codegen_emit_expression(codegen, call->arguments[0]);  // [array, index]  
+                codegen_emit_expression(codegen, assign->value);       // [array, index, value]
+                
+                // OP_SET_INDEX pops [array, index, value] and pushes the assigned value back
+                // This is perfect for expression contexts
+                codegen_emit_op(codegen, OP_SET_INDEX);
+                
             } else {
-                codegen_error(codegen, "Only variable assignments are currently supported");
+                codegen_error(codegen, "Invalid assignment target");
             }
             break;
         }

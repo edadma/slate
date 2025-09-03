@@ -61,6 +61,30 @@ vm_result vm_run(vm_t* vm) {
             break;
         }
 
+        case OP_SWAP: {
+            vm_result result = op_swap(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_NIP: {
+            vm_result result = op_nip(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_ROT: {
+            vm_result result = op_rot(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_OVER: {
+            vm_result result = op_over(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_SET_RESULT: {
             vm_result result = op_set_result(vm);
             if (result != VM_OK) return result;
@@ -229,6 +253,12 @@ vm_result vm_run(vm_t* vm) {
             break;
         }
 
+        case OP_SET_PROPERTY: {
+            vm_result result = op_set_property(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_CALL: {
             vm_result result = op_call(vm);
             if (result != VM_OK) return result;
@@ -243,6 +273,12 @@ vm_result vm_run(vm_t* vm) {
 
         case OP_BUILD_ARRAY: {
             vm_result result = op_build_array(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_SET_INDEX: {
+            vm_result result = op_set_index(vm);
             if (result != VM_OK) return result;
             break;
         }

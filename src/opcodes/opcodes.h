@@ -42,6 +42,10 @@ vm_result op_push_true(vm_t* vm);
 vm_result op_push_false(vm_t* vm);
 vm_result op_pop(vm_t* vm);
 vm_result op_dup(vm_t* vm);
+vm_result op_swap(vm_t* vm);
+vm_result op_nip(vm_t* vm);
+vm_result op_rot(vm_t* vm);
+vm_result op_over(vm_t* vm);
 vm_result op_set_result(vm_t* vm);
 vm_result op_clear_debug_location(vm_t* vm);
 vm_result op_halt(vm_t* vm);
@@ -72,5 +76,9 @@ vm_result op_instanceof(vm_t* vm);
 // Module system opcodes
 vm_result op_import_module(vm_t* vm);
 vm_result op_get_export(vm_t* vm);
+
+// Element/property assignment opcodes
+vm_result op_set_index(vm_t* vm);
+vm_result op_set_property(vm_t* vm);
 
 #endif // SLATE_OPCODES_H

@@ -50,11 +50,11 @@ void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node)
 }
 
 void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node) {
-    // Generate code for the value to assign
-    codegen_emit_expression(codegen, node->value);
-    
-    // For now, only handle simple variable assignments
     if (node->target->type == AST_IDENTIFIER) {
+        // Variable assignment: var = value
+        // Generate the value first
+        codegen_emit_expression(codegen, node->value);
+        
         ast_identifier* var = (ast_identifier*)node->target;
         codegen_emit_op(codegen, OP_DUP);
         
@@ -79,8 +79,46 @@ void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node) {
             chunk_add_debug_info(codegen->chunk, node->base.line, node->base.column);
             codegen_emit_op_operand(codegen, OP_SET_GLOBAL, (uint16_t)constant);
         }
+        
+    } else if (node->target->type == AST_MEMBER) {
+        // Object property assignment: obj.prop = value
+        ast_member* member = (ast_member*)node->target;
+        
+        // Generate in order: object, property_name, value
+        codegen_emit_expression(codegen, member->object);
+        
+        size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member->property));
+        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);
+        
+        codegen_emit_expression(codegen, node->value);
+        
+        // Stack: [object, property_name, value] - matches OP_SET_PROPERTY
+        // OP_SET_PROPERTY will push the assigned value back, then we need to pop it for statements
+        codegen_emit_op(codegen, OP_SET_PROPERTY);
+        codegen_emit_op(codegen, OP_POP);  // Discard the returned value in statement context
+        
+    } else if (node->target->type == AST_CALL) {
+        // Array element assignment: arr(index) = value
+        ast_call* call = (ast_call*)node->target;
+        
+        // Validate that this is array indexing (exactly one argument)
+        if (call->arg_count != 1) {
+            codegen_error(codegen, "Array assignment requires exactly one index argument");
+            return;
+        }
+        
+        // Generate in order: array, index, value
+        codegen_emit_expression(codegen, call->function);
+        codegen_emit_expression(codegen, call->arguments[0]);
+        codegen_emit_expression(codegen, node->value);
+        
+        // Stack: [array, index, value] - matches OP_SET_INDEX
+        // OP_SET_INDEX will push the assigned value back, then we need to pop it for statements  
+        codegen_emit_op(codegen, OP_SET_INDEX);
+        codegen_emit_op(codegen, OP_POP);  // Discard the returned value in statement context
+        
     } else {
-        codegen_error(codegen, "Only variable assignments are currently supported");
+        codegen_error(codegen, "Invalid assignment target");
     }
 }
 

@@ -50,6 +50,12 @@ typedef enum {
     OP_POP, // Pop top of stack
     OP_DUP, // Duplicate top of stack
     OP_SET_RESULT, // Pop value from stack and store in result register
+    
+    // Stack manipulation operations
+    OP_SWAP, // Swap top two values on stack: [a, b] -> [b, a]
+    OP_NIP, // Remove second item: [a, b] -> [b]
+    OP_ROT, // Rotate top three: [a, b, c] -> [b, c, a]
+    OP_OVER, // Duplicate second item to top: [a, b] -> [a, b, a]
 
     // Arithmetic operations
     OP_ADD, // Pop b, pop a, push a + b
@@ -101,6 +107,7 @@ typedef enum {
 
     // Array operations
     OP_BUILD_ARRAY, // Pop n elements, build array (operand = n)
+    OP_SET_INDEX, // Pop value, pop index, pop array, set array[index] = value
 
     // Object operations
     OP_BUILD_OBJECT, // Build object from key-value pairs (operand = n pairs)

@@ -241,11 +241,160 @@ void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
                     default: break;
                 }
             }
+        } else if (node->operand->type == AST_MEMBER) {
+            // Object property increment/decrement: ++obj.prop, obj.prop++, --obj.prop, obj.prop--
+            ast_member* member = (ast_member*)node->operand;
+            size_t property_constant = chunk_add_constant(codegen->chunk, make_string(member->property));
+            
+            switch (node->op) {
+                case UN_PRE_INCREMENT:
+                    // Pre-increment: get value, increment, duplicate for return, set
+                    codegen_emit_expression(codegen, member->object);  // [object]
+                    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);  // [object, property]
+                    codegen_emit_op(codegen, OP_GET_PROPERTY);  // [value]
+                    codegen_emit_op(codegen, OP_INCREMENT);     // [new_value]
+                    codegen_emit_op(codegen, OP_DUP);           // [new_value, new_value]
+                    
+                    // Prepare for SET_PROPERTY: need [object, property, new_value]
+                    codegen_emit_expression(codegen, member->object);  // [new_value, new_value, object]
+                    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);  // [new_value, new_value, object, property]
+                    codegen_emit_op(codegen, OP_ROT);           // [new_value, object, property, new_value]
+                    codegen_emit_op(codegen, OP_SET_PROPERTY);  // [new_value]
+                    break;
+                    
+                case UN_PRE_DECREMENT:
+                    // Pre-decrement: get value, decrement, duplicate for return, set
+                    codegen_emit_expression(codegen, member->object);  // [object]
+                    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);  // [object, property]
+                    codegen_emit_op(codegen, OP_GET_PROPERTY);  // [value]
+                    codegen_emit_op(codegen, OP_DECREMENT);     // [new_value]
+                    codegen_emit_op(codegen, OP_DUP);           // [new_value, new_value]
+                    
+                    // Prepare for SET_PROPERTY: need [object, property, new_value]
+                    codegen_emit_expression(codegen, member->object);  // [new_value, new_value, object]
+                    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);  // [new_value, new_value, object, property]
+                    codegen_emit_op(codegen, OP_ROT);           // [new_value, object, property, new_value]
+                    codegen_emit_op(codegen, OP_SET_PROPERTY);  // [new_value]
+                    break;
+                    
+                case UN_POST_INCREMENT:
+                    // Post-increment: get value, duplicate for return, increment, set
+                    codegen_emit_expression(codegen, member->object);  // [object]
+                    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);  // [object, property]
+                    codegen_emit_op(codegen, OP_GET_PROPERTY);  // [old_value]
+                    codegen_emit_op(codegen, OP_DUP);           // [old_value, old_value]
+                    codegen_emit_op(codegen, OP_INCREMENT);     // [old_value, new_value]
+                    
+                    // Prepare for SET_PROPERTY: need [object, property, new_value], then restore [old_value]
+                    codegen_emit_expression(codegen, member->object);  // [old_value, new_value, object]
+                    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);  // [old_value, new_value, object, property]
+                    codegen_emit_op(codegen, OP_ROT);           // [old_value, object, property, new_value]
+                    codegen_emit_op(codegen, OP_SET_PROPERTY);  // [old_value, new_value] - SET_PROPERTY returns assigned value
+                    codegen_emit_op(codegen, OP_POP);           // [old_value] - discard returned value, keep old_value
+                    break;
+                    
+                case UN_POST_DECREMENT:
+                    // Post-decrement: get value, duplicate for return, decrement, set
+                    codegen_emit_expression(codegen, member->object);  // [object]
+                    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);  // [object, property]
+                    codegen_emit_op(codegen, OP_GET_PROPERTY);  // [old_value]
+                    codegen_emit_op(codegen, OP_DUP);           // [old_value, old_value]
+                    codegen_emit_op(codegen, OP_DECREMENT);     // [old_value, new_value]
+                    
+                    // Prepare for SET_PROPERTY: need [object, property, new_value], then restore [old_value]
+                    codegen_emit_expression(codegen, member->object);  // [old_value, new_value, object]
+                    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)property_constant);  // [old_value, new_value, object, property]
+                    codegen_emit_op(codegen, OP_ROT);           // [old_value, object, property, new_value]
+                    codegen_emit_op(codegen, OP_SET_PROPERTY);  // [old_value, new_value] - SET_PROPERTY returns assigned value  
+                    codegen_emit_op(codegen, OP_POP);           // [old_value] - discard returned value, keep old_value
+                    break;
+                    
+                default: break;
+            }
+            
+        } else if (node->operand->type == AST_CALL) {
+            // Array element increment/decrement: ++arr(i), arr(i)++, --arr(i), arr(i)--  
+            ast_call* call = (ast_call*)node->operand;
+            
+            if (call->arg_count != 1) {
+                if (g_current_vm && g_current_vm->context != CTX_TEST) {
+                    printf("Compile error: Array increment/decrement requires exactly one index\n");
+                }
+                codegen->had_error = 1;
+                return;
+            }
+            
+            switch (node->op) {
+                case UN_PRE_INCREMENT:
+                    // Pre-increment: get value using OP_CALL, increment, duplicate for return, set using OP_SET_INDEX
+                    // First, get the current value by calling the array
+                    codegen_emit_expression(codegen, call->function);     // [array]
+                    codegen_emit_expression(codegen, call->arguments[0]); // [array, index]
+                    codegen_emit_op_operand(codegen, OP_CALL, 1);         // [value]
+                    codegen_emit_op(codegen, OP_INCREMENT);               // [new_value]
+                    codegen_emit_op(codegen, OP_DUP);                     // [new_value, new_value]
+                    
+                    // Setup for OP_SET_INDEX: need [array, index, new_value] 
+                    codegen_emit_expression(codegen, call->function);     // [new_value, new_value, array]
+                    codegen_emit_expression(codegen, call->arguments[0]); // [new_value, new_value, array, index]
+                    codegen_emit_op(codegen, OP_ROT);                     // [new_value, array, index, new_value]
+                    codegen_emit_op(codegen, OP_SET_INDEX);               // [new_value]
+                    break;
+                    
+                case UN_PRE_DECREMENT:
+                    // Pre-decrement: get value using OP_CALL, decrement, duplicate for return, set using OP_SET_INDEX
+                    codegen_emit_expression(codegen, call->function);     // [array]
+                    codegen_emit_expression(codegen, call->arguments[0]); // [array, index]
+                    codegen_emit_op_operand(codegen, OP_CALL, 1);         // [value]
+                    codegen_emit_op(codegen, OP_DECREMENT);               // [new_value]
+                    codegen_emit_op(codegen, OP_DUP);                     // [new_value, new_value]
+                    
+                    // Setup for OP_SET_INDEX: need [array, index, new_value] 
+                    codegen_emit_expression(codegen, call->function);     // [new_value, new_value, array]
+                    codegen_emit_expression(codegen, call->arguments[0]); // [new_value, new_value, array, index]
+                    codegen_emit_op(codegen, OP_ROT);                     // [new_value, array, index, new_value]
+                    codegen_emit_op(codegen, OP_SET_INDEX);               // [new_value]
+                    break;
+                    
+                case UN_POST_INCREMENT:
+                    // Post-increment: get value using OP_CALL, duplicate for return, increment, set using OP_SET_INDEX
+                    codegen_emit_expression(codegen, call->function);     // [array]
+                    codegen_emit_expression(codegen, call->arguments[0]); // [array, index]
+                    codegen_emit_op_operand(codegen, OP_CALL, 1);         // [old_value]
+                    codegen_emit_op(codegen, OP_DUP);                     // [old_value, old_value]
+                    codegen_emit_op(codegen, OP_INCREMENT);               // [old_value, new_value]
+                    
+                    // Setup for OP_SET_INDEX: need [array, index, new_value], then restore [old_value] 
+                    codegen_emit_expression(codegen, call->function);     // [old_value, new_value, array]
+                    codegen_emit_expression(codegen, call->arguments[0]); // [old_value, new_value, array, index]
+                    codegen_emit_op(codegen, OP_ROT);                     // [old_value, array, index, new_value]
+                    codegen_emit_op(codegen, OP_SET_INDEX);               // [old_value, new_value] - OP_SET_INDEX returns assigned value
+                    codegen_emit_op(codegen, OP_POP);                     // [old_value] - discard the returned new_value, keep old_value
+                    break;
+                    
+                case UN_POST_DECREMENT:
+                    // Post-decrement: get value using OP_CALL, duplicate for return, decrement, set using OP_SET_INDEX
+                    codegen_emit_expression(codegen, call->function);     // [array]
+                    codegen_emit_expression(codegen, call->arguments[0]); // [array, index]
+                    codegen_emit_op_operand(codegen, OP_CALL, 1);         // [old_value]
+                    codegen_emit_op(codegen, OP_DUP);                     // [old_value, old_value]
+                    codegen_emit_op(codegen, OP_DECREMENT);               // [old_value, new_value]
+                    
+                    // Setup for OP_SET_INDEX: need [array, index, new_value], then restore [old_value]
+                    codegen_emit_expression(codegen, call->function);     // [old_value, new_value, array]
+                    codegen_emit_expression(codegen, call->arguments[0]); // [old_value, new_value, array, index]
+                    codegen_emit_op(codegen, OP_ROT);                     // [old_value, array, index, new_value]
+                    codegen_emit_op(codegen, OP_SET_INDEX);               // [old_value, new_value] - OP_SET_INDEX returns assigned value
+                    codegen_emit_op(codegen, OP_POP);                     // [old_value] - discard the returned new_value, keep old_value
+                    break;
+                    
+                default: break;
+            }
+            
         } else {
-            // TODO: Handle array elements and object properties
-            // Suppress error messages in test context, but still set error flag  
+            // Unknown l-value type
             if (g_current_vm && g_current_vm->context != CTX_TEST) {
-                printf("Compile error: Increment/decrement on array elements and object properties not yet implemented\n");
+                printf("Compile error: Increment/decrement can only be applied to l-values (variables, array elements, object properties)\n");
             }
             codegen->had_error = 1;
             return;

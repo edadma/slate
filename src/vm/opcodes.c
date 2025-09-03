@@ -17,6 +17,14 @@ const char* opcode_name(opcode op) {
         return "POP";
     case OP_DUP:
         return "DUP";
+    case OP_SWAP:
+        return "SWAP";
+    case OP_NIP:
+        return "NIP";
+    case OP_ROT:
+        return "ROT";
+    case OP_OVER:
+        return "OVER";
     case OP_SET_RESULT:
         return "SET_RESULT";
     case OP_ADD:
@@ -93,6 +101,8 @@ const char* opcode_name(opcode op) {
         return "SET_PROPERTY";
     case OP_BUILD_ARRAY:
         return "BUILD_ARRAY";
+    case OP_SET_INDEX:
+        return "SET_INDEX";
     case OP_BUILD_OBJECT:
         return "BUILD_OBJECT";
     case OP_BUILD_RANGE:
