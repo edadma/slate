@@ -44,6 +44,7 @@ include_directories(deps/dynamic_int.h)
 include_directories(deps/dynamic_buffer.h)
 include_directories(deps/stb_ds.h)
 include_directories(src/classes/String)
+include_directories(src/classes/Boolean)
 include_directories(src/classes/Array)
 include_directories(src/classes/Buffer)
 include_directories(src/classes/BufferBuilder)
@@ -107,6 +108,8 @@ add_executable(slate
         src/date.c
         src/classes/String/factory.c
         src/classes/String/methods.c
+        src/classes/Boolean/factory.c
+        src/classes/Boolean/methods.c
         src/classes/StringBuilder/string_builder.c
         src/classes/Array/methods.c
         src/classes/Array/functional.c
@@ -310,6 +313,8 @@ if (BUILD_TESTS)
             src/date.c
             src/classes/String/factory.c
             src/classes/String/methods.c
+            src/classes/Boolean/factory.c
+            src/classes/Boolean/methods.c
             src/classes/StringBuilder/string_builder.c
             src/classes/Array/methods.c
             src/classes/Array/functional.c

@@ -12,6 +12,7 @@
 #include "buffer_reader.h"
 #include "classes/String/class_string.h"
 #include "classes/StringBuilder/string_builder.h"
+#include "classes/Boolean/class_boolean.h"
 #include "datetime.h"
 #include "int.h"
 #include "iterator.h"
@@ -113,6 +114,34 @@ void builtins_init(vm_t* vm) {
     static value_t string_class_storage;
     string_class_storage = vm_retain(string_class);
     global_string_class = &string_class_storage;
+
+    // Create the Boolean class with its prototype
+    do_object boolean_proto = do_create(NULL);
+
+    // Add methods to Boolean prototype
+    value_t boolean_to_string_method = make_native(builtin_boolean_to_string);
+    do_set(boolean_proto, "toString", &boolean_to_string_method, sizeof(value_t));
+
+    value_t boolean_and_method = make_native(builtin_boolean_and);
+    do_set(boolean_proto, "and", &boolean_and_method, sizeof(value_t));
+
+    value_t boolean_or_method = make_native(builtin_boolean_or);
+    do_set(boolean_proto, "or", &boolean_or_method, sizeof(value_t));
+
+    value_t boolean_not_method = make_native(builtin_boolean_not);
+    do_set(boolean_proto, "not", &boolean_not_method, sizeof(value_t));
+
+    value_t boolean_xor_method = make_native(builtin_boolean_xor);
+    do_set(boolean_proto, "xor", &boolean_xor_method, sizeof(value_t));
+
+    // Create the Boolean class
+    value_t boolean_class = make_class("Boolean", boolean_proto);
+
+    // Set the factory function to allow Boolean() or Boolean(value)
+    boolean_class.as.class->factory = boolean_factory;
+
+    // Store in globals
+    do_set(vm->globals, "Boolean", &boolean_class, sizeof(value_t));
 
     // Initialize Array class
     array_class_init(vm);
