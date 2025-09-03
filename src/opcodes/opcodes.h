@@ -21,6 +21,8 @@ vm_result op_get_local(vm_t* vm);
 vm_result op_set_local(vm_t* vm);
 vm_result op_define_global(vm_t* vm);
 vm_result op_set_global(vm_t* vm);
+vm_result op_get_upvalue(vm_t* vm);
+vm_result op_set_upvalue(vm_t* vm);
 vm_result op_build_object(vm_t* vm);
 vm_result op_power(vm_t* vm);
 vm_result op_build_array(vm_t* vm);

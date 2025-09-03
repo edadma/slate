@@ -156,6 +156,8 @@ add_executable(slate
         src/opcodes/op_set_local.c
         src/opcodes/op_define_global.c
         src/opcodes/op_set_global.c
+        src/opcodes/op_get_upvalue.c
+        src/opcodes/op_set_upvalue.c
         src/opcodes/op_build_object.c
         src/opcodes/op_power.c
         src/opcodes/op_build_array.c
@@ -351,6 +353,8 @@ if (BUILD_TESTS)
         src/opcodes/op_set_local.c
         src/opcodes/op_define_global.c
         src/opcodes/op_set_global.c
+        src/opcodes/op_get_upvalue.c
+        src/opcodes/op_set_upvalue.c
         src/opcodes/op_build_object.c
         src/opcodes/op_power.c
         src/opcodes/op_build_array.c

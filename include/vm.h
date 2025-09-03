@@ -113,6 +113,10 @@ typedef enum {
     OP_CALL, // Call function (operand = arg count)
     OP_CALL_METHOD, // Call method with implicit receiver (operand = arg count)
     OP_RETURN, // Return from function
+    
+    // Upvalue operations (for closures)
+    OP_GET_UPVALUE, // Get upvalue (operand = upvalue index)
+    OP_SET_UPVALUE, // Set upvalue (operand = upvalue index)
 
     // Control flow
     OP_JUMP, // Unconditional jump (operand = offset)

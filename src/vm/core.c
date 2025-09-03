@@ -211,6 +211,18 @@ vm_result vm_run(vm_t* vm) {
             break;
         }
 
+        case OP_GET_UPVALUE: {
+            vm_result result = op_get_upvalue(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_SET_UPVALUE: {
+            vm_result result = op_set_upvalue(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         case OP_GET_PROPERTY: {
             vm_result result = op_get_property(vm);
             if (result != VM_OK) return result;
