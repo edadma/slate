@@ -1,0 +1,14 @@
+#!/usr/bin/env cmake-build-debug/slate
+\ Simple test script for shebang support
+
+print('Script started!')
+print(`Number of arguments: ${args().length()}`)
+
+if args().length() > 0
+    print('Arguments received:')
+
+    for var i = 0; i < args().length(); i++ do print(`  [$i] = ${args()(i)}`)
+else
+    print('No arguments provided')
+
+print('Script completed!')

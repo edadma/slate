@@ -20,9 +20,12 @@ void test_parse_infinite_loop(void) {
     TEST_ASSERT_EQUAL_INT(1, program->statement_count);
 
     ast_node* stmt = program->statements[0];
-    TEST_ASSERT_EQUAL_INT(AST_LOOP, stmt->type);
+    TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
+    
+    ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
+    TEST_ASSERT_EQUAL_INT(AST_LOOP, expr_stmt->expression->type);
 
-    ast_loop* loop_node = (ast_loop*)stmt;
+    ast_loop* loop_node = (ast_loop*)expr_stmt->expression;
     TEST_ASSERT_NOT_NULL(loop_node->body);
 
     ast_free((ast_node*)program);
@@ -47,7 +50,10 @@ void test_infinite_loop_parsing_only(void) {
     TEST_ASSERT_EQUAL_INT(1, program->statement_count);
 
     ast_node* stmt = program->statements[0];
-    TEST_ASSERT_EQUAL_INT(AST_LOOP, stmt->type);
+    TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
+    
+    ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
+    TEST_ASSERT_EQUAL_INT(AST_LOOP, expr_stmt->expression->type);
 
     // Cleanup (don't try to compile/execute - would be infinite)
     ast_free((ast_node*)program);
@@ -70,9 +76,12 @@ void test_single_line_loop_expression(void) {
     TEST_ASSERT_EQUAL_INT(1, program->statement_count);
 
     ast_node* stmt = program->statements[0];
-    TEST_ASSERT_EQUAL_INT(AST_LOOP, stmt->type);
+    TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
+    
+    ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
+    TEST_ASSERT_EQUAL_INT(AST_LOOP, expr_stmt->expression->type);
 
-    ast_loop* loop_node = (ast_loop*)stmt;
+    ast_loop* loop_node = (ast_loop*)expr_stmt->expression;
     TEST_ASSERT_NOT_NULL(loop_node->body);
     TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, loop_node->body->type);
 
@@ -101,9 +110,12 @@ void test_loop_ast_structure(void) {
 
     // Verify the loop AST structure
     ast_node* stmt = program->statements[0];
-    TEST_ASSERT_EQUAL_INT(AST_LOOP, stmt->type);
+    TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
+    
+    ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
+    TEST_ASSERT_EQUAL_INT(AST_LOOP, expr_stmt->expression->type);
 
-    ast_loop* loop_node = (ast_loop*)stmt;
+    ast_loop* loop_node = (ast_loop*)expr_stmt->expression;
     TEST_ASSERT_NOT_NULL(loop_node->body);
     TEST_ASSERT_EQUAL_INT(AST_BLOCK, loop_node->body->type);
 
@@ -132,7 +144,10 @@ void test_loop_without_end_marker(void) {
     TEST_ASSERT_EQUAL_INT(1, program->statement_count);
 
     ast_node* stmt = program->statements[0];
-    TEST_ASSERT_EQUAL_INT(AST_LOOP, stmt->type);
+    TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
+    
+    ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
+    TEST_ASSERT_EQUAL_INT(AST_LOOP, expr_stmt->expression->type);
 
     ast_free((ast_node*)program);
     lexer_cleanup(&lexer);
@@ -156,7 +171,10 @@ void test_loop_with_optional_end_marker(void) {
     TEST_ASSERT_EQUAL_INT(1, program->statement_count);
 
     ast_node* stmt = program->statements[0];
-    TEST_ASSERT_EQUAL_INT(AST_LOOP, stmt->type);
+    TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
+    
+    ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
+    TEST_ASSERT_EQUAL_INT(AST_LOOP, expr_stmt->expression->type);
 
     ast_free((ast_node*)program);
     lexer_cleanup(&lexer);

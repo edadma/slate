@@ -41,6 +41,9 @@ void codegen_emit_while(codegen_t* codegen, ast_while* node) {
     
     // End loop context and patch break statements
     codegen_pop_loop(codegen);
+    
+    // Loops are expressions that evaluate to undefined
+    codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
 }
 
 // Emit for loop with dual scoping: outer scope for initializer, inner scope for body
@@ -110,6 +113,9 @@ void codegen_emit_for(codegen_t* codegen, ast_for* node) {
     
     // END OUTER SCOPE (cleans up initializer variables) 
     codegen_end_scope(codegen);
+    
+    // Loops are expressions that evaluate to undefined
+    codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
 }
 
 void codegen_emit_do_while(codegen_t* codegen, ast_do_while* node) {
@@ -150,6 +156,9 @@ void codegen_emit_do_while(codegen_t* codegen, ast_do_while* node) {
     
     // End loop context and patch break statements
     codegen_pop_loop(codegen);
+    
+    // Loops are expressions that evaluate to undefined
+    codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
 }
 
 void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node) {
@@ -179,6 +188,9 @@ void codegen_emit_infinite_loop(codegen_t* codegen, ast_loop* node) {
     
     // End loop context and patch break statements
     codegen_pop_loop(codegen);
+    
+    // Loops are expressions that evaluate to undefined
+    codegen_emit_op(codegen, OP_PUSH_UNDEFINED);
 }
 
 void codegen_emit_break(codegen_t* codegen, ast_break* node) {

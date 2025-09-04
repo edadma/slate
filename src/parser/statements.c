@@ -4,22 +4,7 @@
 
 // Parse statement
 ast_node* parse_statement(parser_t* parser) {
-    if (parser_match(parser, TOKEN_DO)) {
-        return parse_do_while_statement(parser);
-    }
-    
-    if (parser_match(parser, TOKEN_WHILE)) {
-        return parse_while_statement(parser);
-    }
-    
-    if (parser_match(parser, TOKEN_FOR)) {
-        return parse_for_statement(parser);
-    }
-    
-    if (parser_match(parser, TOKEN_LOOP)) {
-        return parse_loop_statement(parser);
-    }
-    
+    // Loops are now parsed as expressions in parse_primary
     
     if (parser_match(parser, TOKEN_RETURN)) {
         return parse_return_statement(parser);

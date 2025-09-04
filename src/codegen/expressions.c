@@ -249,6 +249,22 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_block_expression(codegen, (ast_block*)expr);
             break;
             
+        case AST_WHILE:
+            codegen_emit_while(codegen, (ast_while*)expr);
+            break;
+            
+        case AST_FOR:
+            codegen_emit_for(codegen, (ast_for*)expr);
+            break;
+            
+        case AST_DO_WHILE:
+            codegen_emit_do_while(codegen, (ast_do_while*)expr);
+            break;
+            
+        case AST_LOOP:
+            codegen_emit_infinite_loop(codegen, (ast_loop*)expr);
+            break;
+            
         case AST_BREAK:
             codegen_emit_break(codegen, (ast_break*)expr);
             break;
@@ -282,22 +298,6 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             
         case AST_IF:
             codegen_emit_if(codegen, (ast_if*)stmt);
-            break;
-            
-        case AST_WHILE:
-            codegen_emit_while(codegen, (ast_while*)stmt);
-            break;
-            
-        case AST_FOR:
-            codegen_emit_for(codegen, (ast_for*)stmt);
-            break;
-            
-        case AST_DO_WHILE:
-            codegen_emit_do_while(codegen, (ast_do_while*)stmt);
-            break;
-            
-        case AST_LOOP:
-            codegen_emit_infinite_loop(codegen, (ast_loop*)stmt);
             break;
             
         case AST_BREAK:

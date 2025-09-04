@@ -251,9 +251,12 @@ void test_for_loop_parsing_only(void) {
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.had_error);
     TEST_ASSERT_EQUAL(1, program->statement_count);
-    TEST_ASSERT_EQUAL(AST_FOR, program->statements[0]->type);
+    TEST_ASSERT_EQUAL(AST_EXPRESSION_STMT, program->statements[0]->type);
     
-    ast_for* for_node = (ast_for*)program->statements[0];
+    ast_expression_stmt* expr_stmt = (ast_expression_stmt*)program->statements[0];
+    TEST_ASSERT_EQUAL(AST_FOR, expr_stmt->expression->type);
+    
+    ast_for* for_node = (ast_for*)expr_stmt->expression;
     TEST_ASSERT_NOT_NULL(for_node->initializer);
     TEST_ASSERT_NOT_NULL(for_node->condition);
     TEST_ASSERT_NOT_NULL(for_node->increment);

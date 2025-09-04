@@ -561,6 +561,22 @@ ast_node* parse_primary(parser_t* parser) {
         return parse_if_expression(parser);
     }
     
+    if (parser_match(parser, TOKEN_WHILE)) {
+        return parse_while_statement(parser);
+    }
+    
+    if (parser_match(parser, TOKEN_FOR)) {
+        return parse_for_statement(parser);
+    }
+    
+    if (parser_match(parser, TOKEN_DO)) {
+        return parse_do_while_statement(parser);
+    }
+    
+    if (parser_match(parser, TOKEN_LOOP)) {
+        return parse_loop_statement(parser);
+    }
+    
     if (parser_match(parser, TOKEN_BREAK)) {
         return parse_break_statement(parser);
     }
