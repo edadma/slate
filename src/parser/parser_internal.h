@@ -29,6 +29,7 @@ ast_node* parse_var_declaration(parser_t* parser);
 ast_node* parse_def_declaration(parser_t* parser);
 ast_node* parse_import_statement(parser_t* parser);
 ast_node* parse_package_statement(parser_t* parser);
+ast_node* parse_data_declaration(parser_t* parser, int is_private);
 
 // Statement parsing (statements.c)
 ast_node* parse_statement(parser_t* parser);

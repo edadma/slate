@@ -54,6 +54,7 @@ static keyword_entry_t keywords[] = {
     {"step", TOKEN_STEP},
     {"match", TOKEN_MATCH},
     {"case", TOKEN_CASE},
+    {"data", TOKEN_DATA},
     {"mod", TOKEN_MOD},
     {"true", TOKEN_TRUE},
     {"false", TOKEN_FALSE},
@@ -805,6 +806,7 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_STEP: return "STEP";
         case TOKEN_MATCH: return "MATCH";
         case TOKEN_CASE: return "CASE";
+        case TOKEN_DATA: return "DATA";
         case TOKEN_PLUS: return "PLUS";
         case TOKEN_MINUS: return "MINUS";
         case TOKEN_MULTIPLY: return "MULTIPLY";

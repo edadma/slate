@@ -172,23 +172,23 @@ void test_for_loop_in_function_shadowing(void) {
 void test_triple_nested_shadowing(void) {
     value_t result;
     
-    // Test: Variable 'data' shadowed at function, block, and loop levels
+    // Test: Variable 'item' shadowed at function, block, and loop levels
     result = run_code(
-        "var data = 'global' \n"
-        "var trace = data + ' start|' \n"
+        "var item = 'global' \n"
+        "var trace = item + ' start|' \n"
         "def complexTest() = \n"
-        "    var data = 'function' \n"
-        "    trace += data + ' func|' \n"
+        "    var item = 'function' \n"
+        "    trace += item + ' func|' \n"
         "    if true then \n"
-        "        var data = 'block' \n"
-        "        trace += data + ' block|' \n"
-        "        for var data = 1; data <= 2; data += 1 do \n"
-        "            trace += data + ' loop|' \n"
-        "        trace += data + ' block-restored|' \n"
-        "    trace += data + ' func-restored' \n"
-        "    data \n"
+        "        var item = 'block' \n"
+        "        trace += item + ' block|' \n"
+        "        for var item = 1; item <= 2; item += 1 do \n"
+        "            trace += item + ' loop|' \n"
+        "        trace += item + ' block-restored|' \n"
+        "    trace += item + ' func-restored' \n"
+        "    item \n"
         "var func_result = complexTest() \n"
-        "trace += '|' + func_result + '|' + data + ' global-end' \n"
+        "trace += '|' + func_result + '|' + item + ' global-end' \n"
         "trace"
     );
     TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);

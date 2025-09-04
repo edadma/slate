@@ -1,0 +1,110 @@
+     ╭────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+     │ Algebraic Data Types with Module System Integration                                                                                                                        │
+     │                                                                                                                                                                            │
+     │ Overview                                                                                                                                                                   │
+     │                                                                                                                                                                            │
+     │ Implement algebraic data types for Slate with full module system integration, supporting both private and public data types that can be imported/exported across packages. │
+     │                                                                                                                                                                            │
+     │ Key Requirements from Module System Analysis                                                                                                                               │
+     │                                                                                                                                                                            │
+     │ - Line comments: Single backslash \ (not //)                                                                                                                               │
+     │ - Privacy modifiers: private data vs data (public by default)                                                                                                              │
+     │ - Package-qualified imports: import package.{DataType, Constructor}                                                                                                        │
+     │ - Constructor exports: Constructors must be importable like functions                                                                                                      │
+     │ - Module scoping: Data types belong to packages and respect privacy                                                                                                        │
+     │                                                                                                                                                                            │
+     │ Implementation Plan                                                                                                                                                        │
+     │                                                                                                                                                                            │
+     │ Phase 1: Lexer and AST Foundation                                                                                                                                          │
+     │                                                                                                                                                                            │
+     │ - Add TOKEN_DATA to lexer for the data keyword                                                                                                                             │
+     │ - Extend AST nodes with privacy-aware data declarations:                                                                                                                   │
+     │   - AST_DATA_DECLARATION with is_private flag                                                                                                                              │
+     │   - Support for both single-constructor and multi-case variants                                                                                                            │
+     │   - Store constructor names, parameters, method bodies, and privacy                                                                                                        │
+     │ - Module integration: Data types participate in package exports                                                                                                            │
+     │                                                                                                                                                                            │
+     │ Phase 2: Parser with Privacy Support                                                                                                                                       │
+     │                                                                                                                                                                            │
+     │ - Privacy-aware parsing:                                                                                                                                                   │
+     │ \ Private data type - not exported                                                                                                                                         │
+     │ private data InternalState(value)                                                                                                                                          │
+     │                                                                                                                                                                            │
+     │ \ Public data type - available for import                                                                                                                                  │
+     │ data Option                                                                                                                                                                │
+     │   case Some(value)                                                                                                                                                         │
+     │   case None                                                                                                                                                                │
+     │ - Constructor privacy inheritance: Private data types have private constructors                                                                                            │
+     │ - Method parsing: Support def methodName(args) = body within data declarations                                                                                             │
+     │ - Package context: Data types belong to current package scope                                                                                                              │
+     │                                                                                                                                                                            │
+     │ Phase 3: Module System Integration                                                                                                                                         │
+     │                                                                                                                                                                            │
+     │ - Constructor export registration: Public constructors become exportable symbols                                                                                           │
+     │ - Import resolution: import package.{Option, Some, None} imports constructors                                                                                              │
+     │ - Privacy enforcement: Private data types can't be imported from other modules                                                                                             │
+     │ - Symbol table: Constructors registered in package's export table                                                                                                          │
+     │                                                                                                                                                                            │
+     │ Phase 4: Code Generation                                                                                                                                                   │
+     │                                                                                                                                                                            │
+     │ - Generate classes: Each data type creates a class using existing class_t infrastructure                                                                                   │
+     │ - Constructor factories: Generate global constructor functions (e.g., Some(), None())                                                                                      │
+     │ - Method binding: Attach shared and case-specific methods to classes                                                                                                       │
+     │ - Module scoping: Respect package boundaries for constructor visibility                                                                                                    │
+     │                                                                                                                                                                            │
+     │ Phase 5: Runtime and Testing                                                                                                                                               │
+     │                                                                                                                                                                            │
+     │ - Instance creation: Constructors create properly typed instances                                                                                                          │
+     │ - Method dispatch: Through existing class system                                                                                                                           │
+     │ - Import/export: Full module system integration testing                                                                                                                    │
+     │ - Privacy validation: Ensure private types can't be accessed cross-module                                                                                                  │
+     │                                                                                                                                                                            │
+     │ Example Usage After Implementation                                                                                                                                         │
+     │                                                                                                                                                                            │
+     │ Module A: examples/types/option.slate                                                                                                                                      │
+     │                                                                                                                                                                            │
+     │ \ Option data type module                                                                                                                                                  │
+     │ package examples.types                                                                                                                                                     │
+     │                                                                                                                                                                            │
+     │ \ Public data type - exportable                                                                                                                                            │
+     │ data Option                                                                                                                                                                │
+     │   def getOrElse(default) =                                                                                                                                                 │
+     │     if isEmpty() then default else get()                                                                                                                                   │
+     │                                                                                                                                                                            │
+     │   case Some(value)                                                                                                                                                         │
+     │     def get() = value                                                                                                                                                      │
+     │     def isEmpty() = false                                                                                                                                                  │
+     │                                                                                                                                                                            │
+     │   case None                                                                                                                                                                │
+     │     def get() = null                                                                                                                                                       │
+     │     def isEmpty() = true                                                                                                                                                   │
+     │                                                                                                                                                                            │
+     │ \ Private implementation detail - not exportable                                                                                                                           │
+     │ private data InternalCache(data, timestamp)                                                                                                                                │
+     │   def isExpired() = timestamp < now()                                                                                                                                      │
+     │                                                                                                                                                                            │
+     │ Module B: examples/app/main.slate                                                                                                                                          │
+     │                                                                                                                                                                            │
+     │ \ Using imported data types                                                                                                                                                │
+     │ import examples.types.{Option, Some, None}                                                                                                                                 │
+     │                                                                                                                                                                            │
+     │ var result = Some(42)                                                                                                                                                      │
+     │ var empty = None                                                                                                                                                           │
+     │                                                                                                                                                                            │
+     │ print(result.getOrElse(0))  \ 42                                                                                                                                           │
+     │ print(empty.getOrElse(0))   \ 0                                                                                                                                            │
+     │                                                                                                                                                                            │
+     │ \ This would be a compile error - InternalCache is private:                                                                                                                │
+     │ \ var cache = InternalCache("data", 12345)  ERROR!                                                                                                                         │
+     │                                                                                                                                                                            │
+     │ Key Design Decisions                                                                                                                                                       │
+     │                                                                                                                                                                            │
+     │ 1. Module-first design: Data types are package citizens, not global                                                                                                        │
+     │ 2. Constructor imports: Constructors are importable like functions                                                                                                         │
+     │ 3. Privacy inheritance: Private data types have private constructors                                                                                                       │
+     │ 4. Existing class system: Leverage current class infrastructure                                                                                                            │
+     │ 5. Export registration: Constructors appear in package export tables                                                                                                       │
+     │ 6. No pattern matching: Focus on data declaration and instantiation only                                                                                                   │
+     │                                                                                                                                                                            │
+     │ This approach provides clean algebraic data types that integrate seamlessly with Slate's module system, supporting proper encapsulation and package-based organization.    │
+     ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯

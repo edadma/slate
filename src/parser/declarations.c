@@ -12,6 +12,20 @@ ast_node* parse_declaration(parser_t* parser) {
         return parse_package_statement(parser);
     }
     
+    // Handle private modifier
+    if (parser_match(parser, TOKEN_PRIVATE)) {
+        if (parser_match(parser, TOKEN_DATA)) {
+            return parse_data_declaration(parser, 1);  // is_private = 1
+        } else {
+            parser_error(parser, "Expected 'data' after 'private'");
+            return NULL;
+        }
+    }
+    
+    if (parser_match(parser, TOKEN_DATA)) {
+        return parse_data_declaration(parser, 0);  // is_private = 0
+    }
+    
     if (parser_match(parser, TOKEN_VAR)) {
         return parse_var_declaration(parser);
     }
@@ -279,4 +293,138 @@ ast_node* parse_package_statement(parser_t* parser) {
     
     return (ast_node*)ast_create_package(package_path,
                                         parser->previous.line, parser->previous.column);
+}
+
+// Parse data declaration
+ast_node* parse_data_declaration(parser_t* parser, int is_private) {
+    int data_line = parser->previous.line;
+    int data_column = parser->previous.column;
+    
+    // Parse data type name
+    parser_consume(parser, TOKEN_IDENTIFIER, "Expected data type name.");
+    char* name = token_to_string(&parser->previous);
+    
+    ast_node* shared_methods = NULL;
+    ast_data_case* cases = NULL;
+    size_t case_count = 0;
+    char** single_constructor_params = NULL;
+    size_t single_constructor_param_count = 0;
+    
+    // Check if this is a single-constructor data type: data Person(name, age)
+    if (parser_check(parser, TOKEN_LEFT_PAREN)) {
+        // Single-constructor data type
+        parser_advance(parser);  // consume '('
+        
+        // Parse parameter list
+        if (!parser_check(parser, TOKEN_RIGHT_PAREN)) {
+            do {
+                parser_consume(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
+                char* param_name = token_to_string(&parser->previous);
+                
+                // Resize parameter array
+                single_constructor_params = realloc(single_constructor_params, 
+                                                   sizeof(char*) * (single_constructor_param_count + 1));
+                single_constructor_params[single_constructor_param_count++] = param_name;
+                
+            } while (parser_match(parser, TOKEN_COMMA));
+        }
+        
+        parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after parameters.");
+    }
+    
+    // Parse optional shared methods and cases
+    parser_match(parser, TOKEN_NEWLINE);  // Optional newline
+    
+    int has_indented_body = 0;
+    if (parser_check(parser, TOKEN_INDENT)) {
+        has_indented_body = 1;
+        parser_advance(parser);  // consume INDENT
+        
+        // Parse method definitions and cases
+        while (!parser_check(parser, TOKEN_DEDENT) && !parser_check(parser, TOKEN_EOF)) {
+            parser_match(parser, TOKEN_NEWLINE);  // Skip newlines
+            
+            if (parser_check(parser, TOKEN_DEDENT)) break;
+            
+            if (parser_match(parser, TOKEN_CASE)) {
+                // Parse case declaration
+                parser_consume(parser, TOKEN_IDENTIFIER, "Expected case name.");
+                char* case_name = token_to_string(&parser->previous);
+                
+                data_case_type case_type = DATA_CASE_SINGLETON;
+                char** case_params = NULL;
+                size_t case_param_count = 0;
+                
+                // Check for constructor parameters
+                if (parser_match(parser, TOKEN_LEFT_PAREN)) {
+                    case_type = DATA_CASE_CONSTRUCTOR;
+                    
+                    if (!parser_check(parser, TOKEN_RIGHT_PAREN)) {
+                        do {
+                            parser_consume(parser, TOKEN_IDENTIFIER, "Expected parameter name.");
+                            char* param_name = token_to_string(&parser->previous);
+                            
+                            case_params = realloc(case_params, sizeof(char*) * (case_param_count + 1));
+                            case_params[case_param_count++] = param_name;
+                            
+                        } while (parser_match(parser, TOKEN_COMMA));
+                    }
+                    
+                    parser_consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after case parameters.");
+                }
+                
+                // Parse case-specific methods (if any)
+                ast_node* case_methods = NULL;
+                parser_match(parser, TOKEN_NEWLINE);
+                
+                if (parser_check(parser, TOKEN_INDENT)) {
+                    case_methods = parse_indented_block(parser);
+                }
+                
+                // Add case to array
+                cases = realloc(cases, sizeof(ast_data_case) * (case_count + 1));
+                ast_data_case* case_node = ast_create_data_case(case_name, case_type, case_params, 
+                                                               case_param_count, case_methods);
+                cases[case_count] = *case_node;
+                free(case_node);  // We copied the contents, free the wrapper
+                case_count++;
+                
+            } else if (parser_match(parser, TOKEN_DEF)) {
+                // This is a shared method - we need to backtrack and parse the whole block
+                parser_pushback(parser);  // Put back the 'def'
+                
+                if (shared_methods == NULL) {
+                    // Parse all remaining content as shared methods
+                    shared_methods = parse_indented_block(parser);
+                    break;  // The block parsing consumed everything
+                }
+            } else {
+                parser_error(parser, "Expected 'case' or 'def' in data declaration body.");
+                break;
+            }
+            
+            parser_match(parser, TOKEN_NEWLINE);  // Skip trailing newlines
+        }
+        
+        parser_consume(parser, TOKEN_DEDENT, "Expected dedent after data declaration body.");
+    }
+    
+    // Optional end marker: end DataTypeName (only if there was an indented body)
+    if (has_indented_body && parser_match(parser, TOKEN_END)) {
+        if (parser_check(parser, TOKEN_IDENTIFIER)) {
+            char* end_name = token_to_string(&parser->current);
+            if (strcmp(end_name, name) != 0) {
+                parser_error(parser, "End marker name doesn't match data type name");
+            } else {
+                parser_advance(parser);  // consume the identifier
+            }
+            free(end_name);  // Only free once, after the if-else
+        } else {
+            parser_error(parser, "Expected data type name after 'end'");
+        }
+    }
+    
+    return (ast_node*)ast_create_data_declaration(name, is_private, shared_methods, 
+                                                  cases, case_count, single_constructor_params, 
+                                                  single_constructor_param_count, data_line, data_column);
 }

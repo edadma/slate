@@ -218,6 +218,8 @@ add_executable(slate
         src/opcodes/op_instanceof.c
         src/opcodes/op_import_module.c
         src/opcodes/op_get_export.c
+        src/opcodes/op_call_adt_base_class.c
+        src/opcodes/op_create_adt_constructor.c
         deps/cargs/src/cargs.c
 )
 
@@ -283,6 +285,7 @@ if (BUILD_TESTS)
             tests/test_immutable_variables.c
             tests/test_optional_chaining.c
             tests/test_match.c
+            tests/test_data_types.c
             deps/cargs/src/cargs.c
             src/lexer.c
             src/parser/parser.c
@@ -433,6 +436,8 @@ if (BUILD_TESTS)
         src/opcodes/op_instanceof.c
         src/opcodes/op_import_module.c
         src/opcodes/op_get_export.c
+        src/opcodes/op_call_adt_base_class.c
+        src/opcodes/op_create_adt_constructor.c
     )
 
     # Link math library for tests executable

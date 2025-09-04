@@ -336,6 +336,10 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             codegen_emit_package(codegen, (ast_package*)stmt);
             break;
             
+        case AST_DATA_DECLARATION:
+            codegen_emit_data_declaration(codegen, (ast_data_declaration*)stmt);
+            break;
+            
         default:
             codegen_error(codegen, "Unknown statement type");
             break;

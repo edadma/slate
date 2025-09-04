@@ -609,3 +609,100 @@ void codegen_emit_package(codegen_t* codegen, ast_package* node) {
     codegen_emit_op(codegen, OP_PUSH_NULL);
     codegen_emit_op(codegen, OP_SET_RESULT);
 }
+
+// Data declaration code generation
+void codegen_emit_data_declaration(codegen_t* codegen, ast_data_declaration* node) {
+    // Generate proper ADT classes using the existing class system
+    
+    if (node->case_count > 0) {
+        // Multi-case data type: data Option case Some(value) case None
+        // Create base class for the data type
+        size_t base_class_name_constant = chunk_add_constant(codegen->chunk, make_string(node->name));
+        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)base_class_name_constant);
+        
+        // Call make_class_for_adt to create the base class
+        codegen_emit_op(codegen, OP_PUSH_NULL);  // instance_properties (to be filled by runtime)
+        codegen_emit_op(codegen, OP_PUSH_NULL);  // static_properties
+        codegen_emit_op(codegen, OP_CALL_ADT_BASE_CLASS);  // Custom opcode for ADT base class creation
+        
+        // Register base class in global scope if not private
+        if (!node->is_private) {
+            codegen_emit_op_operand(codegen, OP_DEFINE_GLOBAL, (uint16_t)base_class_name_constant);
+            chunk_write_byte(codegen->chunk, 0);  // mutable
+        }
+        
+        // For each case, create a constructor function
+        for (size_t i = 0; i < node->case_count; i++) {
+            ast_data_case* case_node = &node->cases[i];
+            
+            // Create constructor function for this case
+            size_t constructor_name_constant = chunk_add_constant(codegen->chunk, make_string(case_node->name));
+            codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)constructor_name_constant);
+            
+            // Push case type and parameter count for runtime constructor creation
+            codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)chunk_add_constant(codegen->chunk, make_int32(case_node->type)));
+            codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)chunk_add_constant(codegen->chunk, make_int32(case_node->param_count)));
+            
+            // Push parameter names for runtime
+            for (size_t j = 0; j < case_node->param_count; j++) {
+                size_t param_name_constant = chunk_add_constant(codegen->chunk, make_string(case_node->parameters[j]));
+                codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)param_name_constant);
+            }
+            
+            // Call create_adt_constructor
+            codegen_emit_op_operand(codegen, OP_CREATE_ADT_CONSTRUCTOR, (uint16_t)case_node->param_count);
+            
+            // Register constructor in global scope if not private
+            if (!node->is_private) {
+                codegen_emit_op_operand(codegen, OP_DEFINE_GLOBAL, (uint16_t)constructor_name_constant);
+                chunk_write_byte(codegen->chunk, 0);  // mutable
+            }
+        }
+        
+    } else if (node->param_count > 0) {
+        // Single-constructor data type: data Person(name, age)
+        size_t constructor_name_constant = chunk_add_constant(codegen->chunk, make_string(node->name));
+        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)constructor_name_constant);
+        
+        // Push constructor type and parameter count
+        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)chunk_add_constant(codegen->chunk, make_int32(DATA_CASE_CONSTRUCTOR)));
+        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)chunk_add_constant(codegen->chunk, make_int32(node->param_count)));
+        
+        // Push parameter names
+        for (size_t j = 0; j < node->param_count; j++) {
+            size_t param_name_constant = chunk_add_constant(codegen->chunk, make_string(node->parameters[j]));
+            codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)param_name_constant);
+        }
+        
+        // Call create_adt_constructor  
+        codegen_emit_op_operand(codegen, OP_CREATE_ADT_CONSTRUCTOR, (uint16_t)node->param_count);
+        
+        // Register constructor in global scope if not private
+        if (!node->is_private) {
+            codegen_emit_op_operand(codegen, OP_DEFINE_GLOBAL, (uint16_t)constructor_name_constant);
+            chunk_write_byte(codegen->chunk, 0);  // mutable
+        }
+        
+    } else {
+        // Empty data type declaration: data Option (no cases, no parameters)
+        size_t constructor_name_constant = chunk_add_constant(codegen->chunk, make_string(node->name));
+        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)constructor_name_constant);
+        
+        // Create singleton constructor (no parameters)
+        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)chunk_add_constant(codegen->chunk, make_int32(DATA_CASE_SINGLETON)));
+        codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT, (uint16_t)chunk_add_constant(codegen->chunk, make_int32(0)));
+        
+        // Call create_adt_constructor
+        codegen_emit_op_operand(codegen, OP_CREATE_ADT_CONSTRUCTOR, 0);
+        
+        // Register constructor in global scope if not private
+        if (!node->is_private) {
+            codegen_emit_op_operand(codegen, OP_DEFINE_GLOBAL, (uint16_t)constructor_name_constant);
+            chunk_write_byte(codegen->chunk, 0);  // mutable
+        }
+    }
+    
+    // Data declarations don't produce a direct value
+    codegen_emit_op(codegen, OP_PUSH_NULL);
+    codegen_emit_op(codegen, OP_SET_RESULT);
+}

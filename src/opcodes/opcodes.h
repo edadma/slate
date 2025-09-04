@@ -76,6 +76,10 @@ vm_result op_instanceof(vm_t* vm);
 vm_result op_import_module(vm_t* vm);
 vm_result op_get_export(vm_t* vm);
 
+// Algebraic Data Type opcodes
+vm_result op_call_adt_base_class(vm_t* vm);
+vm_result op_create_adt_constructor(vm_t* vm);
+
 // Element/property assignment opcodes
 vm_result op_set_index(vm_t* vm);
 vm_result op_set_property(vm_t* vm);

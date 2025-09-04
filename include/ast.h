@@ -68,7 +68,10 @@ typedef enum {
 
     // Module system
     AST_IMPORT,
-    AST_PACKAGE
+    AST_PACKAGE,
+    
+    // Data types
+    AST_DATA_DECLARATION
 } ast_node_type;
 
 // Binary operators
@@ -393,6 +396,33 @@ typedef struct {
     char* package_name;            // e.g., "examples.modules.math"
 } ast_package;
 
+// Data case types
+typedef enum {
+    DATA_CASE_CONSTRUCTOR, // case Some(value) - has parameters
+    DATA_CASE_SINGLETON    // case None - no parameters, singleton instance
+} data_case_type;
+
+// Data case node
+typedef struct {
+    char* name;                    // Case name (e.g., "Some", "None")
+    data_case_type type;           // Constructor or singleton
+    char** parameters;             // Parameter names for constructors (NULL for singletons)
+    size_t param_count;            // Number of parameters
+    ast_node* methods;             // Case-specific methods (block of statements)
+} ast_data_case;
+
+// Data declaration node
+typedef struct {
+    ast_node base;
+    char* name;                    // Data type name (e.g., "Option")
+    int is_private;                // 1 if marked private, 0 if public
+    ast_node* shared_methods;      // Shared methods for base class (block of statements)
+    ast_data_case* cases;          // Array of cases
+    size_t case_count;             // Number of cases (0 for single-constructor data types)
+    char** parameters;             // Parameters for single-constructor (NULL for multi-case)
+    size_t param_count;            // Parameter count for single-constructor (0 for multi-case)
+} ast_data_declaration;
+
 // AST creation functions
 ast_integer* ast_create_integer(int32_t value, int line, int column);
 ast_bigint* ast_create_bigint(di_int value, int line, int column);
@@ -444,6 +474,12 @@ ast_program* ast_create_program(ast_node** statements, size_t statement_count, i
 ast_import* ast_create_import(const char* module_path, import_specifier* specifiers, size_t specifier_count, 
                               int is_wildcard, int line, int column);
 ast_package* ast_create_package(const char* package_name, int line, int column);
+
+ast_data_case* ast_create_data_case(const char* name, data_case_type type, char** parameters, 
+                                    size_t param_count, ast_node* methods);
+ast_data_declaration* ast_create_data_declaration(const char* name, int is_private, ast_node* shared_methods,
+                                                  ast_data_case* cases, size_t case_count, char** parameters,
+                                                  size_t param_count, int line, int column);
 
 // AST utility functions
 void ast_free(ast_node* node);

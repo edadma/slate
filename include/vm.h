@@ -140,6 +140,10 @@ typedef enum {
     // Module operations
     OP_IMPORT_MODULE,    // Import a module
     OP_GET_EXPORT,       // Get exported value from module
+    
+    // Algebraic Data Type operations
+    OP_CALL_ADT_BASE_CLASS,    // Create ADT base class (pops static_props, instance_props, name)
+    OP_CREATE_ADT_CONSTRUCTOR, // Create ADT constructor function (operand = param_count)
 
     // Program flow
     OP_HALT // Stop execution

@@ -125,6 +125,10 @@ const char* opcode_name(opcode op) {
         return "SET_DEBUG_LOCATION";
     case OP_CLEAR_DEBUG_LOCATION:
         return "CLEAR_DEBUG_LOCATION";
+    case OP_CALL_ADT_BASE_CLASS:
+        return "CALL_ADT_BASE_CLASS";
+    case OP_CREATE_ADT_CONSTRUCTOR:
+        return "CREATE_ADT_CONSTRUCTOR";
     case OP_HALT:
         return "HALT";
     default:

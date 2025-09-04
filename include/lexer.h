@@ -47,6 +47,7 @@ typedef enum {
     TOKEN_STEP,          // step (range step size)
     TOKEN_MATCH,         // match
     TOKEN_CASE,          // case
+    TOKEN_DATA,          // data
     
     // Operators
     TOKEN_PLUS,          // +

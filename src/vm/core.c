@@ -422,6 +422,18 @@ vm_result vm_run(vm_t* vm) {
             break;
         }
 
+        case OP_CALL_ADT_BASE_CLASS: {
+            vm_result result = op_call_adt_base_class(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
+        case OP_CREATE_ADT_CONSTRUCTOR: {
+            vm_result result = op_create_adt_constructor(vm);
+            if (result != VM_OK) return result;
+            break;
+        }
+
         default:
             printf("DEBUG: Unimplemented opcode in vm_run: %d\n", instruction);
             return VM_RUNTIME_ERROR;

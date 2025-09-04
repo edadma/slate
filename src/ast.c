@@ -519,6 +519,40 @@ ast_package* ast_create_package(const char* package_name, int line, int column) 
     return node;
 }
 
+ast_data_case* ast_create_data_case(const char* name, data_case_type type, char** parameters, 
+                                    size_t param_count, ast_node* methods) {
+    ast_data_case* node = malloc(sizeof(ast_data_case));
+    if (!node) return NULL;
+    
+    node->name = name ? strdup(name) : NULL;
+    node->type = type;
+    node->parameters = parameters;  // Take ownership of the parameter array
+    node->param_count = param_count;
+    node->methods = methods;
+    
+    return node;
+}
+
+ast_data_declaration* ast_create_data_declaration(const char* name, int is_private, ast_node* shared_methods,
+                                                  ast_data_case* cases, size_t case_count, char** parameters,
+                                                  size_t param_count, int line, int column) {
+    ast_data_declaration* node = malloc(sizeof(ast_data_declaration));
+    if (!node) return NULL;
+    
+    node->base.type = AST_DATA_DECLARATION;
+    node->base.line = line;
+    node->base.column = column;
+    node->name = name ? strdup(name) : NULL;
+    node->is_private = is_private;
+    node->shared_methods = shared_methods;
+    node->cases = cases;  // Take ownership of the cases array
+    node->case_count = case_count;
+    node->parameters = parameters;  // Take ownership of parameters array (for single-constructor)
+    node->param_count = param_count;
+    
+    return node;
+}
+
 // AST cleanup function
 void ast_free(ast_node* node) {
     if (!node) return;
@@ -770,6 +804,41 @@ void ast_free(ast_node* node) {
             free(package_node->package_name);
             break;
         }
+        
+        case AST_DATA_DECLARATION: {
+            ast_data_declaration* data_node = (ast_data_declaration*)node;
+            free(data_node->name);
+            ast_free(data_node->shared_methods);
+            
+            // Free cases array
+            if (data_node->cases) {
+                for (size_t i = 0; i < data_node->case_count; i++) {
+                    ast_data_case* case_node = &data_node->cases[i];
+                    free(case_node->name);
+                    
+                    // Free parameter array
+                    if (case_node->parameters) {
+                        for (size_t j = 0; j < case_node->param_count; j++) {
+                            free(case_node->parameters[j]);
+                        }
+                        free(case_node->parameters);
+                    }
+                    
+                    ast_free(case_node->methods);
+                }
+                free(data_node->cases);
+            }
+            
+            // Free single-constructor parameters
+            if (data_node->parameters) {
+                for (size_t i = 0; i < data_node->param_count; i++) {
+                    free(data_node->parameters[i]);
+                }
+                free(data_node->parameters);
+            }
+            
+            break;
+        }
     }
     
     free(node);
@@ -811,6 +880,7 @@ const char* ast_node_type_name(ast_node_type type) {
         case AST_PROGRAM: return "PROGRAM";
         case AST_IMPORT: return "IMPORT";
         case AST_PACKAGE: return "PACKAGE";
+        case AST_DATA_DECLARATION: return "DATA_DECLARATION";
         default: return "UNKNOWN";
     }
 }
@@ -1000,6 +1070,33 @@ void ast_print(ast_node* node, int indent) {
         case AST_PACKAGE: {
             ast_package* package_node = (ast_package*)node;
             printf(": %s\n", package_node->package_name ? package_node->package_name : "<null>");
+            break;
+        }
+        
+        case AST_DATA_DECLARATION: {
+            ast_data_declaration* data_node = (ast_data_declaration*)node;
+            printf(": %s%s\n", data_node->is_private ? "private " : "", 
+                   data_node->name ? data_node->name : "<null>");
+            if (data_node->case_count > 0) {
+                for (size_t i = 0; i < data_node->case_count; i++) {
+                    ast_data_case* case_node = &data_node->cases[i];
+                    printf("%*scase %s", indent + 2, "", case_node->name);
+                    if (case_node->type == DATA_CASE_CONSTRUCTOR) {
+                        printf("(");
+                        for (size_t j = 0; j < case_node->param_count; j++) {
+                            printf("%s%s", j > 0 ? ", " : "", case_node->parameters[j]);
+                        }
+                        printf(")");
+                    }
+                    printf("\n");
+                }
+            } else if (data_node->param_count > 0) {
+                printf("%*ssingle constructor(", indent + 2, "");
+                for (size_t i = 0; i < data_node->param_count; i++) {
+                    printf("%s%s", i > 0 ? ", " : "", data_node->parameters[i]);
+                }
+                printf(")\n");
+            }
             break;
         }
         
