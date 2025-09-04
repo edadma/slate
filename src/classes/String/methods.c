@@ -30,6 +30,36 @@ value_t builtin_string_hash(vm_t* vm, int arg_count, value_t* args) {
     return make_int32((int32_t)hash);
 }
 
+// String method: equals(other) - Equality comparison for strings
+value_t builtin_string_equals(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error(vm, "equals() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t other = args[1];
+    
+    if (receiver.type != VAL_STRING) {
+        runtime_error(vm, "equals() can only be called on strings");
+    }
+    
+    // Only strings can be equal to strings
+    if (other.type != VAL_STRING) {
+        return make_boolean(0);
+    }
+    
+    // Handle null strings
+    if (receiver.as.string == NULL && other.as.string == NULL) {
+        return make_boolean(1);
+    }
+    if (receiver.as.string == NULL || other.as.string == NULL) {
+        return make_boolean(0);
+    }
+    
+    // Content-based string comparison (ds_string works with strcmp)
+    return make_boolean(strcmp(receiver.as.string, other.as.string) == 0);
+}
+
 // String method: length
 // This will be used as a method on the String prototype
 value_t builtin_string_length(vm_t* vm, int arg_count, value_t* args) {

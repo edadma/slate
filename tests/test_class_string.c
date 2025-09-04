@@ -400,12 +400,12 @@ void test_string_builder_capacity_with_content(void) {
 // Test String.hash() method
 void test_string_hash_basic(void) {
     // Test basic string hash
-    value_t result = test_execute_expression("hash(\"hello\")");
+    value_t result = test_execute_expression("\"hello\".hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_NOT_EQUAL(0, result.as.int32); // Should produce a non-zero hash
     vm_release(result);
     
-    result = test_execute_expression("hash(\"world\")");
+    result = test_execute_expression("\"world\".hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_NOT_EQUAL(0, result.as.int32);
     vm_release(result);
@@ -413,7 +413,7 @@ void test_string_hash_basic(void) {
 
 void test_string_hash_empty(void) {
     // Test empty string hash
-    value_t result = test_execute_expression("hash(\"\")");
+    value_t result = test_execute_expression("\"\".hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     // Empty string should have a specific hash (FNV-1a offset basis)
     vm_release(result);
@@ -421,8 +421,8 @@ void test_string_hash_empty(void) {
 
 void test_string_hash_consistency(void) {
     // Test that same strings produce same hash
-    value_t result1 = test_execute_expression("hash(\"test\")");
-    value_t result2 = test_execute_expression("hash(\"test\")");
+    value_t result1 = test_execute_expression("\"test\".hash()");
+    value_t result2 = test_execute_expression("\"test\".hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
     TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
     TEST_ASSERT_EQUAL_INT32(result1.as.int32, result2.as.int32);
@@ -432,8 +432,8 @@ void test_string_hash_consistency(void) {
 
 void test_string_hash_differences(void) {
     // Test that different strings produce different hashes
-    value_t result1 = test_execute_expression("hash(\"abc\")");
-    value_t result2 = test_execute_expression("hash(\"def\")");
+    value_t result1 = test_execute_expression("\"abc\".hash()");
+    value_t result2 = test_execute_expression("\"def\".hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
     TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
     TEST_ASSERT_NOT_EQUAL(result1.as.int32, result2.as.int32);
@@ -441,8 +441,8 @@ void test_string_hash_differences(void) {
     vm_release(result2);
     
     // Test similar strings
-    result1 = test_execute_expression("hash(\"test\")");
-    result2 = test_execute_expression("hash(\"Test\")");
+    result1 = test_execute_expression("\"test\".hash()");
+    result2 = test_execute_expression("\"Test\".hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
     TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
     TEST_ASSERT_NOT_EQUAL(result1.as.int32, result2.as.int32); // Case sensitive
@@ -459,6 +459,50 @@ void test_string_method_hash_equality(void) {
     
     // Test that different strings have different hashes
     result = test_execute_expression("\"hello\".hash() == \"world\".hash()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
+    vm_release(result);
+}
+
+// Test String.equals() method
+void test_string_equals_basic(void) {
+    value_t result = test_execute_expression("\"hello\".equals(\"hello\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+}
+
+void test_string_equals_different(void) {
+    value_t result = test_execute_expression("\"hello\".equals(\"world\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
+    vm_release(result);
+}
+
+void test_string_equals_empty(void) {
+    value_t result = test_execute_expression("\"\".equals(\"\")");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+}
+
+void test_string_equals_cross_type(void) {
+    // String should not equal non-string types
+    value_t result = test_execute_expression("\"42\".equals(42)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
+    vm_release(result);
+}
+
+void test_string_method_equals_equality(void) {
+    // Test the exact pattern requested: "hello".equals("hello") == true
+    value_t result = test_execute_expression("\"hello\".equals(\"hello\") == true");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+    
+    // Test case sensitivity
+    result = test_execute_expression("\"Hello\".equals(\"hello\")");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
     vm_release(result);
@@ -519,4 +563,11 @@ void test_class_string_suite(void) {
     RUN_TEST(test_string_hash_consistency);
     RUN_TEST(test_string_hash_differences);
     RUN_TEST(test_string_method_hash_equality);
+    
+    // String equals tests
+    RUN_TEST(test_string_equals_basic);
+    RUN_TEST(test_string_equals_different);
+    RUN_TEST(test_string_equals_empty);
+    RUN_TEST(test_string_equals_cross_type);
+    RUN_TEST(test_string_method_equals_equality);
 }

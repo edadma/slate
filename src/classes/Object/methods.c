@@ -91,6 +91,105 @@ value_t builtin_object_hash(vm_t* vm, int arg_count, value_t* args) {
     return make_int32((int32_t)hash);
 }
 
+// Object method: equals(other) - Deep equality comparison for objects
+value_t builtin_object_equals(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error(vm, "equals() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t other = args[1];
+    
+    if (receiver.type != VAL_OBJECT) {
+        runtime_error(vm, "equals() can only be called on objects");
+    }
+    
+    // Only objects can be equal to objects
+    if (other.type != VAL_OBJECT) {
+        return make_boolean(0);
+    }
+    
+    // Identity equality check
+    if (receiver.as.object == other.as.object) {
+        return make_boolean(1);
+    }
+    
+    // Handle null objects
+    if (receiver.as.object == NULL && other.as.object == NULL) {
+        return make_boolean(1);
+    }
+    if (receiver.as.object == NULL || other.as.object == NULL) {
+        return make_boolean(0);
+    }
+    
+    // Get keys from both objects
+    char** keys1 = do_get_own_keys(receiver.as.object);
+    char** keys2 = do_get_own_keys(other.as.object);
+    
+    // Compare key counts
+    size_t count1 = arrlen(keys1);
+    size_t count2 = arrlen(keys2);
+    
+    if (count1 != count2) {
+        arrfree(keys1);
+        arrfree(keys2);
+        return make_boolean(0);
+    }
+    
+    // Sort keys for consistent comparison (using simple bubble sort)
+    for (size_t i = 0; i < count1 - 1; i++) {
+        for (size_t j = 0; j < count1 - 1 - i; j++) {
+            if (strcmp(keys1[j], keys1[j + 1]) > 0) {
+                char* temp = keys1[j];
+                keys1[j] = keys1[j + 1];
+                keys1[j + 1] = temp;
+            }
+        }
+    }
+    
+    for (size_t i = 0; i < count2 - 1; i++) {
+        for (size_t j = 0; j < count2 - 1 - i; j++) {
+            if (strcmp(keys2[j], keys2[j + 1]) > 0) {
+                char* temp = keys2[j];
+                keys2[j] = keys2[j + 1];
+                keys2[j + 1] = temp;
+            }
+        }
+    }
+    
+    // Compare sorted keys and their values
+    for (size_t i = 0; i < count1; i++) {
+        // Check key equality
+        if (strcmp(keys1[i], keys2[i]) != 0) {
+            arrfree(keys1);
+            arrfree(keys2);
+            return make_boolean(0);
+        }
+        
+        // Check value equality
+        value_t* val1 = (value_t*)do_get(receiver.as.object, keys1[i]);
+        value_t* val2 = (value_t*)do_get(other.as.object, keys2[i]);
+        
+        if (val1 == NULL && val2 == NULL) continue;
+        if (val1 == NULL || val2 == NULL) {
+            arrfree(keys1);
+            arrfree(keys2);
+            return make_boolean(0);
+        }
+        
+        // Use method dispatch for deep value comparison
+        if (!call_equals_method(vm, *val1, *val2)) {
+            arrfree(keys1);
+            arrfree(keys2);
+            return make_boolean(0);
+        }
+    }
+    
+    arrfree(keys1);
+    arrfree(keys2);
+    return make_boolean(1);
+}
+
 // Object method: toString()
 value_t builtin_object_to_string(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {

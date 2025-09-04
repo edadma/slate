@@ -180,3 +180,35 @@ value_t builtin_buffer_method_reader(vm_t* vm, int arg_count, value_t* args) {
     // Use BufferReader factory to create a proper BufferReader class instance
     return buffer_reader_factory(vm, 1, &receiver);
 }
+
+// Buffer method: hash()
+// Returns hash code based on buffer contents
+value_t builtin_buffer_method_hash(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "hash() takes no arguments (%d given)", arg_count - 1);
+        return make_null();
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_BUFFER) {
+        runtime_error(vm, "hash() can only be called on buffers");
+        return make_null();
+    }
+    
+    db_buffer buffer = receiver.as.buffer;
+    
+    // FNV-1a hash algorithm for binary data
+    const uint32_t FNV_32_PRIME = 0x01000193;
+    const uint32_t FNV_32_OFFSET_BASIS = 0x811c9dc5;
+    
+    uint32_t hash = FNV_32_OFFSET_BASIS;
+    size_t size = db_size(buffer);
+    
+    // db_buffer points directly to the data - no conversion needed
+    for (size_t i = 0; i < size; i++) {
+        hash ^= (uint8_t)buffer[i];
+        hash *= FNV_32_PRIME;
+    }
+    
+    return make_int32((int32_t)hash);
+}

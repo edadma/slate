@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
+#include <string.h>
 
 // Forward declarations for functions still in builtins.c
 value_t builtin_local_date_to_string(vm_t* vm, int arg_count, value_t* args);
@@ -519,4 +520,44 @@ value_t builtin_value_hash(vm_t* vm, int arg_count, value_t* args) {
     }
     
     return make_int32((int32_t)hash);
+}
+
+// Value.equals() method - base class implementation
+value_t builtin_value_equals(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error(vm, "equals() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t other = args[1];
+    
+    // Special handling for undefined - undefined.equals(undefined) == true  
+    if (receiver.type == VAL_UNDEFINED && other.type == VAL_UNDEFINED) {
+        return make_boolean(true);
+    }
+    
+    // Special handling for null - null.equals(null) == true
+    if (receiver.type == VAL_NULL && other.type == VAL_NULL) {
+        return make_boolean(true);
+    }
+    
+    // Cross-type equality is false (except for numeric types handled by Number.equals)
+    if (receiver.type != other.type) {
+        return make_boolean(false);
+    }
+    
+    // Default behavior: identity comparison for complex types
+    // This serves as the fallback for any type that doesn't override .equals()
+    switch (receiver.type) {
+    case VAL_CLASS:
+    case VAL_FUNCTION:
+    case VAL_CLOSURE:
+    case VAL_NATIVE:
+    case VAL_BOUND_METHOD:
+        // These types use identity comparison
+        return make_boolean(receiver.as.native == other.as.native);
+    default:
+        // For other types, identity comparison using first pointer field
+        return make_boolean(memcmp(&receiver.as, &other.as, sizeof(receiver.as)) == 0);
+    }
 }

@@ -2,6 +2,7 @@
 #include "builtins.h"
 #include "dynamic_string.h"
 #include "dynamic_object.h"
+#include "class_string.h"
 
 // Global StringBuilder class storage
 value_t* global_string_builder_class = NULL;
@@ -26,6 +27,12 @@ void string_builder_class_init(vm_t* vm) {
 
     value_t sb_clear_method = make_native(builtin_string_builder_clear);
     do_set(string_builder_proto, "clear", &sb_clear_method, sizeof(value_t));
+
+    value_t sb_hash_method = make_native(builtin_string_builder_hash);
+    do_set(string_builder_proto, "hash", &sb_hash_method, sizeof(value_t));
+
+    value_t sb_equals_method = make_native(builtin_string_builder_equals);
+    do_set(string_builder_proto, "equals", &sb_equals_method, sizeof(value_t));
 
     // Create the StringBuilder class
     value_t string_builder_class = make_class("StringBuilder", string_builder_proto);
@@ -209,4 +216,59 @@ value_t builtin_string_builder_clear(vm_t* vm, int arg_count, value_t* args) {
     
     // Return the receiver for chaining
     return receiver;
+}
+
+// StringBuilder method: hash() - returns hash code of current content
+value_t builtin_string_builder_hash(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "hash() requires no arguments");
+        return make_null();
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type != VAL_STRING_BUILDER) {
+        runtime_error(vm, "hash() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
+        return make_null();
+    }
+    
+    // Convert to string and compute hash of the content using String.hash()
+    ds_string content = ds_builder_to_string(receiver.as.string_builder);
+    value_t content_string = make_string_ds(content);
+    value_t hash_result = builtin_string_hash(vm, 1, &content_string);
+    vm_release(content_string);
+    
+    return hash_result;
+}
+
+// StringBuilder method: equals(other) - compares content with another value
+value_t builtin_string_builder_equals(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error(vm, "equals() requires exactly 1 argument");
+        return make_null();
+    }
+    
+    value_t receiver = args[0];
+    value_t other = args[1];
+    
+    if (receiver.type != VAL_STRING_BUILDER) {
+        runtime_error(vm, "equals() can only be called on StringBuilder, not %s", value_type_name(receiver.type));
+        return make_null();
+    }
+    
+    // StringBuilder only equals another StringBuilder with same content
+    if (other.type != VAL_STRING_BUILDER) {
+        return make_boolean(0);
+    }
+    
+    // Compare content by converting both to strings
+    ds_string content1 = ds_builder_to_string(receiver.as.string_builder);
+    ds_string content2 = ds_builder_to_string(other.as.string_builder);
+    
+    int equal = strcmp(content1, content2) == 0;
+    
+    ds_release(&content1);
+    ds_release(&content2);
+    
+    return make_boolean(equal);
 }

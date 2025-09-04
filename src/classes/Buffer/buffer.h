@@ -16,6 +16,7 @@ value_t builtin_buffer_method_slice(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_buffer_method_concat(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_buffer_method_to_hex(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_buffer_method_length(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_buffer_method_hash(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_buffer_method_equals(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_buffer_method_to_string(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_buffer_method_reader(vm_t* vm, int arg_count, value_t* args);

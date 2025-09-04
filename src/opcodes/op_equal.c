@@ -1,11 +1,34 @@
 #include "vm.h"
+#include "runtime_error.h"
 
 vm_result op_equal(vm_t* vm) {
     value_t b = vm_pop(vm);
     value_t a = vm_pop(vm);
-    int result = values_equal(a, b);
-    vm_push(vm, make_boolean(result));
+    
+    // Call .equals() method on the left operand using method dispatch
+    value_t* current_class = a.class;
+    
+    while (current_class && current_class->type == VAL_CLASS) {
+        class_t* cls = current_class->as.class;
+        if (cls && cls->properties) {
+            value_t* equals_method = (value_t*)do_get(cls->properties, "equals");
+            if (equals_method && equals_method->type == VAL_NATIVE) {
+                // Call the .equals() method with both operands as arguments
+                value_t args[2] = { a, b };
+                native_t native_func = (native_t)equals_method->as.native;
+                value_t result = native_func(vm, 2, args);
+                vm_push(vm, result);
+                vm_release(a);
+                vm_release(b);
+                return VM_OK;
+            }
+        }
+        // Move to parent class if any
+        current_class = current_class->class;
+    }
+    
+    // If no .equals() method found, runtime error - all classes must have equals
     vm_release(a);
     vm_release(b);
-    return VM_OK;
+    runtime_error(vm, "Type %s has no .equals() method", value_type_name(a.type));
 }

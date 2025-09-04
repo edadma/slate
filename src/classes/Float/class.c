@@ -19,6 +19,12 @@ void float_class_init(vm_t* vm) {
     do_object float_proto = do_create(NULL);
     
     // Add Float-specific methods to Float prototype
+    value_t float_hash_method = make_native(builtin_float_hash);
+    do_set(float_proto, "hash", &float_hash_method, sizeof(value_t));
+    
+    value_t float_equals_method = make_native(builtin_float_equals);
+    do_set(float_proto, "equals", &float_equals_method, sizeof(value_t));
+    
     value_t float_to_string_method = make_native(builtin_float_to_string);
     do_set(float_proto, "toString", &float_to_string_method, sizeof(value_t));
     

@@ -16,6 +16,7 @@ value_t builtin_range_length(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_range_contains(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_range_to_array(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_range_reverse(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_range_hash(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_range_equals(vm_t* vm, int arg_count, value_t* args);
 
 #endif // CLASS_RANGE_H

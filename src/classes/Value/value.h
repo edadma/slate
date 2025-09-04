@@ -8,5 +8,6 @@
 value_t builtin_type(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_value_to_string(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_value_hash(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_value_equals(vm_t* vm, int arg_count, value_t* args);
 
 #endif // CLASS_VALUE_H

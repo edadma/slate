@@ -16,6 +16,7 @@ value_t builtin_number_is_integer(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_number_to_precision(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_number_min(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_number_max(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_number_equals(vm_t* vm, int arg_count, value_t* args);
 
 // Helper function to check if a value is any numeric type
 int is_numeric_value(value_t value);

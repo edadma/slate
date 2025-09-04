@@ -12,6 +12,7 @@ value_t int_factory(vm_t* vm, int arg_count, value_t* args);
 
 // Int Instance Methods
 value_t builtin_int_hash(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_int_equals(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_int_to_string(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_int_set_bit(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_int_clear_bit(vm_t* vm, int arg_count, value_t* args);

@@ -120,7 +120,7 @@ void free_value(value_t value) {
 value_t make_null(void) {
     value_t value;
     value.type = VAL_NULL;
-    value.class = global_value_class;
+    value.class = global_null_class; // All nulls have Null class
     value.debug = NULL;
     return value;
 }
@@ -137,7 +137,7 @@ value_t make_boolean(int bool_val) {
     value_t value;
     value.type = VAL_BOOLEAN;
     value.as.boolean = bool_val;
-    value.class = global_value_class;
+    value.class = global_boolean_class; // All booleans have Boolean class
     value.debug = NULL;
     return value;
 }

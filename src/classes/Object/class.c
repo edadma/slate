@@ -13,6 +13,9 @@ void initialize_object_class(vm_t* vm) {
     // Add methods to Object prototype
     value_t object_hash_method = make_native(builtin_object_hash);
     do_set(object_proto, "hash", &object_hash_method, sizeof(value_t));
+    
+    value_t object_equals_method = make_native(builtin_object_equals);
+    do_set(object_proto, "equals", &object_equals_method, sizeof(value_t));
 
     value_t object_to_string_method = make_native(builtin_object_to_string);
     do_set(object_proto, "toString", &object_to_string_method, sizeof(value_t));

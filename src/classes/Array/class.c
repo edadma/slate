@@ -95,6 +95,9 @@ void array_class_init(vm_t* vm) {
     // Utility methods
     value_t array_hash_method = make_native(builtin_array_hash);
     do_set(array_proto, "hash", &array_hash_method, sizeof(value_t));
+    
+    value_t array_equals_method = make_native(builtin_array_equals);
+    do_set(array_proto, "equals", &array_equals_method, sizeof(value_t));
 
     // Create the Array class
     value_t array_class = make_class("Array", array_proto);

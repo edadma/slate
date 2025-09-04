@@ -14,6 +14,8 @@ value_t builtin_string_builder_append_char(vm_t* vm, int arg_count, value_t* arg
 value_t builtin_string_builder_to_string(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_string_builder_length(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_string_builder_clear(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_string_builder_hash(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_string_builder_equals(vm_t* vm, int arg_count, value_t* args);
 
 // StringBuilder Class Initialization
 void string_builder_class_init(vm_t* vm);

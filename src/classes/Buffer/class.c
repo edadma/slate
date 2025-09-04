@@ -23,6 +23,9 @@ void buffer_class_init(vm_t* vm) {
     value_t buffer_length_method = make_native(builtin_buffer_method_length);
     do_set(buffer_proto, "length", &buffer_length_method, sizeof(value_t));
 
+    value_t buffer_hash_method = make_native(builtin_buffer_method_hash);
+    do_set(buffer_proto, "hash", &buffer_hash_method, sizeof(value_t));
+
     value_t buffer_equals_method = make_native(builtin_buffer_method_equals);
     do_set(buffer_proto, "equals", &buffer_equals_method, sizeof(value_t));
 

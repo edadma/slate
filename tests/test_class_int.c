@@ -153,15 +153,15 @@ void test_integer_equality() {
     value_t b = make_int32(42);
     value_t c = make_int32(100);
     
-    TEST_ASSERT_TRUE(values_equal(a, b));
-    TEST_ASSERT_FALSE(values_equal(a, c));
+    TEST_ASSERT_TRUE(call_equals_method(NULL, a, b));
+    TEST_ASSERT_FALSE(call_equals_method(NULL, a, c));
     
     // Test cross-type numeric equality (int32 vs number)
     value_t num = make_float64(42.0);
-    TEST_ASSERT_TRUE(values_equal(a, num));  // Should be equal
+    TEST_ASSERT_TRUE(call_equals_method(NULL, a, num));  // Should be equal
     
     value_t float_num = make_float64(42.5);
-    TEST_ASSERT_FALSE(values_equal(a, float_num));  // Should not be equal
+    TEST_ASSERT_FALSE(call_equals_method(NULL, a, float_num));  // Should not be equal
 }
 
 void test_large_integer_parsing() {
@@ -190,7 +190,7 @@ void test_large_integer_parsing() {
 // Test Int.hash() method
 void test_int32_hash_identity(void) {
     // Test that int32 values return themselves as hash
-    value_t result = test_execute_expression("hash(42)");
+    value_t result = test_execute_expression("42.hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
     vm_release(result);
@@ -198,7 +198,7 @@ void test_int32_hash_identity(void) {
 
 void test_int32_hash_negative(void) {
     // Test negative int32 hash
-    value_t result = test_execute_expression("hash(-42)");
+    value_t result = test_execute_expression("(-42).hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(-42, result.as.int32);
     vm_release(result);
@@ -206,7 +206,7 @@ void test_int32_hash_negative(void) {
 
 void test_int32_hash_zero(void) {
     // Test zero hash
-    value_t result = test_execute_expression("hash(0)");
+    value_t result = test_execute_expression("0.hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
     vm_release(result);
@@ -214,8 +214,8 @@ void test_int32_hash_zero(void) {
 
 void test_int32_hash_consistency(void) {
     // Test that same values produce same hash
-    value_t result1 = test_execute_expression("hash(100)");
-    value_t result2 = test_execute_expression("hash(100)");
+    value_t result1 = test_execute_expression("100.hash()");
+    value_t result2 = test_execute_expression("100.hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
     TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
     TEST_ASSERT_EQUAL_INT32(result1.as.int32, result2.as.int32);
@@ -225,12 +225,12 @@ void test_int32_hash_consistency(void) {
 
 void test_int32_hash_max_min(void) {
     // Test hash of edge values
-    value_t result = test_execute_expression("hash(2147483647)");  // INT32_MAX
+    value_t result = test_execute_expression("2147483647.hash()");  // INT32_MAX
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(2147483647, result.as.int32);
     vm_release(result);
     
-    result = test_execute_expression("hash(-2147483647 - 1)");  // INT32_MIN computed
+    result = test_execute_expression("(-2147483647 - 1).hash()");  // INT32_MIN computed
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(-2147483648, result.as.int32);
     vm_release(result);
@@ -238,25 +238,25 @@ void test_int32_hash_max_min(void) {
 
 void test_int_hash_equality_function(void) {
     // Test that identical integers have equal hash via global function
-    value_t result = test_execute_expression("hash(42) == hash(42)");
+    value_t result = test_execute_expression("42.hash() == 42.hash()");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
     vm_release(result);
     
     // Test that different integers have different hashes
-    result = test_execute_expression("hash(42) == hash(100)");
+    result = test_execute_expression("42.hash() == 100.hash()");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
     vm_release(result);
     
     // Test zero
-    result = test_execute_expression("hash(0) == hash(0)");
+    result = test_execute_expression("0.hash() == 0.hash()");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
     vm_release(result);
     
     // Test negative numbers
-    result = test_execute_expression("hash(-42) == hash(-42)");
+    result = test_execute_expression("(-42).hash() == (-42).hash()");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
     vm_release(result);

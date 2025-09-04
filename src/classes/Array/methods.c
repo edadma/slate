@@ -3,6 +3,8 @@
 #include "dynamic_array.h"
 #include <stdint.h>
 
+// Using centralized call_equals_method from vm/utilities.c
+
 // FNV-1a hash constants for 32-bit
 #define FNV_32_PRIME 0x01000193
 #define FNV_32_OFFSET_BASIS 0x811c9dc5
@@ -76,6 +78,61 @@ static uint32_t hash_value_simple(value_t value) {
         // For complex types, use pointer identity
         return (uint32_t)(uintptr_t)&value;
     }
+}
+
+// Array method: equals(other) - Deep equality comparison for arrays
+value_t builtin_array_equals(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error(vm, "equals() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t other = args[1];
+    
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error(vm, "equals() can only be called on arrays");
+    }
+    
+    // Only arrays can be equal to arrays
+    if (other.type != VAL_ARRAY) {
+        return make_boolean(0);
+    }
+    
+    // Identity equality check
+    if (receiver.as.array == other.as.array) {
+        return make_boolean(1);
+    }
+    
+    // Handle null arrays
+    if (receiver.as.array == NULL && other.as.array == NULL) {
+        return make_boolean(1);
+    }
+    if (receiver.as.array == NULL || other.as.array == NULL) {
+        return make_boolean(0);
+    }
+    
+    // Length comparison
+    size_t len1 = da_length(receiver.as.array);
+    size_t len2 = da_length(other.as.array);
+    if (len1 != len2) {
+        return make_boolean(0);
+    }
+    
+    // Element-wise deep comparison
+    for (size_t i = 0; i < len1; i++) {
+        value_t* elem1 = (value_t*)da_get(receiver.as.array, i);
+        value_t* elem2 = (value_t*)da_get(other.as.array, i);
+        
+        if (elem1 == NULL && elem2 == NULL) continue;
+        if (elem1 == NULL || elem2 == NULL) return make_boolean(0);
+        
+        // Use .equals() method for deep comparison
+        if (!call_equals_method(vm, *elem1, *elem2)) {
+            return make_boolean(0);
+        }
+    }
+    
+    return make_boolean(1);
 }
 
 // Array method: length()
@@ -198,7 +255,7 @@ value_t builtin_array_index_of(vm_t* vm, int arg_count, value_t* args) {
     // Search for element
     for (size_t i = 0; i < length; i++) {
         value_t* elem = (value_t*)da_get(array, i);
-        if (values_equal(*elem, element)) {
+        if (call_equals_method(vm, *elem, element)) {
             return make_int32((int32_t)i);
         }
     }
@@ -226,7 +283,7 @@ value_t builtin_array_contains(vm_t* vm, int arg_count, value_t* args) {
     // Search for element
     for (size_t i = 0; i < length; i++) {
         value_t* elem = (value_t*)da_get(array, i);
-        if (values_equal(*elem, element)) {
+        if (call_equals_method(vm, *elem, element)) {
             return make_boolean(true);
         }
     }

@@ -46,6 +46,26 @@ value_t builtin_float_hash(vm_t* vm, int arg_count, value_t* args) {
     }
 }
 
+// Float method: equals(other) - Equality comparison for floats
+value_t builtin_float_equals(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error(vm, "equals() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t other = args[1];
+    
+    // Handle cross-type numeric equality (delegate to Number.equals)
+    // This properly handles IEEE 754 semantics: NaN != NaN
+    if (is_number(receiver) && is_number(other)) {
+        value_t args[2] = { receiver, other };
+        return builtin_number_equals(vm, 2, args);
+    }
+    
+    // Non-numeric types are not equal to floats
+    return make_boolean(0);
+}
+
 // Float method: toString([precision]) - Convert float to string representation
 value_t builtin_float_to_string(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {

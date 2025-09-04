@@ -17,6 +17,28 @@ value_t builtin_boolean_hash(vm_t* vm, int arg_count, value_t* args) {
     return make_int32(receiver.as.boolean ? 1 : 0);
 }
 
+// Boolean method: equals(other) - Equality comparison for booleans
+value_t builtin_boolean_equals(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error(vm, "equals() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t other = args[1];
+    
+    if (receiver.type != VAL_BOOLEAN) {
+        runtime_error(vm, "equals() can only be called on booleans");
+    }
+    
+    // Only booleans can be equal to booleans
+    if (other.type != VAL_BOOLEAN) {
+        return make_boolean(0);
+    }
+    
+    // Simple boolean equality
+    return make_boolean(receiver.as.boolean == other.as.boolean);
+}
+
 // Boolean method: toString
 value_t builtin_boolean_to_string(vm_t* vm, int arg_count, value_t* args) {
     // When called as a method, args[0] is the receiver (the boolean)

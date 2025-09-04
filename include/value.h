@@ -210,6 +210,8 @@ extern value_t* global_object_class;
 extern value_t* global_int_class;
 extern value_t* global_float_class;
 extern value_t* global_string_class;
+extern value_t* global_boolean_class;
+extern value_t* global_null_class;
 extern value_t* global_array_class;
 extern value_t* global_range_class;
 extern value_t* global_iterator_class;

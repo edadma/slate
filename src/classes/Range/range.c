@@ -4,6 +4,11 @@
 #include "dynamic_array.h"
 #include "dynamic_object.h"
 
+// Forward declaration for the global value hash function
+extern value_t builtin_value_hash(vm_t* vm, int arg_count, value_t* args);
+
+// Using centralized call_equals_method from vm/utilities.c
+
 // Global Range class storage
 value_t* global_range_class = NULL;
 
@@ -39,6 +44,9 @@ void range_class_init(vm_t* vm) {
 
     value_t range_reverse_method = make_native(builtin_range_reverse);
     do_set(range_proto, "reverse", &range_reverse_method, sizeof(value_t));
+
+    value_t range_hash_method = make_native(builtin_range_hash);
+    do_set(range_proto, "hash", &range_hash_method, sizeof(value_t));
 
     value_t range_equals_method = make_native(builtin_range_equals);
     do_set(range_proto, "equals", &range_equals_method, sizeof(value_t));
@@ -415,8 +423,43 @@ value_t builtin_range_equals(vm_t* vm, int arg_count, value_t* args) {
     }
     
     // Compare start and end values
-    int start_equal = values_equal(range1->start, range2->start);
-    int end_equal = values_equal(range1->end, range2->end);
+    int start_equal = call_equals_method(vm, range1->start, range2->start);
+    int end_equal = call_equals_method(vm, range1->end, range2->end);
     
     return make_boolean(start_equal && end_equal);
+}
+
+// range.hash() - Compute hash based on start, end, and exclusivity
+value_t builtin_range_hash(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "hash() takes no arguments (%d given)", arg_count - 1);
+        return make_null();
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type != VAL_RANGE) {
+        runtime_error(vm, "hash() can only be called on ranges");
+        return make_null();
+    }
+    
+    range_t* range = receiver.as.range;
+    
+    // Combine hash of start, end, and exclusivity flag
+    value_t start_hash_result = builtin_value_hash(vm, 1, &range->start);
+    value_t end_hash_result = builtin_value_hash(vm, 1, &range->end);
+    
+    if (start_hash_result.type != VAL_INT32 || end_hash_result.type != VAL_INT32) {
+        runtime_error(vm, "Failed to compute hash for range components");
+        return make_null();
+    }
+    
+    uint32_t start_hash = (uint32_t)start_hash_result.as.int32;
+    uint32_t end_hash = (uint32_t)end_hash_result.as.int32;
+    uint32_t exclusive_hash = range->exclusive ? 1 : 0;
+    
+    // Combine the three hash components using a simple mixing algorithm
+    uint32_t combined = start_hash ^ (end_hash << 1) ^ (exclusive_hash << 2);
+    
+    return make_int32((int32_t)combined);
 }

@@ -13,6 +13,7 @@ value_t array_factory(vm_t* vm, int arg_count, value_t* args);
 
 // Array Instance Methods
 value_t builtin_array_hash(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_array_equals(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_array_length(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_array_push(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_array_pop(vm_t* vm, int arg_count, value_t* args);

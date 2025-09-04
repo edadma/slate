@@ -80,20 +80,20 @@ void test_vm_booleans(void) {
 // Test Boolean.hash() method
 void test_boolean_hash(void) {
     // Test true hash
-    value_t result = test_execute_expression("hash(true)");
+    value_t result = test_execute_expression("true.hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
     vm_release(result);
     
     // Test false hash
-    result = test_execute_expression("hash(false)");
+    result = test_execute_expression("false.hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result.type);
     TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
     vm_release(result);
     
     // Test consistency
-    value_t result1 = test_execute_expression("hash(true)");
-    value_t result2 = test_execute_expression("hash(true)");
+    value_t result1 = test_execute_expression("true.hash()");
+    value_t result2 = test_execute_expression("true.hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
     TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
     TEST_ASSERT_EQUAL_INT32(result1.as.int32, result2.as.int32);
@@ -101,8 +101,8 @@ void test_boolean_hash(void) {
     vm_release(result2);
     
     // Test different values have different hashes
-    result1 = test_execute_expression("hash(true)");
-    result2 = test_execute_expression("hash(false)");
+    result1 = test_execute_expression("true.hash()");
+    result2 = test_execute_expression("false.hash()");
     TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
     TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
     TEST_ASSERT_NOT_EQUAL(result1.as.int32, result2.as.int32);
@@ -112,18 +112,18 @@ void test_boolean_hash(void) {
 
 void test_boolean_hash_equality_function(void) {
     // Test that identical booleans have equal hash via global function
-    value_t result = test_execute_expression("hash(true) == hash(true)");
+    value_t result = test_execute_expression("true.hash() == true.hash()");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
     vm_release(result);
     
-    result = test_execute_expression("hash(false) == hash(false)");
+    result = test_execute_expression("false.hash() == false.hash()");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
     vm_release(result);
     
     // Test that different booleans have different hashes
-    result = test_execute_expression("hash(true) == hash(false)");
+    result = test_execute_expression("true.hash() == false.hash()");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
     vm_release(result);
@@ -131,13 +131,13 @@ void test_boolean_hash_equality_function(void) {
 
 void test_null_hash_equality_function(void) {
     // Test that null has consistent hash
-    value_t result = test_execute_expression("hash(null) == hash(null)");
+    value_t result = test_execute_expression("null.hash() == null.hash()");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
     vm_release(result);
     
     // Test that null hash is 0
-    result = test_execute_expression("hash(null) == 0");
+    result = test_execute_expression("null.hash() == 0");
     TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
     TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
     vm_release(result);
@@ -188,41 +188,41 @@ void test_vm_value_equality(void) {
     // Numbers
     a = make_float64(42);
     b = make_float64(42);
-    TEST_ASSERT_TRUE(values_equal(a, b));
+    TEST_ASSERT_TRUE(call_equals_method(NULL, a, b));
 
     b = make_float64(43);
-    TEST_ASSERT_FALSE(values_equal(a, b));
+    TEST_ASSERT_FALSE(call_equals_method(NULL, a, b));
 
     // Strings
     a = make_string("hello");
     b = make_string("hello");
-    TEST_ASSERT_TRUE(values_equal(a, b));
+    TEST_ASSERT_TRUE(call_equals_method(NULL, a, b));
     free_value(a);
     free_value(b);
 
     a = make_string("hello");
     b = make_string("world");
-    TEST_ASSERT_FALSE(values_equal(a, b));
+    TEST_ASSERT_FALSE(call_equals_method(NULL, a, b));
     free_value(a);
     free_value(b);
 
     // Booleans
     a = make_boolean(1);
     b = make_boolean(1);
-    TEST_ASSERT_TRUE(values_equal(a, b));
+    TEST_ASSERT_TRUE(call_equals_method(NULL, a, b));
 
     b = make_boolean(0);
-    TEST_ASSERT_FALSE(values_equal(a, b));
+    TEST_ASSERT_FALSE(call_equals_method(NULL, a, b));
 
     // Null
     a = make_null();
     b = make_null();
-    TEST_ASSERT_TRUE(values_equal(a, b));
+    TEST_ASSERT_TRUE(call_equals_method(NULL, a, b));
 
     // Different types
     a = make_float64(42);
     b = make_string("42");
-    TEST_ASSERT_FALSE(values_equal(a, b));
+    TEST_ASSERT_FALSE(call_equals_method(NULL, a, b));
     free_value(b);
 }
 
@@ -480,10 +480,10 @@ void test_vm_undefined_behavior(void) {
     TEST_ASSERT_TRUE(is_falsy(make_undefined()));
 
     // Undefined equality
-    TEST_ASSERT_TRUE(values_equal(make_undefined(), make_undefined()));
-    TEST_ASSERT_FALSE(values_equal(make_undefined(), make_null()));
-    TEST_ASSERT_FALSE(values_equal(make_undefined(), make_boolean(0)));
-    TEST_ASSERT_FALSE(values_equal(make_undefined(), make_float64(0)));
+    TEST_ASSERT_TRUE(call_equals_method(NULL, make_undefined(), make_undefined()));
+    TEST_ASSERT_FALSE(call_equals_method(NULL, make_undefined(), make_null()));
+    TEST_ASSERT_FALSE(call_equals_method(NULL, make_undefined(), make_boolean(0)));
+    TEST_ASSERT_FALSE(call_equals_method(NULL, make_undefined(), make_float64(0)));
 
     // Property access returns undefined
     result = run_code("[1, 2, 3].nonExistent");

@@ -17,5 +17,7 @@ value_t builtin_next(vm_t* vm, int arg_count, value_t* args);
 // Iterator Instance Methods
 value_t builtin_iterator_is_empty(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_iterator_to_array(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_iterator_hash(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_iterator_equals(vm_t* vm, int arg_count, value_t* args);
 
 #endif // CLASS_ITERATOR_H

@@ -52,6 +52,8 @@ void register_builtin(vm_t* vm, const char* name, native_t func, int min_args, i
 // Global String class storage
 value_t* global_string_class = NULL;
 
+// Global Boolean class storage
+value_t* global_boolean_class = NULL;
 
 // Global Value class storage
 value_t* global_value_class = NULL;
@@ -70,6 +72,9 @@ void builtins_init(vm_t* vm) {
     // Add methods to String prototype
     value_t hash_method = make_native(builtin_string_hash);
     do_set(string_proto, "hash", &hash_method, sizeof(value_t));
+    
+    value_t equals_method = make_native(builtin_string_equals);
+    do_set(string_proto, "equals", &equals_method, sizeof(value_t));
     
     value_t length_method = make_native(builtin_string_length);
     do_set(string_proto, "length", &length_method, sizeof(value_t));
@@ -125,6 +130,12 @@ void builtins_init(vm_t* vm) {
     do_object boolean_proto = do_create(NULL);
 
     // Add methods to Boolean prototype
+    value_t boolean_hash_method = make_native(builtin_boolean_hash);
+    do_set(boolean_proto, "hash", &boolean_hash_method, sizeof(value_t));
+    
+    value_t boolean_equals_method = make_native(builtin_boolean_equals);
+    do_set(boolean_proto, "equals", &boolean_equals_method, sizeof(value_t));
+    
     value_t boolean_to_string_method = make_native(builtin_boolean_to_string);
     do_set(boolean_proto, "toString", &boolean_to_string_method, sizeof(value_t));
 
@@ -148,6 +159,11 @@ void builtins_init(vm_t* vm) {
 
     // Store in globals
     do_set(vm->globals, "Boolean", &boolean_class, sizeof(value_t));
+
+    // Store a global reference for use in make_boolean
+    static value_t boolean_class_storage;
+    boolean_class_storage = vm_retain(boolean_class);
+    global_boolean_class = &boolean_class_storage;
 
     // Initialize Array class
     array_class_init(vm);
@@ -190,7 +206,6 @@ void builtins_init(vm_t* vm) {
     // Register all built-ins
     register_builtin(vm, "print", builtin_print, 1, 1);
     register_builtin(vm, "type", builtin_type, 1, 1);
-    register_builtin(vm, "hash", builtin_value_hash, 1, 1);
     
     // Math functions in global namespace
     register_builtin(vm, "abs", builtin_abs, 1, 1);
@@ -232,8 +247,11 @@ void builtins_init(vm_t* vm) {
     // Add methods to Value prototype
     value_t value_to_string_method = make_native(builtin_value_to_string);
     do_set(value_proto, "toString", &value_to_string_method, sizeof(value_t));
+    
+    value_t value_equals_method = make_native(builtin_value_equals);
+    do_set(value_proto, "equals", &value_equals_method, sizeof(value_t));
 
-    // Value prototype now only has toString - numeric methods inherited from Number
+    // Value prototype has toString and equals - numeric methods inherited from Number
 
     // Create the Value class
     value_t value_class = make_class("Value", value_proto);

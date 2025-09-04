@@ -25,6 +25,25 @@ value_t builtin_int_hash(vm_t* vm, int arg_count, value_t* args) {
     return make_int32(receiver.as.int32);
 }
 
+// Int method: equals(other) - Equality comparison for integers  
+value_t builtin_int_equals(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 2) {
+        runtime_error(vm, "equals() takes exactly 1 argument (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    value_t other = args[1];
+    
+    // Handle cross-type numeric equality (delegate to Number.equals)
+    if (is_number(receiver) && is_number(other)) {
+        value_t args[2] = { receiver, other };
+        return builtin_number_equals(vm, 2, args);
+    }
+    
+    // Non-numeric types are not equal to integers
+    return make_boolean(0);
+}
+
 // Int method: abs() - Absolute value for integers
 value_t builtin_int_abs(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
@@ -1134,6 +1153,12 @@ void int_class_init(vm_t* vm) {
     do_object int_proto = do_create(NULL);
     
     // Add methods to Int prototype
+    value_t int_hash_method = make_native(builtin_int_hash);
+    do_set(int_proto, "hash", &int_hash_method, sizeof(value_t));
+    
+    value_t int_equals_method = make_native(builtin_int_equals);
+    do_set(int_proto, "equals", &int_equals_method, sizeof(value_t));
+    
     value_t int_to_string_method = make_native(builtin_int_to_string);
     do_set(int_proto, "toString", &int_to_string_method, sizeof(value_t));
     

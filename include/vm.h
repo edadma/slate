@@ -335,7 +335,7 @@ int is_falsy(value_t value);
 int is_truthy(value_t value);
 int is_number(value_t value); // Check if value is numeric (int32, bigint, or number)
 int compare_numbers(value_t a, value_t b); // Compare two numbers: -1 if a < b, 0 if a == b, 1 if a > b
-int values_equal(value_t a, value_t b);
+int call_equals_method(vm_t* vm, value_t a, value_t b); // Call .equals() method using proper method dispatch
 void print_value(vm_t* vm, value_t value);
 void print_for_builtin(vm_t* vm, value_t value);
 float value_to_float32(value_t value); // Convert numeric values to float32
