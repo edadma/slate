@@ -187,6 +187,81 @@ void test_large_integer_parsing() {
 
 
 // Test suite function for integration with main test runner
+// Test Int.hash() method
+void test_int32_hash_identity(void) {
+    // Test that int32 values return themselves as hash
+    value_t result = test_execute_expression("hash(42)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(42, result.as.int32);
+    vm_release(result);
+}
+
+void test_int32_hash_negative(void) {
+    // Test negative int32 hash
+    value_t result = test_execute_expression("hash(-42)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-42, result.as.int32);
+    vm_release(result);
+}
+
+void test_int32_hash_zero(void) {
+    // Test zero hash
+    value_t result = test_execute_expression("hash(0)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
+    vm_release(result);
+}
+
+void test_int32_hash_consistency(void) {
+    // Test that same values produce same hash
+    value_t result1 = test_execute_expression("hash(100)");
+    value_t result2 = test_execute_expression("hash(100)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
+    TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
+    TEST_ASSERT_EQUAL_INT32(result1.as.int32, result2.as.int32);
+    vm_release(result1);
+    vm_release(result2);
+}
+
+void test_int32_hash_max_min(void) {
+    // Test hash of edge values
+    value_t result = test_execute_expression("hash(2147483647)");  // INT32_MAX
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(2147483647, result.as.int32);
+    vm_release(result);
+    
+    result = test_execute_expression("hash(-2147483647 - 1)");  // INT32_MIN computed
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(-2147483648, result.as.int32);
+    vm_release(result);
+}
+
+void test_int_hash_equality_function(void) {
+    // Test that identical integers have equal hash via global function
+    value_t result = test_execute_expression("hash(42) == hash(42)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+    
+    // Test that different integers have different hashes
+    result = test_execute_expression("hash(42) == hash(100)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
+    vm_release(result);
+    
+    // Test zero
+    result = test_execute_expression("hash(0) == hash(0)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+    
+    // Test negative numbers
+    result = test_execute_expression("hash(-42) == hash(-42)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+}
+
 void test_class_int_suite(void) {
     RUN_TEST(test_integer_literals_vs_float_literals);
     RUN_TEST(test_int32_overflow_detection);
@@ -199,6 +274,12 @@ void test_class_int_suite(void) {
     RUN_TEST(test_large_integer_parsing);
     RUN_TEST(test_hexadecimal_literals);
     RUN_TEST(test_hexadecimal_arithmetic);
+    RUN_TEST(test_int32_hash_identity);
+    RUN_TEST(test_int32_hash_negative);
+    RUN_TEST(test_int32_hash_zero);
+    RUN_TEST(test_int32_hash_consistency);
+    RUN_TEST(test_int32_hash_max_min);
+    RUN_TEST(test_int_hash_equality_function);
 }
 
 // Test hexadecimal literal parsing and type handling

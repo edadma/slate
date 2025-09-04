@@ -2,6 +2,21 @@
 #include "builtins.h"
 #include "dynamic_string.h"
 
+// Boolean method: hash
+value_t builtin_boolean_hash(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "hash() takes no arguments (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    if (receiver.type != VAL_BOOLEAN) {
+        runtime_error(vm, "hash() can only be called on booleans");
+    }
+
+    // Hash booleans as 0 for false, 1 for true
+    return make_int32(receiver.as.boolean ? 1 : 0);
+}
+
 // Boolean method: toString
 value_t builtin_boolean_to_string(vm_t* vm, int arg_count, value_t* args) {
     // When called as a method, args[0] is the receiver (the boolean)

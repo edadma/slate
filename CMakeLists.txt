@@ -61,6 +61,8 @@ include_directories(src/classes/LocalDateTime)
 include_directories(src/classes/Zone)
 include_directories(src/classes/Date)
 include_directories(src/classes/Instant)
+include_directories(src/classes/Null)
+include_directories(src/classes/Object)
 
 # Main executable
 add_executable(slate
@@ -142,6 +144,10 @@ add_executable(slate
         src/classes/Instant/factory.c
         src/classes/Instant/methods.c
         src/classes/Instant/class.c
+        src/classes/Null/methods.c
+        src/classes/Null/class.c
+        src/classes/Object/methods.c
+        src/classes/Object/class.c
         src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c
@@ -348,6 +354,10 @@ if (BUILD_TESTS)
         src/classes/Instant/factory.c
         src/classes/Instant/methods.c
         src/classes/Instant/class.c
+        src/classes/Null/methods.c
+        src/classes/Null/class.c
+        src/classes/Object/methods.c
+        src/classes/Object/class.c
             src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c

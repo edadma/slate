@@ -1,6 +1,82 @@
 #include "array.h"
 #include "builtins.h"
 #include "dynamic_array.h"
+#include <stdint.h>
+
+// FNV-1a hash constants for 32-bit
+#define FNV_32_PRIME 0x01000193
+#define FNV_32_OFFSET_BASIS 0x811c9dc5
+
+// Forward declaration for hashing values
+static uint32_t hash_value_simple(value_t value);
+
+// Array method: hash()
+value_t builtin_array_hash(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "hash() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error(vm, "hash() can only be called on arrays");
+    }
+    
+    // Combine hash codes of all elements
+    uint32_t hash = FNV_32_OFFSET_BASIS;
+    size_t length = da_length(receiver.as.array);
+    
+    for (size_t i = 0; i < length; i++) {
+        value_t* element = (value_t*)da_get(receiver.as.array, i);
+        if (element) {
+            uint32_t element_hash = hash_value_simple(*element);
+            hash ^= element_hash;
+            hash *= FNV_32_PRIME;
+        }
+    }
+    
+    // Mix in the length to distinguish arrays with same elements but different order
+    hash ^= (uint32_t)length;
+    hash *= FNV_32_PRIME;
+    
+    return make_int32((int32_t)hash);
+}
+
+// Simple hash function for array elements
+static uint32_t hash_value_simple(value_t value) {
+    switch (value.type) {
+    case VAL_NULL:
+        return 0;
+    case VAL_UNDEFINED:
+        return 0x1000000;
+    case VAL_BOOLEAN:
+        return value.as.boolean ? 1 : 0;
+    case VAL_INT32:
+        return (uint32_t)value.as.int32;
+    case VAL_FLOAT32: {
+        union { float f; uint32_t u; } converter;
+        converter.f = value.as.float32;
+        return converter.u;
+    }
+    case VAL_FLOAT64: {
+        union { double d; uint64_t u; } converter;
+        converter.d = value.as.float64;
+        return (uint32_t)(converter.u ^ (converter.u >> 32));
+    }
+    case VAL_STRING: {
+        uint32_t hash = FNV_32_OFFSET_BASIS;
+        if (value.as.string) {
+            for (const char* p = value.as.string; *p; p++) {
+                hash ^= (uint8_t)*p;
+                hash *= FNV_32_PRIME;
+            }
+        }
+        return hash;
+    }
+    default:
+        // For complex types, use pointer identity
+        return (uint32_t)(uintptr_t)&value;
+    }
+}
 
 // Array method: length()
 value_t builtin_array_length(vm_t* vm, int arg_count, value_t* args) {

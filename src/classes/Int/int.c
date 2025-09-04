@@ -9,6 +9,22 @@
 #include <string.h>
 #include <math.h>
 
+// Int method: hash() - Hash code for integers
+value_t builtin_int_hash(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "hash() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type != VAL_INT32) {
+        runtime_error(vm, "hash() can only be called on int32");
+    }
+    
+    // For 32-bit integers, the value itself is the hash
+    return make_int32(receiver.as.int32);
+}
+
 // Int method: abs() - Absolute value for integers
 value_t builtin_int_abs(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {

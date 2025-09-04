@@ -1,6 +1,34 @@
 #include "class_string.h"
 #include "builtins.h"
 #include "dynamic_string.h"
+#include <stdint.h>
+
+// FNV-1a hash constants for 32-bit
+#define FNV_32_PRIME 0x01000193
+#define FNV_32_OFFSET_BASIS 0x811c9dc5
+
+// String method: hash
+value_t builtin_string_hash(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "hash() takes no arguments (%d given)", arg_count - 1);
+    }
+
+    value_t receiver = args[0];
+    if (receiver.type != VAL_STRING) {
+        runtime_error(vm, "hash() can only be called on strings");
+    }
+
+    // FNV-1a hash for strings
+    uint32_t hash = FNV_32_OFFSET_BASIS;
+    if (receiver.as.string) {
+        for (const char* p = receiver.as.string; *p; p++) {
+            hash ^= (uint8_t)*p;
+            hash *= FNV_32_PRIME;
+        }
+    }
+    
+    return make_int32((int32_t)hash);
+}
 
 // String method: length
 // This will be used as a method on the String prototype

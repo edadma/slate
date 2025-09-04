@@ -77,6 +77,72 @@ void test_vm_booleans(void) {
     ds_release(&result.as.string);
 }
 
+// Test Boolean.hash() method
+void test_boolean_hash(void) {
+    // Test true hash
+    value_t result = test_execute_expression("hash(true)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
+    vm_release(result);
+    
+    // Test false hash
+    result = test_execute_expression("hash(false)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(0, result.as.int32);
+    vm_release(result);
+    
+    // Test consistency
+    value_t result1 = test_execute_expression("hash(true)");
+    value_t result2 = test_execute_expression("hash(true)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
+    TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
+    TEST_ASSERT_EQUAL_INT32(result1.as.int32, result2.as.int32);
+    vm_release(result1);
+    vm_release(result2);
+    
+    // Test different values have different hashes
+    result1 = test_execute_expression("hash(true)");
+    result2 = test_execute_expression("hash(false)");
+    TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
+    TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
+    TEST_ASSERT_NOT_EQUAL(result1.as.int32, result2.as.int32);
+    vm_release(result1);
+    vm_release(result2);
+}
+
+void test_boolean_hash_equality_function(void) {
+    // Test that identical booleans have equal hash via global function
+    value_t result = test_execute_expression("hash(true) == hash(true)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+    
+    result = test_execute_expression("hash(false) == hash(false)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+    
+    // Test that different booleans have different hashes
+    result = test_execute_expression("hash(true) == hash(false)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
+    vm_release(result);
+}
+
+void test_null_hash_equality_function(void) {
+    // Test that null has consistent hash
+    value_t result = test_execute_expression("hash(null) == hash(null)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+    
+    // Test that null hash is 0
+    result = test_execute_expression("hash(null) == 0");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+}
+
 // Test null
 void test_vm_null(void) {
     value_t result;
@@ -652,6 +718,9 @@ void test_vm_suite(void) {
     // Note: Arithmetic, unary, and division/modulo by zero tests moved to test_arithmetic.c
     RUN_TEST(test_vm_strings);
     RUN_TEST(test_vm_booleans);
+    RUN_TEST(test_boolean_hash);
+    RUN_TEST(test_boolean_hash_equality_function);
+    RUN_TEST(test_null_hash_equality_function);
     RUN_TEST(test_vm_null);
     RUN_TEST(test_vm_value_creation);
     RUN_TEST(test_vm_value_equality);

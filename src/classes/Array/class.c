@@ -92,6 +92,10 @@ void array_class_init(vm_t* vm) {
     value_t array_flatmap_method = make_native(builtin_array_flatmap);
     do_set(array_proto, "flatMap", &array_flatmap_method, sizeof(value_t));
 
+    // Utility methods
+    value_t array_hash_method = make_native(builtin_array_hash);
+    do_set(array_proto, "hash", &array_hash_method, sizeof(value_t));
+
     // Create the Array class
     value_t array_class = make_class("Array", array_proto);
     

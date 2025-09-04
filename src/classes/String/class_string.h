@@ -11,6 +11,7 @@ value_t builtin_value_to_string(vm_t* vm, int arg_count, value_t* args);
 value_t string_factory(vm_t* vm, int arg_count, value_t* args);
 
 // String Instance Methods
+value_t builtin_string_hash(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_string_length(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_string_substring(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_string_to_upper(vm_t* vm, int arg_count, value_t* args);

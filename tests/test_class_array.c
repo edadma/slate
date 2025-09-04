@@ -321,6 +321,78 @@ void test_array_reverse(void) {
 }
 
 // Test Suite Runner
+// Test Array.hash() method
+void test_array_hash_basic(void) {
+    // Test basic array hash
+    value_t result = test_execute_expression("hash([1, 2, 3])");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_NOT_EQUAL(0, result.as.int32);
+    vm_release(result);
+    
+    result = test_execute_expression("hash([\"a\", \"b\"])");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_NOT_EQUAL(0, result.as.int32);
+    vm_release(result);
+}
+
+void test_array_hash_empty(void) {
+    // Test empty array hash
+    value_t result = test_execute_expression("hash([])");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    vm_release(result);
+}
+
+void test_array_hash_consistency(void) {
+    // Test that same arrays produce same hash
+    value_t result1 = test_execute_expression("hash([1, 2, 3])");
+    value_t result2 = test_execute_expression("hash([1, 2, 3])");
+    TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
+    TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
+    TEST_ASSERT_EQUAL_INT32(result1.as.int32, result2.as.int32);
+    vm_release(result1);
+    vm_release(result2);
+}
+
+void test_array_hash_order_matters(void) {
+    // Test that order matters in array hashing
+    value_t result1 = test_execute_expression("hash([1, 2, 3])");
+    value_t result2 = test_execute_expression("hash([3, 2, 1])");
+    TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
+    TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
+    TEST_ASSERT_NOT_EQUAL(result1.as.int32, result2.as.int32);
+    vm_release(result1);
+    vm_release(result2);
+    
+    // Test different lengths
+    result1 = test_execute_expression("hash([1, 2])");
+    result2 = test_execute_expression("hash([1, 2, 3])");
+    TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
+    TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
+    TEST_ASSERT_NOT_EQUAL(result1.as.int32, result2.as.int32);
+    vm_release(result1);
+    vm_release(result2);
+}
+
+void test_array_method_hash_equality(void) {
+    // Test that identical arrays have equal hash via method call
+    value_t result = test_execute_expression("[1, 2, 3].hash() == [1, 2, 3].hash()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+    
+    // Test that different arrays have different hashes
+    result = test_execute_expression("[1, 2, 3].hash() == [3, 2, 1].hash()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
+    vm_release(result);
+    
+    // Test empty arrays
+    result = test_execute_expression("[].hash() == [].hash()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+}
+
 void test_class_array_suite(void) {
     RUN_TEST(test_array_constructor_empty);
     RUN_TEST(test_array_constructor_multiple_args);
@@ -344,4 +416,11 @@ void test_class_array_suite(void) {
     RUN_TEST(test_array_slice_negative_indices);
     RUN_TEST(test_array_slice_edge_cases);
     RUN_TEST(test_array_reverse);
+    
+    // Array hash tests
+    RUN_TEST(test_array_hash_basic);
+    RUN_TEST(test_array_hash_empty);
+    RUN_TEST(test_array_hash_consistency);
+    RUN_TEST(test_array_hash_order_matters);
+    RUN_TEST(test_array_method_hash_equality);
 }

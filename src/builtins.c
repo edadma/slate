@@ -26,6 +26,9 @@
 #include "range.h"
 #include "runtime_error.h"
 #include "value.h"
+#include "classes/Value/value.h"
+#include "classes/Null/class_null.h"
+#include "classes/Object/class_object.h"
 
 // Include dynamic_string for ds_builder functions (implementation in library_impl.c)
 #include "dynamic_string.h"
@@ -65,6 +68,9 @@ void builtins_init(vm_t* vm) {
     do_object string_proto = do_create(NULL);
 
     // Add methods to String prototype
+    value_t hash_method = make_native(builtin_string_hash);
+    do_set(string_proto, "hash", &hash_method, sizeof(value_t));
+    
     value_t length_method = make_native(builtin_string_length);
     do_set(string_proto, "length", &length_method, sizeof(value_t));
 
@@ -175,9 +181,16 @@ void builtins_init(vm_t* vm) {
     // Initialize BufferReader class
     buffer_reader_class_init(vm);
 
+    // Initialize Null class
+    initialize_null_class(vm);
+    
+    // Initialize Object class
+    initialize_object_class(vm);
+
     // Register all built-ins
     register_builtin(vm, "print", builtin_print, 1, 1);
     register_builtin(vm, "type", builtin_type, 1, 1);
+    register_builtin(vm, "hash", builtin_value_hash, 1, 1);
     
     // Math functions in global namespace
     register_builtin(vm, "abs", builtin_abs, 1, 1);

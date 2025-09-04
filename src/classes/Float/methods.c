@@ -5,6 +5,46 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
+
+// Float method: hash() - Hash code for floating-point numbers
+value_t builtin_float_hash(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "hash() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    
+    if (receiver.type == VAL_FLOAT32) {
+        // Hash the bits of the float32
+        union { float f; uint32_t u; } converter;
+        converter.f = receiver.as.float32;
+        // Special handling for NaN and -0.0
+        if (isnan(converter.f)) {
+            return make_int32(0x7fc00000); // Canonical NaN hash
+        }
+        if (converter.f == 0.0f) {
+            return make_int32(0); // Both +0.0 and -0.0 hash to 0
+        }
+        return make_int32((int32_t)converter.u);
+    } else if (receiver.type == VAL_FLOAT64) {
+        // Hash the bits of the float64
+        union { double d; uint64_t u; } converter;
+        converter.d = receiver.as.float64;
+        // Special handling for NaN and -0.0
+        if (isnan(converter.d)) {
+            return make_int32(0x7fc00000); // Canonical NaN hash
+        }
+        if (converter.d == 0.0) {
+            return make_int32(0); // Both +0.0 and -0.0 hash to 0
+        }
+        // Mix high and low 32 bits
+        uint32_t hash = (uint32_t)(converter.u ^ (converter.u >> 32));
+        return make_int32((int32_t)hash);
+    } else {
+        runtime_error(vm, "hash() can only be called on floats");
+    }
+}
 
 // Float method: toString([precision]) - Convert float to string representation
 value_t builtin_float_to_string(vm_t* vm, int arg_count, value_t* args) {

@@ -121,6 +121,74 @@ void test_object_edge_cases(void) {
     vm_release(result);
 }
 
+// Test Object.hash() method
+void test_object_hash_basic(void) {
+    // Test that objects have hash method and return int32
+    value_t result = test_execute_expression("{a: 1, b: 2}.hash()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    vm_release(result);
+}
+
+void test_object_hash_empty(void) {
+    // Test empty object hash
+    value_t result = test_execute_expression("{}.hash()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    vm_release(result);
+}
+
+void test_object_hash_consistency(void) {
+    // Test that same objects produce same hash
+    value_t result1 = test_execute_expression("{a: 1, b: 2}.hash()");
+    value_t result2 = test_execute_expression("{a: 1, b: 2}.hash()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
+    TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
+    TEST_ASSERT_EQUAL_INT32(result1.as.int32, result2.as.int32);
+    vm_release(result1);
+    vm_release(result2);
+}
+
+void test_object_hash_order_independent(void) {
+    // Test that key order doesn't affect hash
+    value_t result1 = test_execute_expression("{a: 1, b: 2}.hash()");
+    value_t result2 = test_execute_expression("{b: 2, a: 1}.hash()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
+    TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
+    TEST_ASSERT_EQUAL_INT32(result1.as.int32, result2.as.int32);
+    vm_release(result1);
+    vm_release(result2);
+}
+
+void test_object_hash_value_sensitive(void) {
+    // Test that different values produce different hashes
+    value_t result1 = test_execute_expression("{a: 1}.hash()");
+    value_t result2 = test_execute_expression("{a: 2}.hash()");
+    TEST_ASSERT_EQUAL(VAL_INT32, result1.type);
+    TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
+    TEST_ASSERT_NOT_EQUAL(result1.as.int32, result2.as.int32);
+    vm_release(result1);
+    vm_release(result2);
+}
+
+void test_object_method_hash_equality(void) {
+    // Test the exact pattern requested: {x: 5}.hash() == {x: 5}.hash()
+    value_t result = test_execute_expression("{x: 5}.hash() == {x: 5}.hash()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+    
+    // Test more complex objects
+    result = test_execute_expression("{a: 1, b: \"hello\", c: true}.hash() == {a: 1, b: \"hello\", c: true}.hash()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(1, result.as.boolean);
+    vm_release(result);
+    
+    // Test that different objects have different hashes
+    result = test_execute_expression("{x: 5}.hash() == {x: 6}.hash()");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_EQUAL_INT(0, result.as.boolean);
+    vm_release(result);
+}
+
 // Test Suite Runner
 void test_class_object_suite(void) {
     RUN_TEST(test_object_construction);
@@ -131,4 +199,10 @@ void test_class_object_suite(void) {
     RUN_TEST(test_object_mixed_types);
     RUN_TEST(test_object_nested);
     RUN_TEST(test_object_edge_cases);
+    RUN_TEST(test_object_hash_basic);
+    RUN_TEST(test_object_hash_empty);
+    RUN_TEST(test_object_hash_consistency);
+    RUN_TEST(test_object_hash_order_independent);
+    RUN_TEST(test_object_hash_value_sensitive);
+    RUN_TEST(test_object_method_hash_equality);
 }

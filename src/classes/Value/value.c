@@ -2,14 +2,20 @@
 #include "builtins.h"
 #include "dynamic_string.h"
 #include "dynamic_array.h"
+#include "dynamic_buffer.h"
+#include "dynamic_int.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <math.h>
 
 // Forward declarations for functions still in builtins.c
 value_t builtin_local_date_to_string(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_local_time_to_string(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_buffer_method_to_string(vm_t* vm, int arg_count, value_t* args);
+
+// Forward declaration for object hash method
+value_t builtin_object_hash(vm_t* vm, int arg_count, value_t* args);
 
 // builtin_type() - Get type name of any value
 value_t builtin_type(vm_t* vm, int arg_count, value_t* args) {
@@ -324,4 +330,193 @@ value_t builtin_value_to_string(vm_t* vm, int arg_count, value_t* args) {
         default:
             return make_string("unknown");
     }
+}
+
+// FNV-1a hash constants for 32-bit
+#define FNV_32_PRIME 0x01000193
+#define FNV_32_OFFSET_BASIS 0x811c9dc5
+
+// builtin_value_hash() - Universal hash function for all value types
+value_t builtin_value_hash(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "hash() takes exactly 1 argument (%d given)", arg_count);
+    }
+    
+    value_t value = args[0];
+    uint32_t hash;
+    
+    switch (value.type) {
+    case VAL_NULL:
+        hash = 0;
+        break;
+        
+    case VAL_UNDEFINED:
+        hash = 0x1000000; // Distinct from null
+        break;
+        
+    case VAL_BOOLEAN:
+        hash = value.as.boolean ? 1 : 0;
+        break;
+        
+    case VAL_INT32:
+        // For 32-bit integers, the value itself is the hash
+        hash = (uint32_t)value.as.int32;
+        break;
+        
+    case VAL_BIGINT: {
+        // Hash BigInt by hashing its string representation
+        char* str = di_to_string(value.as.bigint, 10);
+        hash = FNV_32_OFFSET_BASIS;
+        if (str) {
+            for (const char* p = str; *p; p++) {
+                hash ^= (uint8_t)*p;
+                hash *= FNV_32_PRIME;
+            }
+            free(str);
+        }
+        break;
+    }
+        
+    case VAL_FLOAT32: {
+        // Hash the bits of the float32
+        union { float f; uint32_t u; } converter;
+        converter.f = value.as.float32;
+        // Special handling for NaN and -0.0
+        if (isnan(converter.f)) {
+            hash = 0x7fc00000; // Canonical NaN hash
+        } else if (converter.f == 0.0f) {
+            hash = 0; // Both +0.0 and -0.0 hash to 0
+        } else {
+            hash = converter.u;
+        }
+        break;
+    }
+        
+    case VAL_FLOAT64: {
+        // Hash the bits of the float64
+        union { double d; uint64_t u; } converter;
+        converter.d = value.as.float64;
+        // Special handling for NaN and -0.0
+        if (isnan(converter.d)) {
+            hash = 0x7fc00000; // Canonical NaN hash
+        } else if (converter.d == 0.0) {
+            hash = 0; // Both +0.0 and -0.0 hash to 0
+        } else {
+            // Mix high and low 32 bits
+            hash = (uint32_t)(converter.u ^ (converter.u >> 32));
+        }
+        break;
+    }
+        
+    case VAL_STRING: {
+        // FNV-1a hash for strings
+        hash = FNV_32_OFFSET_BASIS;
+        if (value.as.string) {
+            for (const char* p = value.as.string; *p; p++) {
+                hash ^= (uint8_t)*p;
+                hash *= FNV_32_PRIME;
+            }
+        }
+        break;
+    }
+        
+    case VAL_ARRAY: {
+        // Combine hash codes of all elements
+        hash = FNV_32_OFFSET_BASIS;
+        size_t length = da_length(value.as.array);
+        
+        for (size_t i = 0; i < length; i++) {
+            value_t* element = (value_t*)da_get(value.as.array, i);
+            if (element) {
+                // Recursively hash each element
+                value_t element_hash_val = builtin_value_hash(vm, 1, element);
+                uint32_t element_hash = (uint32_t)element_hash_val.as.int32;
+                hash ^= element_hash;
+                hash *= FNV_32_PRIME;
+            }
+        }
+        
+        // Mix in the length
+        hash ^= (uint32_t)length;
+        hash *= FNV_32_PRIME;
+        break;
+    }
+        
+    case VAL_OBJECT: {
+        // Use the object's proper hash method
+        value_t obj_hash = builtin_object_hash(vm, 1, &value);
+        hash = (uint32_t)obj_hash.as.int32;
+        break;
+    }
+        
+    case VAL_RANGE: {
+        // Hash based on start, end, and exclusive flag
+        range_t* range = value.as.range;
+        hash = FNV_32_OFFSET_BASIS;
+        
+        // Hash start value
+        value_t start_hash_val = builtin_value_hash(vm, 1, &range->start);
+        hash ^= (uint32_t)start_hash_val.as.int32;
+        hash *= FNV_32_PRIME;
+        
+        // Hash end value
+        value_t end_hash_val = builtin_value_hash(vm, 1, &range->end);
+        hash ^= (uint32_t)end_hash_val.as.int32;
+        hash *= FNV_32_PRIME;
+        
+        // Hash exclusive flag
+        hash ^= range->exclusive ? 1 : 0;
+        hash *= FNV_32_PRIME;
+        
+        // Hash step if present
+        if (range->step.type != VAL_NULL) {
+            value_t step_hash_val = builtin_value_hash(vm, 1, &range->step);
+            hash ^= (uint32_t)step_hash_val.as.int32;
+            hash *= FNV_32_PRIME;
+        }
+        break;
+    }
+        
+    case VAL_BUFFER: {
+        // FNV-1a hash for buffer bytes
+        hash = FNV_32_OFFSET_BASIS;
+        if (value.as.buffer) {
+            size_t length = db_size(value.as.buffer);
+            // db_buffer is a char*, so we can use it directly
+            for (size_t i = 0; i < length; i++) {
+                hash ^= (uint8_t)value.as.buffer[i];
+                hash *= FNV_32_PRIME;
+            }
+        }
+        break;
+    }
+        
+    case VAL_CLASS:
+    case VAL_FUNCTION:
+    case VAL_CLOSURE:
+    case VAL_NATIVE:
+    case VAL_BOUND_METHOD:
+    case VAL_ITERATOR:
+    case VAL_STRING_BUILDER:
+    case VAL_BUFFER_BUILDER:
+    case VAL_BUFFER_READER:
+    case VAL_LOCAL_DATE:
+    case VAL_LOCAL_TIME:
+    case VAL_LOCAL_DATETIME:
+    case VAL_ZONE:
+    case VAL_DATE:
+    case VAL_INSTANT:
+    case VAL_DURATION:
+    case VAL_PERIOD:
+        // For these types, use pointer identity
+        hash = (uint32_t)(uintptr_t)&value;
+        break;
+        
+    default:
+        // Unknown type, use a default hash
+        hash = 0xDEADBEEF;
+        break;
+    }
+    
+    return make_int32((int32_t)hash);
 }

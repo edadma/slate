@@ -218,7 +218,7 @@ value_t make_object(do_object object) {
     value_t value;
     value.type = VAL_OBJECT;
     value.as.object = object;
-    value.class = global_value_class; // Objects inherit from Value
+    value.class = global_object_class; // Objects inherit from Object class
     value.debug = NULL;
     return value;
 }
