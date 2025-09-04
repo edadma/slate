@@ -123,8 +123,8 @@ value_t builtin_object_equals(vm_t* vm, int arg_count, value_t* args) {
     }
     
     // Get keys from both objects
-    char** keys1 = do_get_own_keys(receiver.as.object);
-    char** keys2 = do_get_own_keys(other.as.object);
+    const char** keys1 = do_get_own_keys(receiver.as.object);
+    const char** keys2 = do_get_own_keys(other.as.object);
     
     // Compare key counts
     size_t count1 = arrlen(keys1);
@@ -140,7 +140,7 @@ value_t builtin_object_equals(vm_t* vm, int arg_count, value_t* args) {
     for (size_t i = 0; i < count1 - 1; i++) {
         for (size_t j = 0; j < count1 - 1 - i; j++) {
             if (strcmp(keys1[j], keys1[j + 1]) > 0) {
-                char* temp = keys1[j];
+                const char* temp = keys1[j];
                 keys1[j] = keys1[j + 1];
                 keys1[j + 1] = temp;
             }
@@ -150,7 +150,7 @@ value_t builtin_object_equals(vm_t* vm, int arg_count, value_t* args) {
     for (size_t i = 0; i < count2 - 1; i++) {
         for (size_t j = 0; j < count2 - 1 - i; j++) {
             if (strcmp(keys2[j], keys2[j + 1]) > 0) {
-                char* temp = keys2[j];
+                const char* temp = keys2[j];
                 keys2[j] = keys2[j + 1];
                 keys2[j + 1] = temp;
             }

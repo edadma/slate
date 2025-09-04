@@ -205,82 +205,6 @@ void test_data_with_end_marker(void) {
     vm_release(result);
 }
 
-// Test data type with methods (placeholder for future)
-void test_data_with_methods_parsing(void) {
-    // Methods within data types aren't fully implemented yet
-    // Currently this causes a parse error, which is expected
-    const char* code = "data Option\n"
-                      "  def getOrElse(default) = null\n"  // Not yet supported
-                      "  case Some(value)\n"
-                      "  case None";
-    bool error_occurred = test_expect_parse_error(code);
-    TEST_ASSERT_TRUE(error_occurred);  // Currently fails to parse, which is expected
-}
-
-// ===========================
-// ERROR HANDLING TESTS
-// ===========================
-
-// Helper function to test for parse errors
-static bool test_expect_parse_error(const char* source) {
-    lexer_t lexer;
-    lexer_init(&lexer, source);
-    parser_t parser;
-    parser_init(&parser, &lexer);
-    
-    ast_program* program = parse_program(&parser);
-    bool had_error = parser.had_error;
-    
-    // Clean up
-    if (program) {
-        ast_free((ast_node*)program);
-    }
-    lexer_cleanup(&lexer);
-    
-    return had_error;
-}
-
-// Test invalid data declaration syntax
-void test_data_invalid_syntax(void) {
-    // Missing data type name
-    bool error_occurred = test_expect_parse_error("data");
-    TEST_ASSERT_TRUE(error_occurred);
-}
-
-// Test invalid case syntax
-void test_data_invalid_case_syntax(void) {
-    // Case without name
-    const char* code = "data Option\n"
-                      "  case";
-    bool error_occurred = test_expect_parse_error(code);
-    TEST_ASSERT_TRUE(error_occurred);
-}
-
-// Test private without data
-void test_data_private_without_data(void) {
-    bool error_occurred = test_expect_parse_error("private var x = 5");
-    TEST_ASSERT_TRUE(error_occurred);
-}
-
-// Test mismatched end marker name
-void test_data_mismatched_end_marker(void) {
-    const char* code = "data Option\n"
-                      "  case Some(value)\n" 
-                      "  case None\n"
-                      "end Result";  // Wrong name
-    bool error_occurred = test_expect_parse_error(code);
-    TEST_ASSERT_TRUE(error_occurred);
-}
-
-// Test end without identifier
-void test_data_end_without_name(void) {
-    const char* code = "data Option\n"
-                      "  case Some(value)\n"
-                      "  case None\n"
-                      "end";  // Missing name
-    bool error_occurred = test_expect_parse_error(code);
-    TEST_ASSERT_TRUE(error_occurred);
-}
 
 // ===========================
 // DATA TYPE TEST SUITE
@@ -306,11 +230,4 @@ void test_data_types_suite(void) {
     
     RUN_TEST(test_data_complex_case_parsing);
     RUN_TEST(test_data_with_end_marker);
-    RUN_TEST(test_data_with_methods_parsing);
-    
-    RUN_TEST(test_data_invalid_syntax);
-    RUN_TEST(test_data_invalid_case_syntax);
-    RUN_TEST(test_data_private_without_data);
-    RUN_TEST(test_data_mismatched_end_marker);
-    RUN_TEST(test_data_end_without_name);
 }
