@@ -274,7 +274,7 @@ void buffer_reader_class_init(vm_t* vm) {
     do_set(buffer_reader_proto, "remaining", &remaining_method, sizeof(value_t));
 
     // Create the BufferReader class
-    value_t buffer_reader_class = make_class("BufferReader", buffer_reader_proto);
+    value_t buffer_reader_class = make_class("BufferReader", buffer_reader_proto, NULL);
     
     // Set the factory function to allow BufferReader(buffer)
     buffer_reader_class.as.class->factory = buffer_reader_factory;

@@ -39,21 +39,22 @@ void init_instant_class(vm_t* vm) {
     value_t to_string_method = make_native(instant_to_string);
     do_set(instant_proto, "toString", &to_string_method, sizeof(value_t));
     
+    // Create static methods object
+    do_object instant_static = do_create(NULL);
+    value_t now_method = make_native(instant_now);
+    do_set(instant_static, "now", &now_method, sizeof(value_t));
+    
+    value_t of_epoch_second_method = make_native(instant_of_epoch_second);
+    do_set(instant_static, "ofEpochSecond", &of_epoch_second_method, sizeof(value_t));
+    
+    value_t parse_method = make_native(instant_parse);
+    do_set(instant_static, "parse", &parse_method, sizeof(value_t));
+    
     // Create the Instant class
-    value_t instant_class = make_class("Instant", instant_proto);
+    value_t instant_class = make_class("Instant", instant_proto, instant_static);
     
     // Set the factory function to allow Instant constructor calls
     instant_class.as.class->factory = instant_factory;
-    
-    // Add static methods to the Instant class
-    value_t now_method = make_native(instant_now);
-    do_set(instant_class.as.class->properties, "now", &now_method, sizeof(value_t));
-    
-    value_t of_epoch_second_method = make_native(instant_of_epoch_second);
-    do_set(instant_class.as.class->properties, "ofEpochSecond", &of_epoch_second_method, sizeof(value_t));
-    
-    value_t parse_method = make_native(instant_parse);
-    do_set(instant_class.as.class->properties, "parse", &parse_method, sizeof(value_t));
     
     // Store in globals
     do_set(vm->globals, "Instant", &instant_class, sizeof(value_t));

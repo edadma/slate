@@ -30,21 +30,22 @@ void init_zone_class(vm_t* vm) {
     value_t to_string_method = make_native(zone_to_string);
     do_set(zone_proto, "toString", &to_string_method, sizeof(value_t));
     
+    // Create static methods object
+    do_object zone_static = do_create(NULL);
+    value_t utc_method = make_native(zone_utc);
+    do_set(zone_static, "utc", &utc_method, sizeof(value_t));
+    
+    value_t system_method = make_native(zone_system);
+    do_set(zone_static, "system", &system_method, sizeof(value_t));
+    
+    value_t of_method = make_native(zone_of);
+    do_set(zone_static, "of", &of_method, sizeof(value_t));
+    
     // Create the Zone class
-    value_t zone_class = make_class("Zone", zone_proto);
+    value_t zone_class = make_class("Zone", zone_proto, zone_static);
     
     // Set the factory function to allow Zone constructor calls
     zone_class.as.class->factory = zone_factory;
-    
-    // Add static methods to the Zone class
-    value_t utc_method = make_native(zone_utc);
-    do_set(zone_class.as.class->properties, "utc", &utc_method, sizeof(value_t));
-    
-    value_t system_method = make_native(zone_system);
-    do_set(zone_class.as.class->properties, "system", &system_method, sizeof(value_t));
-    
-    value_t of_method = make_native(zone_of);
-    do_set(zone_class.as.class->properties, "of", &of_method, sizeof(value_t));
     
     // Store in globals
     do_set(vm->globals, "Zone", &zone_class, sizeof(value_t));

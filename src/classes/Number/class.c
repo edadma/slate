@@ -28,7 +28,7 @@ void number_class_init(vm_t* vm) {
     do_set(number_proto, "equals", &equals_method, sizeof(value_t));
     
     // Create the Number class
-    value_t number_class = make_class("Number", number_proto);
+    value_t number_class = make_class("Number", number_proto, NULL);
     
     // Number class has no factory - it's abstract
     number_class.as.class->factory = NULL;

@@ -33,7 +33,7 @@ void iterator_class_init(vm_t* vm) {
     do_set(iterator_proto, "equals", &iterator_equals_method, sizeof(value_t));
 
     // Create the Iterator class
-    value_t iterator_class = make_class("Iterator", iterator_proto);
+    value_t iterator_class = make_class("Iterator", iterator_proto, NULL);
 
     // Store in globals
     do_set(vm->globals, "Iterator", &iterator_class, sizeof(value_t));

@@ -428,7 +428,7 @@ void local_time_class_init(vm_t* vm) {
     do_set(local_time_proto, "toString", &time_to_string_method, sizeof(value_t));
 
     // Create the LocalTime class
-    value_t local_time_class = make_class("LocalTime", local_time_proto);
+    value_t local_time_class = make_class("LocalTime", local_time_proto, NULL);
     
     // Set the factory function to allow LocalTime(hour, minute, second, [millis])
     local_time_class.as.class->factory = local_time_factory;

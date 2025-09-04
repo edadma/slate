@@ -149,7 +149,8 @@ struct bound_method {
 struct class {
     size_t ref_count; // Reference count for memory management
     char* name; // Class name (owned string)
-    do_object properties; // Hash table of property name -> value_t
+    do_object instance_properties; // Hash table of instance methods/prototype properties
+    do_object static_properties; // Hash table of static methods/class properties
     value_t (*factory)(vm_t* vm, int arg_count,
                        value_t* args); // Factory function for creating instances (NULL if not callable)
 };
@@ -244,7 +245,7 @@ value_t make_string_ds(ds_string string);
 value_t make_string_builder(ds_builder builder);
 value_t make_array(da_array array);
 value_t make_object(do_object object);
-value_t make_class(const char* name, do_object properties);
+value_t make_class(const char* name, do_object instance_properties, do_object static_properties);
 value_t make_range(value_t start, value_t end, int exclusive, value_t step);
 value_t make_iterator(iterator_t* iterator);
 value_t make_function(struct function* function);
@@ -276,7 +277,7 @@ value_t make_string_ds_with_debug(ds_string string, debug_location* debug);
 value_t make_string_builder_with_debug(ds_builder builder, debug_location* debug);
 value_t make_array_with_debug(da_array array, debug_location* debug);
 value_t make_object_with_debug(do_object object, debug_location* debug);
-value_t make_class_with_debug(const char* name, do_object properties, debug_location* debug);
+value_t make_class_with_debug(const char* name, do_object instance_properties, do_object static_properties, debug_location* debug);
 value_t make_range_with_debug(value_t start, value_t end, int exclusive, value_t step, debug_location* debug);
 value_t make_iterator_with_debug(iterator_t* iterator, debug_location* debug);
 value_t make_function_with_debug(struct function* function, debug_location* debug);

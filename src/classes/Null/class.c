@@ -21,7 +21,7 @@ void initialize_null_class(vm_t* vm) {
     do_set(null_proto, "toString", &null_to_string_method, sizeof(value_t));
 
     // Create the Null class
-    value_t null_class = make_class("Null", null_proto);
+    value_t null_class = make_class("Null", null_proto, NULL);
 
     // Store in globals
     do_set(vm->globals, "Null", &null_class, sizeof(value_t));

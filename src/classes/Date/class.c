@@ -62,27 +62,28 @@ void init_date_class(vm_t* vm) {
     value_t to_string_method = make_native(date_to_string_method);
     do_set(date_proto, "toString", &to_string_method, sizeof(value_t));
     
+    // Create static methods object
+    do_object date_static = do_create(NULL);
+    value_t now_method = make_native(date_now_factory);
+    do_set(date_static, "now", &now_method, sizeof(value_t));
+    
+    value_t now_in_zone_method = make_native(date_now_in_zone_factory);
+    do_set(date_static, "nowInZone", &now_in_zone_method, sizeof(value_t));
+    
+    value_t of_method = make_native(date_of_factory);
+    do_set(date_static, "of", &of_method, sizeof(value_t));
+    
+    value_t from_instant_method = make_native(date_from_instant_factory);
+    do_set(date_static, "fromInstant", &from_instant_method, sizeof(value_t));
+    
+    value_t parse_method = make_native(date_parse);
+    do_set(date_static, "parse", &parse_method, sizeof(value_t));
+    
     // Create the Date class
-    value_t date_class = make_class("Date", date_proto);
+    value_t date_class = make_class("Date", date_proto, date_static);
     
     // Set the factory function to allow Date constructor calls
     date_class.as.class->factory = date_factory;
-    
-    // Add static methods to the Date class
-    value_t now_method = make_native(date_now_factory);
-    do_set(date_class.as.class->properties, "now", &now_method, sizeof(value_t));
-    
-    value_t now_in_zone_method = make_native(date_now_in_zone_factory);
-    do_set(date_class.as.class->properties, "nowInZone", &now_in_zone_method, sizeof(value_t));
-    
-    value_t of_method = make_native(date_of_factory);
-    do_set(date_class.as.class->properties, "of", &of_method, sizeof(value_t));
-    
-    value_t from_instant_method = make_native(date_from_instant_factory);
-    do_set(date_class.as.class->properties, "fromInstant", &from_instant_method, sizeof(value_t));
-    
-    value_t parse_method = make_native(date_parse);
-    do_set(date_class.as.class->properties, "parse", &parse_method, sizeof(value_t));
     
     // Store in globals
     do_set(vm->globals, "Date", &date_class, sizeof(value_t));

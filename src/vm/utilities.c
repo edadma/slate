@@ -168,18 +168,16 @@ int call_equals_method(vm_t* vm, value_t a, value_t b) {
     
     while (current_class && current_class->type == VAL_CLASS) {
         class_t* cls = current_class->as.class;
-        if (cls && cls->properties) {
-            value_t* equals_method = (value_t*)do_get(cls->properties, "equals");
-            if (equals_method && equals_method->type == VAL_NATIVE) {
-                value_t args[2] = { a, b };
-                native_t native_func = (native_t)equals_method->as.native;
-                value_t result = native_func(vm, 2, args);
-                
-                if (result.type == VAL_BOOLEAN) {
-                    return result.as.boolean;
-                }
-                return 0; // Default to false if method doesn't return boolean
+        value_t* equals_method = lookup_instance_property(cls, "equals");
+        if (equals_method && equals_method->type == VAL_NATIVE) {
+            value_t args[2] = { a, b };
+            native_t native_func = (native_t)equals_method->as.native;
+            value_t result = native_func(vm, 2, args);
+            
+            if (result.type == VAL_BOOLEAN) {
+                return result.as.boolean;
             }
+            return 0; // Default to false if method doesn't return boolean
         }
         // Move to parent class if any
         current_class = current_class->class;
@@ -496,4 +494,22 @@ int value_to_int(value_t value) {
         runtime_error(g_current_vm, "Cannot convert %s to integer", value_type_name(value.type));
         return 0; // Never reached, but keeps compiler happy
     }
+}
+
+// Property lookup functions
+
+// Lookup a static property (method called on class object)
+value_t* lookup_static_property(class_t* cls, const char* prop_name) {
+    if (!cls || !cls->static_properties || !prop_name) {
+        return NULL;
+    }
+    return (value_t*)do_get(cls->static_properties, prop_name);
+}
+
+// Lookup an instance property (method called on class instance)
+value_t* lookup_instance_property(class_t* cls, const char* prop_name) {
+    if (!cls || !cls->instance_properties || !prop_name) {
+        return NULL;
+    }
+    return (value_t*)do_get(cls->instance_properties, prop_name);
 }

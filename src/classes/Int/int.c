@@ -1252,7 +1252,7 @@ void int_class_init(vm_t* vm) {
     do_set(int_proto, "radians", &int_radians_method, sizeof(value_t));
     
     // Create the Int class
-    value_t int_class = make_class("Int", int_proto);
+    value_t int_class = make_class("Int", int_proto, NULL);
     
     // Set the factory function to allow Int(string, base?)
     int_class.as.class->factory = int_factory;

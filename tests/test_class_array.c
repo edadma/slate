@@ -175,18 +175,18 @@ void test_array_constructor_method_chaining(void) {
 // ARRAY FILL METHOD TESTS
 // ===========================
 
-// Test Array fill method exists
+// Test Array fill static method exists
 void test_array_fill_method_exists(void) {
-    // Test that fill method exists on arrays and returns a bound method
-    value_t result = run_code("Array().fill");
-    TEST_ASSERT_EQUAL(VAL_BOUND_METHOD, result.type);
+    // Test that fill static method exists on Array class and returns a native function
+    value_t result = run_code("Array.fill");
+    TEST_ASSERT_EQUAL(VAL_NATIVE, result.type);
     vm_release(result);
 }
 
-// Test Array fill method with zero size and null function
+// Test Array fill static method with zero size and null function
 void test_array_fill_zero_size(void) {
     // Test zero size - should create empty array regardless of function validity
-    value_t result = run_code("Array().fill(0, null)");
+    value_t result = run_code("Array.fill(0, null)");
     TEST_ASSERT_EQUAL(VAL_ARRAY, result.type);
     TEST_ASSERT_EQUAL(0, da_length(result.as.array));
     vm_release(result);

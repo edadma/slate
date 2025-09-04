@@ -54,8 +54,12 @@ vm_result op_call_method(vm_t* vm) {
         return VM_OK;
     }
 
-    // If method is not callable
-    slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Method is not callable");
+    // If method is not callable, provide better error message
+    if (method.type == VAL_UNDEFINED) {
+        slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Property does not exist (undefined is not callable)");
+    } else {
+        slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Value is not callable (type: %s)", value_type_name(method.type));
+    }
     if (args) {
         for (int i = 0; i < arg_count; i++) {
             vm_release(args[i]);

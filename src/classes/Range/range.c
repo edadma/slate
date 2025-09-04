@@ -52,7 +52,7 @@ void range_class_init(vm_t* vm) {
     do_set(range_proto, "equals", &range_equals_method, sizeof(value_t));
 
     // Create the Range class
-    value_t range_class = make_class("Range", range_proto);
+    value_t range_class = make_class("Range", range_proto, NULL);
 
     // Store in globals
     do_set(vm->globals, "Range", &range_class, sizeof(value_t));

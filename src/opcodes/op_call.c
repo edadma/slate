@@ -232,7 +232,12 @@ vm_result op_call(vm_t* vm) {
         // If no factory, fall through to error
     }
 
-    slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Value is not callable");
+    // Provide better error message based on the type
+    if (callable.type == VAL_UNDEFINED) {
+        slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Cannot call undefined (property does not exist)");
+    } else {
+        slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Value is not callable (type: %s)", value_type_name(callable.type));
+    }
     if (args) {
         for (int i = 0; i < arg_count; i++) {
             vm_release(args[i]);

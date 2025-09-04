@@ -113,7 +113,7 @@ void builtins_init(vm_t* vm) {
     do_set(string_proto, "nonEmpty", &string_non_empty_method, sizeof(value_t));
 
     // Create the String class
-    value_t string_class = make_class("String", string_proto);
+    value_t string_class = make_class("String", string_proto, NULL);
 
     // Set the factory function to allow String(codepoint) or String([codepoints])
     string_class.as.class->factory = string_factory;
@@ -152,7 +152,7 @@ void builtins_init(vm_t* vm) {
     do_set(boolean_proto, "xor", &boolean_xor_method, sizeof(value_t));
 
     // Create the Boolean class
-    value_t boolean_class = make_class("Boolean", boolean_proto);
+    value_t boolean_class = make_class("Boolean", boolean_proto, NULL);
 
     // Set the factory function to allow Boolean() or Boolean(value)
     boolean_class.as.class->factory = boolean_factory;
@@ -254,7 +254,7 @@ void builtins_init(vm_t* vm) {
     // Value prototype has toString and equals - numeric methods inherited from Number
 
     // Create the Value class
-    value_t value_class = make_class("Value", value_proto);
+    value_t value_class = make_class("Value", value_proto, NULL);
 
     // Value class has no factory (factory = NULL) - cannot be instantiated directly
     value_class.as.class->factory = NULL;

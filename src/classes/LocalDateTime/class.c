@@ -84,15 +84,16 @@ void local_datetime_class_init(vm_t* vm) {
     value_t to_string_method = make_native(builtin_local_datetime_to_string);
     do_set(local_datetime_proto, "toString", &to_string_method, sizeof(value_t));
     
+    // Create static methods object
+    do_object local_datetime_static = do_create(NULL);
+    value_t now_method = make_native(builtin_local_datetime_now);
+    do_set(local_datetime_static, "now", &now_method, sizeof(value_t));
+    
     // Create the LocalDateTime class
-    value_t local_datetime_class = make_class("LocalDateTime", local_datetime_proto);
+    value_t local_datetime_class = make_class("LocalDateTime", local_datetime_proto, local_datetime_static);
     
     // Set the factory function to allow LocalDateTime constructor calls
     local_datetime_class.as.class->factory = local_datetime_factory;
-    
-    // Add static methods to the LocalDateTime class
-    value_t now_method = make_native(builtin_local_datetime_now);
-    do_set(local_datetime_class.as.class->properties, "now", &now_method, sizeof(value_t));
     
     // Store in globals
     do_set(vm->globals, "LocalDateTime", &local_datetime_class, sizeof(value_t));

@@ -14,16 +14,14 @@ vm_result op_get_property(vm_t* vm) {
     // For classes, check static properties first (e.g., Buffer.fromHex)
     if (object.type == VAL_CLASS) {
         class_t* cls = object.as.class;
-        if (cls && cls->properties) {
-            value_t* prop_value = (value_t*)do_get(cls->properties, prop_name);
-            if (prop_value) {
-                vm_push(vm, *prop_value);
-                vm_release(object);
-                vm_release(property);
-                return VM_OK;
-            }
+        value_t* prop_value = lookup_static_property(cls, prop_name);
+        if (prop_value) {
+            vm_push(vm, *prop_value);
+            vm_release(object);
+            vm_release(property);
+            return VM_OK;
         }
-        // If not found in class properties, push undefined
+        // If not found in static properties, push undefined
         vm_push(vm, make_undefined());
         vm_release(object);
         vm_release(property);
@@ -47,21 +45,19 @@ vm_result op_get_property(vm_t* vm) {
     
     
     while (current_class && current_class->type == VAL_CLASS && !property_found) {
-        // Get the class's prototype properties
+        // Get the class's instance properties (prototype chain)
         class_t* cls = current_class->as.class;
-        if (cls && cls->properties) {
-            value_t* prop_value = (value_t*)do_get(cls->properties, prop_name);
-            if (prop_value) {
-                // If it's a native function, create a bound method
-                if (prop_value->type == VAL_NATIVE) {
-                    vm_push(vm, make_bound_method(object, prop_value->as.native));
-                    property_found = true;
-                } else {
-                    vm_push(vm, *prop_value);
-                    property_found = true;
-                }
-                break;
+        value_t* prop_value = lookup_instance_property(cls, prop_name);
+        if (prop_value) {
+            // If it's a native function, create a bound method
+            if (prop_value->type == VAL_NATIVE) {
+                vm_push(vm, make_bound_method(object, prop_value->as.native));
+                property_found = true;
+            } else {
+                vm_push(vm, *prop_value);
+                property_found = true;
             }
+            break;
         }
         // Move to parent class if any
         current_class = current_class->class;

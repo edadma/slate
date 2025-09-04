@@ -30,7 +30,7 @@ void initialize_object_class(vm_t* vm) {
     do_set(object_proto, "has", &object_has_method, sizeof(value_t));
 
     // Create the Object class
-    value_t object_class = make_class("Object", object_proto);
+    value_t object_class = make_class("Object", object_proto, NULL);
 
     // Store in globals
     do_set(vm->globals, "Object", &object_class, sizeof(value_t));

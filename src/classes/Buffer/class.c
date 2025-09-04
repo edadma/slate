@@ -35,15 +35,16 @@ void buffer_class_init(vm_t* vm) {
     value_t buffer_reader_method = make_native(builtin_buffer_method_reader);
     do_set(buffer_proto, "reader", &buffer_reader_method, sizeof(value_t));
 
+    // Create static methods object
+    do_object buffer_static = do_create(NULL);
+    value_t from_hex_method = make_native(builtin_buffer_from_hex);
+    do_set(buffer_static, "fromHex", &from_hex_method, sizeof(value_t));
+    
     // Create the Buffer class
-    value_t buffer_class = make_class("Buffer", buffer_proto);
+    value_t buffer_class = make_class("Buffer", buffer_proto, buffer_static);
 
     // Set the factory function 
     buffer_class.as.class->factory = buffer_factory;
-
-    // Add static methods to the Buffer class
-    value_t from_hex_method = make_native(builtin_buffer_from_hex);
-    do_set(buffer_class.as.class->properties, "fromHex", &from_hex_method, sizeof(value_t));
 
     // Store in globals
     do_set(vm->globals, "Buffer", &buffer_class, sizeof(value_t));

@@ -52,10 +52,8 @@ vm_result op_in(vm_t* vm) {
     // Also check the prototype chain via class if object has one
     if (!found && object.class && object.class->type == VAL_CLASS) {
         class_t* cls = object.class->as.class;
-        if (cls && cls->properties) {
-            value_t* prop_value = (value_t*)do_get(cls->properties, prop_name);
-            found = (prop_value != NULL);
-        }
+        value_t* prop_value = lookup_instance_property(cls, prop_name);
+        found = (prop_value != NULL);
     }
 
     vm_push(vm, make_boolean_with_debug(found, property.debug));

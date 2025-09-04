@@ -223,7 +223,7 @@ value_t make_object(do_object object) {
     return value;
 }
 
-value_t make_class(const char* name, do_object properties) {
+value_t make_class(const char* name, do_object instance_properties, do_object static_properties) {
     class_t* cls = malloc(sizeof(class_t));
     if (!cls) {
         return make_null(); // Return null on allocation failure
@@ -231,7 +231,8 @@ value_t make_class(const char* name, do_object properties) {
 
     cls->ref_count = 1;
     cls->name = strdup(name ? name : "Class"); // Duplicate the name string
-    cls->properties = properties ? do_retain(properties) : do_create(NULL); // Retain or create empty
+    cls->instance_properties = instance_properties ? do_retain(instance_properties) : do_create(NULL); // Retain or create empty
+    cls->static_properties = static_properties ? do_retain(static_properties) : do_create(NULL); // Retain or create empty
     cls->factory = NULL; // Default: class cannot be instantiated by calling it
 
     value_t value;
@@ -499,8 +500,8 @@ value_t make_object_with_debug(do_object object, debug_location* debug) {
     return value;
 }
 
-value_t make_class_with_debug(const char* name, do_object properties, debug_location* debug) {
-    value_t value = make_class(name, properties);
+value_t make_class_with_debug(const char* name, do_object instance_properties, do_object static_properties, debug_location* debug) {
+    value_t value = make_class(name, instance_properties, static_properties);
     value.debug = copy_debug_location(debug);
     return value;
 }
@@ -620,8 +621,10 @@ void class_release(class_t* class) {
         class->ref_count--;
         if (class->ref_count <= 0) {
             free(class->name); // Free the strdup'd name
-            do_object temp_props = class->properties;
-            do_release(&temp_props);
+            do_object temp_instance_props = class->instance_properties;
+            do_release(&temp_instance_props);
+            do_object temp_static_props = class->static_properties;
+            do_release(&temp_static_props);
             free(class);
         }
     }

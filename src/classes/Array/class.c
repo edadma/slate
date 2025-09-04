@@ -79,9 +79,6 @@ void array_class_init(vm_t* vm) {
     value_t array_reverse_method = make_native(builtin_array_reverse);
     do_set(array_proto, "reverse", &array_reverse_method, sizeof(value_t));
 
-    value_t array_fill_method = make_native(builtin_array_fill);
-    do_set(array_proto, "fill", &array_fill_method, sizeof(value_t));
-
     // Functional programming methods
     value_t array_map_method = make_native(builtin_array_map);
     do_set(array_proto, "map", &array_map_method, sizeof(value_t));
@@ -99,8 +96,13 @@ void array_class_init(vm_t* vm) {
     value_t array_equals_method = make_native(builtin_array_equals);
     do_set(array_proto, "equals", &array_equals_method, sizeof(value_t));
 
+    // Create static methods object
+    do_object array_static = do_create(NULL);
+    value_t array_fill_method = make_native(builtin_array_fill);
+    do_set(array_static, "fill", &array_fill_method, sizeof(value_t));
+
     // Create the Array class
-    value_t array_class = make_class("Array", array_proto);
+    value_t array_class = make_class("Array", array_proto, array_static);
     
     // Set the factory function to allow Array() constructor
     array_class.as.class->factory = array_factory;

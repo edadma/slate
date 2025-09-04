@@ -35,7 +35,7 @@ void string_builder_class_init(vm_t* vm) {
     do_set(string_builder_proto, "equals", &sb_equals_method, sizeof(value_t));
 
     // Create the StringBuilder class
-    value_t string_builder_class = make_class("StringBuilder", string_builder_proto);
+    value_t string_builder_class = make_class("StringBuilder", string_builder_proto, NULL);
 
     // Set the factory function
     string_builder_class.as.class->factory = string_builder_factory;

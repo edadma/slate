@@ -83,7 +83,7 @@ void float_class_init(vm_t* vm) {
     do_set(float_proto, "radians", &float_radians_method, sizeof(value_t));
     
     // Create the Float class
-    value_t float_class = make_class("Float", float_proto);
+    value_t float_class = make_class("Float", float_proto, NULL);
     
     // Set the factory function to allow Float(value)
     float_class.as.class->factory = float_factory;

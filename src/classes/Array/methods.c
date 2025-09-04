@@ -373,20 +373,15 @@ value_t builtin_array_reverse(vm_t* vm, int arg_count, value_t* args) {
     return vm_retain(receiver);
 }
 
-// Array method: fill(n, f)
+// Array static method: fill(n, f)
 // Creates an array of length n, calling function f to generate each element
 value_t builtin_array_fill(vm_t* vm, int arg_count, value_t* args) {
-    if (arg_count != 3) { // receiver + 2 args
-        runtime_error(vm, "fill() takes exactly 2 arguments (%d given)", arg_count - 1);
+    if (arg_count != 2) { // n, f args (no receiver for static method)
+        runtime_error(vm, "Array.fill() takes exactly 2 arguments (%d given)", arg_count);
     }
     
-    value_t receiver = args[0];
-    value_t n_val = args[1];
-    value_t f_val = args[2];
-    
-    if (receiver.type != VAL_ARRAY) {
-        runtime_error(vm, "fill() can only be called on arrays");
-    }
+    value_t n_val = args[0];
+    value_t f_val = args[1];
     
     if (n_val.type != VAL_INT32) {
         runtime_error(vm, "fill() first argument must be an int32");

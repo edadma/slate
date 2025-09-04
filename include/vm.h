@@ -337,6 +337,10 @@ int is_number(value_t value); // Check if value is numeric (int32, bigint, or nu
 int compare_numbers(value_t a, value_t b); // Compare two numbers: -1 if a < b, 0 if a == b, 1 if a > b
 int call_equals_method(vm_t* vm, value_t a, value_t b); // Call .equals() method using proper method dispatch
 void print_value(vm_t* vm, value_t value);
+
+// Property lookup functions
+value_t* lookup_static_property(class_t* cls, const char* prop_name);
+value_t* lookup_instance_property(class_t* cls, const char* prop_name);
 void print_for_builtin(vm_t* vm, value_t value);
 float value_to_float32(value_t value); // Convert numeric values to float32
 double value_to_float64(value_t value); // Convert numeric values to float64
