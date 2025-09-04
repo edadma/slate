@@ -1427,6 +1427,58 @@ DI_DEF bool di_to_int64(di_int big, int64_t* result) {
     return true;
 }
 
+DI_DEF bool di_to_uint32(di_int big, uint32_t* result) {
+    if (!big || !result) return false;
+    
+    if (big->limb_count == 0) {
+        *result = 0;
+        return true;
+    }
+    
+    // Negative numbers cannot be converted to unsigned
+    if (big->is_negative) return false;
+    
+    // Check if value fits in uint32
+    if (big->limb_count > 1) {
+        // If more than 1 limb, check if the value exceeds uint32 max
+        if (big->limb_count > 2) return false;
+        uint64_t val = big->limbs[0] | ((uint64_t)big->limbs[1] << DI_LIMB_BITS);
+        if (val > UINT32_MAX) return false;
+        *result = (uint32_t)val;
+    } else {
+        // Single limb case
+        if (sizeof(di_limb_t) > sizeof(uint32_t) && big->limbs[0] > UINT32_MAX) {
+            return false;
+        }
+        *result = (uint32_t)big->limbs[0];
+    }
+    
+    return true;
+}
+
+DI_DEF bool di_to_uint64(di_int big, uint64_t* result) {
+    if (!big || !result) return false;
+    
+    if (big->limb_count == 0) {
+        *result = 0;
+        return true;
+    }
+    
+    // Negative numbers cannot be converted to unsigned
+    if (big->is_negative) return false;
+    
+    // Check if value fits in uint64
+    if (big->limb_count > 2) return false;
+    
+    uint64_t val = big->limbs[0];
+    if (big->limb_count == 2) {
+        val |= ((uint64_t)big->limbs[1] << DI_LIMB_BITS);
+    }
+    
+    *result = val;
+    return true;
+}
+
 DI_DEF double di_to_double(di_int big) {
     if (!big || big->limb_count == 0) return 0.0;
     

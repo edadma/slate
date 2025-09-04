@@ -330,7 +330,7 @@ value_t make_buffer_builder(db_builder builder) {
     value_t value;
     value.type = VAL_BUFFER_BUILDER;
     value.as.builder = builder;
-    value.class = global_value_class;
+    value.class = global_buffer_builder_class;
     value.debug = NULL;
     return value;
 }

@@ -218,6 +218,7 @@ extern value_t* global_range_class;
 extern value_t* global_iterator_class;
 extern value_t* global_string_builder_class;
 extern value_t* global_buffer_class;
+extern value_t* global_buffer_builder_class;
 extern value_t* global_local_date_class;
 extern value_t* global_local_time_class;
 extern value_t* global_local_datetime_class;

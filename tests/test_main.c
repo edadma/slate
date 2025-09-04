@@ -10,6 +10,7 @@ void test_for_loops_suite(void);
 void test_infinite_loops_suite(void);
 void test_builtins_suite(void);
 void test_buffer_class_suite(void);
+void test_buffer_builder_class_suite(void);
 void test_class_array_suite(void);
 void test_class_range_suite(void);
 void test_stepped_ranges_suite(void);
@@ -56,6 +57,7 @@ int main(void) {
     test_infinite_loops_suite();
     test_builtins_suite();
     test_buffer_class_suite();
+    test_buffer_builder_class_suite();
     test_class_array_suite();
     test_class_range_suite();
     test_stepped_ranges_suite();

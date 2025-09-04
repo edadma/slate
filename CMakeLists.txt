@@ -118,7 +118,9 @@ add_executable(slate
         src/classes/Buffer/methods.c
         src/classes/Buffer/factory.c
         src/classes/Buffer/class.c
-        src/classes/BufferBuilder/buffer_builder.c
+        src/classes/BufferBuilder/factory.c
+        src/classes/BufferBuilder/methods.c
+        src/classes/BufferBuilder/class.c
         src/classes/BufferReader/buffer_reader.c
         src/classes/Range/range.c
         src/classes/Iterator/iterator.c
@@ -256,6 +258,7 @@ if (BUILD_TESTS)
             tests/test_infinite_loops.c
             tests/test_builtins.c
             tests/test_buffer_class.c
+            tests/test_buffer_builder_class.c
             tests/test_class_array.c
             tests/test_class_range.c
             tests/test_stepped_ranges.c
@@ -330,7 +333,9 @@ if (BUILD_TESTS)
             src/classes/Buffer/methods.c
             src/classes/Buffer/factory.c
             src/classes/Buffer/class.c
-            src/classes/BufferBuilder/buffer_builder.c
+            src/classes/BufferBuilder/factory.c
+        src/classes/BufferBuilder/methods.c
+        src/classes/BufferBuilder/class.c
             src/classes/BufferReader/buffer_reader.c
             src/classes/Range/range.c
             src/classes/Iterator/iterator.c

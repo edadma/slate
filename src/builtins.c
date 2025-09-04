@@ -197,6 +197,9 @@ void builtins_init(vm_t* vm) {
     // Initialize BufferReader class
     buffer_reader_class_init(vm);
 
+    // Initialize BufferBuilder class
+    buffer_builder_class_init(vm);
+
     // Initialize Null class
     initialize_null_class(vm);
     
