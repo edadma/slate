@@ -107,7 +107,6 @@ add_executable(slate
         src/line_editor.c
         src/datetime.c
         src/timezone.c
-        src/date.c
         src/classes/String/factory.c
         src/classes/String/methods.c
         src/classes/Boolean/factory.c
@@ -130,7 +129,9 @@ add_executable(slate
         src/classes/Float/class.c
         src/classes/Float/factory.c
         src/classes/Float/methods.c
-        src/classes/LocalDate/local_date.c
+        src/classes/LocalDate/factory.c
+        src/classes/LocalDate/methods.c
+        src/classes/LocalDate/class.c
         src/classes/LocalTime/local_time.c
         src/classes/LocalDateTime/factory.c
         src/classes/LocalDateTime/methods.c
@@ -318,8 +319,7 @@ if (BUILD_TESTS)
             src/module.c
             src/datetime.c
             src/timezone.c
-            src/date.c
-            src/classes/String/factory.c
+                src/classes/String/factory.c
             src/classes/String/methods.c
             src/classes/Boolean/factory.c
             src/classes/Boolean/methods.c
@@ -341,7 +341,9 @@ if (BUILD_TESTS)
             src/classes/Float/class.c
             src/classes/Float/factory.c
             src/classes/Float/methods.c
-        src/classes/LocalDate/local_date.c
+        src/classes/LocalDate/factory.c
+        src/classes/LocalDate/methods.c
+        src/classes/LocalDate/class.c
         src/classes/LocalTime/local_time.c
         src/classes/LocalDateTime/factory.c
         src/classes/LocalDateTime/methods.c

@@ -4,6 +4,8 @@
 #include "zone.h"
 #include "timezone.h"
 #include "date_class.h"
+#include "local_date.h"
+#include "local_time.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -102,168 +104,8 @@ void epoch_day_to_date(uint32_t epoch_day, int* year, int* month, int* day) {
 }
 
 // ============================================================================
-// Local Date implementation
+// Memory management functions for external types
 // ============================================================================
-
-local_date_t* local_date_create(vm_t* vm, int year, int month, int day) {
-    if (!is_valid_date(year, month, day)) {
-        if (vm) {
-            runtime_error(vm, "Invalid date parameters");
-        }
-        return NULL; // Fallback for NULL VM case
-    }
-
-    local_date_t* date = malloc(sizeof(local_date_t));
-    if (date == NULL) {
-        runtime_error(vm, "Memory allocation failed for LocalDate");
-    }
-
-    date->ref_count = 1;
-    date->year = year;
-    date->month = month;
-    date->day = day;
-    date->epoch_day = date_to_epoch_day(year, month, day);
-
-    return date;
-}
-
-local_date_t* local_date_now(vm_t* vm) {
-    time_t t = time(NULL);
-    struct tm* tm = localtime(&t);
-    if (tm == NULL) {
-        runtime_error(vm, "System time function failed");
-    }
-
-    return local_date_create(vm, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
-}
-
-local_date_t* local_date_of_epoch_day(vm_t* vm, uint32_t epoch_day) {
-    int year, month, day;
-    epoch_day_to_date(epoch_day, &year, &month, &day);
-    return local_date_create(vm, year, month, day);
-}
-
-// ============================================================================
-// Local Time implementation
-// ============================================================================
-
-local_time_t* local_time_create(vm_t* vm, int hour, int minute, int second, int millis) {
-    if (!is_valid_time(hour, minute, second, millis)) {
-        if (vm) {
-            runtime_error(vm, "Invalid time parameters");
-        }
-        return NULL; // Fallback for NULL VM case
-    }
-
-    local_time_t* time = malloc(sizeof(local_time_t));
-    if (time == NULL) {
-        runtime_error(vm, "Memory allocation failed for LocalTime");
-    }
-
-    time->ref_count = 1;
-    time->hour = hour;
-    time->minute = minute;
-    time->second = second;
-    time->millis = millis;
-    time->nanos = millis * 1000000; // Convert millis to total nanos
-
-    return time;
-}
-
-local_time_t* local_time_now(vm_t* vm) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-
-    struct tm* tm = localtime(&ts.tv_sec);
-    if (tm == NULL) {
-        runtime_error(vm, "System time function failed");
-    }
-    int millis = ts.tv_nsec / 1000000;
-
-    return local_time_create(vm, tm->tm_hour, tm->tm_min, tm->tm_sec, millis);
-}
-
-// ============================================================================
-// Local DateTime implementation
-// ============================================================================
-
-local_datetime_t* local_datetime_create(vm_t* vm, local_date_t* date, local_time_t* time) {
-    if (date == NULL || time == NULL) {
-        runtime_error(vm, "Invalid null date or time parameter");
-    }
-    
-    local_datetime_t* dt = malloc(sizeof(local_datetime_t));
-    if (dt == NULL) {
-        runtime_error(vm, "Memory allocation failed for LocalDateTime");
-    }
-    
-    dt->ref_count = 1;
-    dt->date = local_date_retain(date);
-    dt->time = local_time_retain(time);
-    
-    return dt;
-}
-
-local_datetime_t* local_datetime_now(vm_t* vm) {
-    local_date_t* date = local_date_now(vm);
-    local_time_t* time = local_time_now(vm);
-    
-    local_datetime_t* dt = local_datetime_create(vm, date, time);
-    
-    // Release our references since local_datetime_create retains them
-    local_date_release(date);
-    local_time_release(time);
-    
-    return dt;
-}
-
-// ============================================================================
-// Memory management functions
-// ============================================================================
-
-local_date_t* local_date_retain(local_date_t* date) {
-    if (date) {
-        date->ref_count++;
-    }
-    return date;
-}
-
-void local_date_release(local_date_t* date) {
-    if (date && --date->ref_count == 0) {
-        free(date);
-    }
-}
-
-local_time_t* local_time_retain(local_time_t* time) {
-    if (time) {
-        time->ref_count++;
-    }
-    return time;
-}
-
-void local_time_release(local_time_t* time) {
-    if (time && --time->ref_count == 0) {
-        free(time);
-    }
-}
-
-local_datetime_t* local_datetime_retain(local_datetime_t* dt) {
-    if (dt) {
-        dt->ref_count++;
-    }
-    return dt;
-}
-
-void local_datetime_release(local_datetime_t* dt) {
-    if (dt && --dt->ref_count == 0) {
-        local_date_release(dt->date);
-        local_time_release(dt->time);
-        free(dt);
-    }
-}
-
-// Note: date_retain and date_release are now implemented in date.c
-// These old zoned_datetime functions are kept for compatibility but deprecated
 
 instant_t* instant_retain(instant_t* instant) {
     if (instant) {
@@ -345,47 +187,121 @@ value_t make_local_datetime_value(vm_t* vm, local_date_t* date, local_time_t* ti
 }
 
 // ============================================================================
-// Comparison functions
+// Core type creation functions (implemented in class files)
 // ============================================================================
 
-int local_date_compare(const local_date_t* a, const local_date_t* b) {
-    if (a->epoch_day < b->epoch_day)
-        return -1;
-    if (a->epoch_day > b->epoch_day)
-        return 1;
-    return 0;
+// LocalDate core functions (implemented in class files)
+local_date_t* local_date_create(vm_t* vm, int year, int month, int day) {
+    if (!is_valid_date(year, month, day)) {
+        if (vm) {
+            runtime_error(vm, "Invalid date parameters");
+        }
+        return NULL;
+    }
+
+    local_date_t* date = malloc(sizeof(local_date_t));
+    if (date == NULL) {
+        runtime_error(vm, "Memory allocation failed for LocalDate");
+    }
+
+    date->ref_count = 1;
+    date->year = year;
+    date->month = month;
+    date->day = day;
+    date->epoch_day = date_to_epoch_day(year, month, day);
+
+    return date;
 }
 
-bool local_date_equals(const local_date_t* a, const local_date_t* b) { return a->epoch_day == b->epoch_day; }
+local_time_t* local_time_create(vm_t* vm, int hour, int minute, int second, int millis) {
+    if (!is_valid_time(hour, minute, second, millis)) {
+        if (vm) {
+            runtime_error(vm, "Invalid time parameters");
+        }
+        return NULL;
+    }
 
-bool local_date_is_before(const local_date_t* a, const local_date_t* b) { return a->epoch_day < b->epoch_day; }
+    local_time_t* time = malloc(sizeof(local_time_t));
+    if (time == NULL) {
+        runtime_error(vm, "Memory allocation failed for LocalTime");
+    }
 
-bool local_date_is_after(const local_date_t* a, const local_date_t* b) { return a->epoch_day > b->epoch_day; }
+    time->ref_count = 1;
+    time->hour = hour;
+    time->minute = minute;
+    time->second = second;
+    time->millis = millis;
+    time->nanos = millis * 1000000; // Convert millis to total nanos
 
-int local_time_compare(const local_time_t* a, const local_time_t* b) {
-    // Compare total nanoseconds for precision
-    uint64_t a_nanos = (uint64_t)a->hour * 3600000000000ULL + (uint64_t)a->minute * 60000000000ULL +
-        (uint64_t)a->second * 1000000000ULL + a->nanos;
-    uint64_t b_nanos = (uint64_t)b->hour * 3600000000000ULL + (uint64_t)b->minute * 60000000000ULL +
-        (uint64_t)b->second * 1000000000ULL + b->nanos;
-
-    if (a_nanos < b_nanos)
-        return -1;
-    if (a_nanos > b_nanos)
-        return 1;
-    return 0;
+    return time;
 }
 
-bool local_time_equals(const local_time_t* a, const local_time_t* b) { return local_time_compare(a, b) == 0; }
+local_datetime_t* local_datetime_create(vm_t* vm, local_date_t* date, local_time_t* time) {
+    if (date == NULL || time == NULL) {
+        runtime_error(vm, "Invalid null date or time parameter");
+    }
+    
+    local_datetime_t* dt = malloc(sizeof(local_datetime_t));
+    if (dt == NULL) {
+        runtime_error(vm, "Memory allocation failed for LocalDateTime");
+    }
+    
+    dt->ref_count = 1;
+    dt->date = local_date_retain(date);
+    dt->time = local_time_retain(time);
+    
+    return dt;
+}
+
+// Memory management functions
+local_date_t* local_date_retain(local_date_t* date) {
+    if (date) {
+        date->ref_count++;
+    }
+    return date;
+}
+
+void local_date_release(local_date_t* date) {
+    if (date && --date->ref_count == 0) {
+        free(date);
+    }
+}
+
+local_time_t* local_time_retain(local_time_t* time) {
+    if (time) {
+        time->ref_count++;
+    }
+    return time;
+}
+
+void local_time_release(local_time_t* time) {
+    if (time && --time->ref_count == 0) {
+        free(time);
+    }
+}
+
+local_datetime_t* local_datetime_retain(local_datetime_t* dt) {
+    if (dt) {
+        dt->ref_count++;
+    }
+    return dt;
+}
+
+void local_datetime_release(local_datetime_t* dt) {
+    if (dt && --dt->ref_count == 0) {
+        local_date_release(dt->date);
+        local_time_release(dt->time);
+        free(dt);
+    }
+}
 
 // ============================================================================
-// Date accessor functions
+// Shared utility functions needed across classes
 // ============================================================================
 
+// LocalDate utility functions
 int local_date_get_year(const local_date_t* date) { return date->year; }
-
 int local_date_get_month(const local_date_t* date) { return date->month; }
-
 int local_date_get_day(const local_date_t* date) { return date->day; }
 
 int local_date_get_day_of_week(const local_date_t* date) {
@@ -402,9 +318,33 @@ int local_date_get_day_of_year(const local_date_t* date) {
     return day_of_year;
 }
 
-// ============================================================================
-// Date arithmetic functions
-// ============================================================================
+// LocalDate comparison functions
+int local_date_compare(const local_date_t* a, const local_date_t* b) {
+    if (a->epoch_day < b->epoch_day)
+        return -1;
+    if (a->epoch_day > b->epoch_day)
+        return 1;
+    return 0;
+}
+
+bool local_date_equals(const local_date_t* a, const local_date_t* b) { 
+    return a->epoch_day == b->epoch_day; 
+}
+
+bool local_date_is_before(const local_date_t* a, const local_date_t* b) { 
+    return a->epoch_day < b->epoch_day; 
+}
+
+bool local_date_is_after(const local_date_t* a, const local_date_t* b) { 
+    return a->epoch_day > b->epoch_day; 
+}
+
+// LocalDate arithmetic functions
+local_date_t* local_date_of_epoch_day(vm_t* vm, uint32_t epoch_day) {
+    int year, month, day;
+    epoch_day_to_date(epoch_day, &year, &month, &day);
+    return local_date_create(vm, year, month, day);
+}
 
 local_date_t* local_date_plus_days(vm_t* vm, const local_date_t* date, int days) {
     if (date == NULL) {
@@ -445,87 +385,7 @@ local_date_t* local_date_plus_years(vm_t* vm, const local_date_t* date, int year
     return local_date_plus_months(vm, date, years * 12);
 }
 
-// ============================================================================
-// String conversion functions
-// ============================================================================
-
-char* local_date_to_string(vm_t* vm, const local_date_t* date) {
-    if (date == NULL) {
-        if (vm) {
-            runtime_error(vm, "Invalid null date parameter");
-        }
-        return NULL; // Fallback for NULL VM case
-    }
-    
-    char* str = malloc(16); // "YYYY-MM-DD" + null terminator
-    if (str == NULL) {
-        if (vm) {
-            runtime_error(vm, "Memory allocation failed for date string");
-        }
-        return NULL; // Fallback for NULL VM case
-    }
-
-    snprintf(str, 16, "%04d-%02d-%02d", date->year, date->month, date->day);
-    return str;
-}
-
-char* local_time_to_string(vm_t* vm, const local_time_t* time) {
-    if (time == NULL) {
-        if (vm) {
-            runtime_error(vm, "Invalid null time parameter");
-        }
-        return NULL; // Fallback for NULL VM case
-    }
-    
-    char* str = malloc(18); // "HH:MM:SS.mmm" + null terminator
-    if (str == NULL) {
-        if (vm) {
-            runtime_error(vm, "Memory allocation failed for time string");
-        }
-        return NULL; // Fallback for NULL VM case
-    }
-
-    if (time->millis > 0) {
-        snprintf(str, 18, "%02d:%02d:%02d.%03d", time->hour, time->minute, time->second, time->millis);
-    } else {
-        snprintf(str, 18, "%02d:%02d:%02d", time->hour, time->minute, time->second);
-    }
-    return str;
-}
-
-char* local_datetime_to_string(vm_t* vm, const local_datetime_t* dt) {
-    if (dt == NULL || dt->date == NULL || dt->time == NULL) {
-        if (vm) {
-            runtime_error(vm, "Invalid null datetime parameter");
-        }
-        return NULL; // Fallback for NULL VM case
-    }
-
-    char* date_str = local_date_to_string(vm, dt->date);
-    char* time_str = local_time_to_string(vm, dt->time);
-
-    char* result = malloc(strlen(date_str) + strlen(time_str) + 2); // +1 for 'T', +1 for null
-    if (result == NULL) {
-        free(date_str);
-        free(time_str);
-        if (vm) {
-            runtime_error(vm, "Memory allocation failed for datetime string");
-        }
-        return NULL; // Fallback for NULL VM case
-    }
-
-    sprintf(result, "%sT%s", date_str, time_str);
-
-    free(date_str);
-    free(time_str);
-
-    return result;
-}
-
-// ============================================================================
-// Local Time accessor functions
-// ============================================================================
-
+// LocalTime utility functions
 int local_time_get_hour(const local_time_t* time) {
     if (time == NULL) {
         return -1; // Error sentinel value
@@ -554,10 +414,40 @@ int local_time_get_millisecond(const local_time_t* time) {
     return time->millis;
 }
 
-// ============================================================================
-// Local Time arithmetic functions
-// ============================================================================
+// LocalTime comparison functions
+int local_time_compare(const local_time_t* a, const local_time_t* b) {
+    // Compare total nanoseconds for precision
+    uint64_t a_nanos = (uint64_t)a->hour * 3600000000000ULL + (uint64_t)a->minute * 60000000000ULL +
+        (uint64_t)a->second * 1000000000ULL + a->nanos;
+    uint64_t b_nanos = (uint64_t)b->hour * 3600000000000ULL + (uint64_t)b->minute * 60000000000ULL +
+        (uint64_t)b->second * 1000000000ULL + b->nanos;
 
+    if (a_nanos < b_nanos)
+        return -1;
+    if (a_nanos > b_nanos)
+        return 1;
+    return 0;
+}
+
+bool local_time_equals(const local_time_t* a, const local_time_t* b) { 
+    return local_time_compare(a, b) == 0; 
+}
+
+bool local_time_is_before(const local_time_t* a, const local_time_t* b) {
+    if (a == NULL || b == NULL) {
+        return false; // Error case
+    }
+    return local_time_compare(a, b) < 0;
+}
+
+bool local_time_is_after(const local_time_t* a, const local_time_t* b) {
+    if (a == NULL || b == NULL) {
+        return false; // Error case
+    }
+    return local_time_compare(a, b) > 0;
+}
+
+// LocalTime arithmetic functions
 local_time_t* local_time_plus_hours(vm_t* vm, const local_time_t* time, int hours) {
     if (time == NULL) {
         runtime_error(vm, "Invalid null time parameter");
@@ -611,26 +501,107 @@ local_time_t* local_time_plus_seconds(vm_t* vm, const local_time_t* time, int se
     return local_time_create(vm, new_hour, new_minute, new_second, time->millis);
 }
 
-// ============================================================================
-// Local Time comparison functions
-// ============================================================================
-
-bool local_time_is_before(const local_time_t* a, const local_time_t* b) {
-    if (a == NULL || b == NULL) {
-        return false; // Error case
+// String conversion functions
+char* local_date_to_string(vm_t* vm, const local_date_t* date) {
+    if (date == NULL) {
+        if (vm) {
+            runtime_error(vm, "Invalid null date parameter");
+        }
+        return NULL;
     }
-    return local_time_compare(a, b) < 0;
+    
+    char* str = malloc(16); // "YYYY-MM-DD" + null terminator
+    if (str == NULL) {
+        if (vm) {
+            runtime_error(vm, "Memory allocation failed for date string");
+        }
+        return NULL;
+    }
+
+    snprintf(str, 16, "%04d-%02d-%02d", date->year, date->month, date->day);
+    return str;
 }
 
-bool local_time_is_after(const local_time_t* a, const local_time_t* b) {
-    if (a == NULL || b == NULL) {
-        return false; // Error case
+char* local_time_to_string(vm_t* vm, const local_time_t* time) {
+    if (time == NULL) {
+        if (vm) {
+            runtime_error(vm, "Invalid null time parameter");
+        }
+        return NULL;
     }
-    return local_time_compare(a, b) > 0;
+    
+    char* str = malloc(18); // "HH:MM:SS.mmm" + null terminator
+    if (str == NULL) {
+        if (vm) {
+            runtime_error(vm, "Memory allocation failed for time string");
+        }
+        return NULL;
+    }
+
+    if (time->millis > 0) {
+        snprintf(str, 18, "%02d:%02d:%02d.%03d", time->hour, time->minute, time->second, time->millis);
+    } else {
+        snprintf(str, 18, "%02d:%02d:%02d", time->hour, time->minute, time->second);
+    }
+    return str;
+}
+
+char* local_datetime_to_string(vm_t* vm, const local_datetime_t* dt) {
+    if (dt == NULL || dt->date == NULL || dt->time == NULL) {
+        if (vm) {
+            runtime_error(vm, "Invalid null datetime parameter");
+        }
+        return NULL;
+    }
+
+    char* date_str = local_date_to_string(vm, dt->date);
+    char* time_str = local_time_to_string(vm, dt->time);
+
+    char* result = malloc(strlen(date_str) + strlen(time_str) + 2); // +1 for 'T', +1 for null
+    if (result == NULL) {
+        free(date_str);
+        free(time_str);
+        if (vm) {
+            runtime_error(vm, "Memory allocation failed for datetime string");
+        }
+        return NULL;
+    }
+
+    sprintf(result, "%sT%s", date_str, time_str);
+
+    free(date_str);
+    free(time_str);
+
+    return result;
+}
+
+// LocalDateTime utility functions
+local_datetime_t* local_datetime_now(vm_t* vm) {
+    time_t t = time(NULL);
+    struct tm* tm = localtime(&t);
+    if (tm == NULL) {
+        runtime_error(vm, "System time function failed");
+    }
+
+    local_date_t* date = local_date_create(vm, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
+    
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    int millis = ts.tv_nsec / 1000000;
+    
+    local_time_t* time = local_time_create(vm, tm->tm_hour, tm->tm_min, tm->tm_sec, millis);
+    
+    local_datetime_t* dt = local_datetime_create(vm, date, time);
+    
+    // Release our references since local_datetime_create retains them
+    local_date_release(date);
+    local_time_release(time);
+    
+    return dt;
 }
 
 // ============================================================================
-// Built-in functions for VM integration
+// Built-in functions still needed for compatibility
 // ============================================================================
 
 value_t builtin_local_date_now(vm_t* vm, int arg_count, value_t* args) {
@@ -638,7 +609,13 @@ value_t builtin_local_date_now(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "LocalDate.now() takes no arguments");
     }
 
-    local_date_t* date = local_date_now(vm);
+    time_t t = time(NULL);
+    struct tm* tm = localtime(&t);
+    if (tm == NULL) {
+        runtime_error(vm, "System time function failed");
+    }
+
+    local_date_t* date = local_date_create(vm, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday);
 
     value_t val = {0};
     val.type = VAL_LOCAL_DATE;
@@ -667,40 +644,6 @@ value_t builtin_local_date_of(vm_t* vm, int arg_count, value_t* args) {
 }
 
 // ============================================================================
-// LocalDateTime comparison functions
-// ============================================================================
-
-int local_datetime_compare(const local_datetime_t* a, const local_datetime_t* b) {
-    if (a == NULL || b == NULL) {
-        return (a == NULL) - (b == NULL);
-    }
-    
-    // First compare dates
-    int date_cmp = local_date_compare(a->date, b->date);
-    if (date_cmp != 0) {
-        return date_cmp;
-    }
-    
-    // Dates are equal, compare times
-    return local_time_compare(a->time, b->time);
-}
-
-bool local_datetime_equals(const local_datetime_t* a, const local_datetime_t* b) {
-    if (a == NULL || b == NULL) {
-        return a == b;
-    }
-    return local_date_equals(a->date, b->date) && local_time_equals(a->time, b->time);
-}
-
-bool local_datetime_is_before(const local_datetime_t* a, const local_datetime_t* b) {
-    return local_datetime_compare(a, b) < 0;
-}
-
-bool local_datetime_is_after(const local_datetime_t* a, const local_datetime_t* b) {
-    return local_datetime_compare(a, b) > 0;
-}
-
-// ============================================================================
 // Initialization
 // ============================================================================
 
@@ -717,8 +660,12 @@ void init_datetime_classes(vm_t* vm) {
     // Initialize Instant class
     init_instant_class(vm);
     
+    // Initialize LocalDate class
+    local_date_class_init(vm);
+    
+    // Initialize LocalTime class
+    local_time_class_init(vm);
+    
     // TODO: Initialize other date/time classes when implemented
-    // init_local_date_class(vm);
-    // init_local_time_class(vm);
     // init_local_datetime_class(vm);
 }
