@@ -75,17 +75,22 @@ static struct cag_option options[] = {
 // Show help information
 static void show_help(const char* program_name) {
     printf("Slate Programming Language\n");
-    printf("Usage: %s [OPTIONS] [script_args...]\n\n", program_name);
+    printf("Usage: %s [OPTIONS] [script_args...]\n", program_name);
+    printf("       %s script.slate [script_args...]\n\n", program_name);
     
     cag_option_print(options, CAG_ARRAY_SIZE(options), stdout);
     
     printf("\nExamples:\n");
     printf("  %s                          # Start interactive REPL\n", program_name);
+    printf("  %s script.slate arg1 arg2    # Run file with arguments (shebang-compatible)\n", program_name);
     printf("  %s -s \"print('Hello')\"       # Execute script directly\n", program_name);
-    printf("  %s -f script.slate arg1 arg2 # Run file with arguments\n", program_name);
+    printf("  %s -f script.slate arg1 arg2 # Run file with arguments (explicit flag)\n", program_name);
     printf("  %s --stdin < input.txt       # Execute from stdin\n", program_name);
     printf("  %s --test                    # Run built-in tests\n", program_name);
     printf("  %s -D \"f(g(3))\"              # Disassemble bytecode\n", program_name);
+    printf("\nShebang usage:\n");
+    printf("  #!/usr/bin/env %s\n", program_name);
+    printf("  # Your Slate script here\n");
 }
 
 // Show version information
@@ -294,6 +299,18 @@ static char* read_file(const char* path) {
 
     buffer[bytes_read] = '\0';
     fclose(file);
+    
+    // Skip shebang line if present
+    if (bytes_read >= 2 && buffer[0] == '#' && buffer[1] == '!') {
+        // Find the end of the first line
+        char* newline = strchr(buffer, '\n');
+        if (newline) {
+            // Move content after the shebang line to the beginning
+            size_t remaining = bytes_read - (newline + 1 - buffer);
+            memmove(buffer, newline + 1, remaining + 1); // +1 for null terminator
+        }
+    }
+    
     return buffer;
 }
 
@@ -588,6 +605,28 @@ int main(int argc, char* argv[]) {
     const char* script_content = NULL;
     const char* disassemble_content = NULL;
     int start_repl = 0;
+    
+    // Check if first argument is a file path (for shebang support)
+    // This happens when slate is used as: slate script.slate [args...]
+    if (argc > 1 && argv[1][0] != '-') {
+        // First argument is not a flag, treat it as a script file
+        script_file = argv[1];
+        
+        // Pass remaining arguments to the script
+        char** script_argv = (argc > 2) ? &argv[2] : NULL;
+        int script_argc = (argc > 2) ? argc - 2 : 0;
+        
+        // Run the script file
+        char* source = read_file(script_file);
+        if (source) {
+            vm_t* vm = vm_create_with_args(script_argc, script_argv);
+            vm->context = CTX_SCRIPT;
+            interpret_with_vm_mode(source, vm, 0); // Hide undefined results
+            vm_destroy(vm);
+            free(source);
+        }
+        return 0;
+    }
     
     cag_option_context context;
     cag_option_init(&context, options, CAG_ARRAY_SIZE(options), argc, argv);
