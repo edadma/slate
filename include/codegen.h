@@ -148,6 +148,7 @@ void codegen_emit_expression_stmt(codegen_t* codegen, ast_expression_stmt* node)
 void codegen_emit_block(codegen_t* codegen, ast_block* node);
 void codegen_emit_block_expression(codegen_t* codegen, ast_block* node);
 void codegen_emit_if(codegen_t* codegen, ast_if* node);
+void codegen_emit_match(codegen_t* codegen, ast_match* node);
 void codegen_emit_while(codegen_t* codegen, ast_while* node);
 void codegen_emit_for(codegen_t* codegen, ast_for* node);
 void codegen_emit_do_while(codegen_t* codegen, ast_do_while* node);
@@ -174,6 +175,7 @@ loop_context_t* codegen_current_loop(codegen_t* codegen);
 // Scope management for local variables
 void codegen_begin_scope(codegen_t* codegen);
 void codegen_end_scope(codegen_t* codegen);
+void codegen_end_scope_keep_top(codegen_t* codegen);  // End scope but preserve top stack value
 int codegen_declare_variable(codegen_t* codegen, const char* name, int is_immutable);
 int codegen_resolve_variable(codegen_t* codegen, const char* name, int* is_local, int* upvalue_index);
 void codegen_init_scope_manager(codegen_t* codegen);

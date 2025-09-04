@@ -51,6 +51,7 @@ ast_node* parse_var_declaration(parser_t* parser);
 ast_node* parse_val_declaration(parser_t* parser);
 ast_node* parse_expression_statement(parser_t* parser);
 ast_node* parse_if_expression(parser_t* parser);
+ast_node* parse_match_expression(parser_t* parser);
 ast_node* parse_indented_block(parser_t* parser);
 int validate_block_expression(ast_node* expr, parser_mode_t mode);
 ast_node* parse_while_statement(parser_t* parser);

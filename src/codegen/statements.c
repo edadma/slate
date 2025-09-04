@@ -378,6 +378,111 @@ void codegen_emit_if(codegen_t* codegen, ast_if* node) {
     codegen_patch_jump(codegen, end_jump);
 }
 
+void codegen_emit_match(codegen_t* codegen, ast_match* node) {
+    // Generate the match expression once
+    codegen_emit_expression(codegen, node->expression);
+    
+    // Store jump locations for case exits
+    size_t* end_jumps = malloc(sizeof(size_t) * node->case_count);
+    
+    // Find if we have variable cases (these act as catch-alls)
+    int has_variable_case = 0;
+    for (size_t i = 0; i < node->case_count; i++) {
+        if (node->cases[i].is_variable) {
+            has_variable_case = 1;
+            break;
+        }
+    }
+    
+    // Generate code for literal cases first
+    for (size_t i = 0; i < node->case_count; i++) {
+        ast_case* case_node = &node->cases[i];
+        
+        if (case_node->is_variable) {
+            // Handle variable cases - they always match (catch-all)
+            // Begin a new scope for the variable binding
+            codegen_begin_scope(codegen);
+            
+            // Declare the variable and initialize it with the match value
+            // Stack: [match_value]
+            int var_slot = codegen_declare_variable(codegen, case_node->variable_name, 1); // 1 = immutable (like val)
+            if (var_slot != -1) {
+                // Duplicate the match value: [match_value, match_value]
+                codegen_emit_op(codegen, OP_DUP);
+                // Store in local variable: [match_value]
+                codegen_emit_op(codegen, OP_SET_LOCAL);
+                chunk_write_byte(codegen->chunk, (uint8_t)var_slot);
+                // Now the variable is initialized and match_value is still on stack
+            }
+            
+            // Generate the case body - no conditional jumps needed
+            if (case_node->body->type == AST_BLOCK) {
+                codegen_emit_block_expression(codegen, (ast_block*)case_node->body);
+            } else if (case_node->body->type == AST_EXPRESSION_STMT) {
+                codegen_emit_expression(codegen, ((ast_expression_stmt*)case_node->body)->expression);
+            } else {
+                codegen_emit_expression(codegen, case_node->body);
+            }
+            
+            // End scope while keeping the case result on top
+            // Stack: [match_value, case_result] -> [case_result]
+            codegen_end_scope_keep_top(codegen);
+            
+            // Variable case always matches, so we're done
+            break;
+            
+        } else {
+            // Literal pattern case: case 42 do ...
+            // Duplicate the match value for comparison
+            codegen_emit_op(codegen, OP_DUP);
+            
+            // Generate the pattern to compare against
+            codegen_emit_expression(codegen, case_node->pattern);
+            
+            // Compare using .equals() method (OP_EQUAL uses method dispatch)
+            codegen_emit_op(codegen, OP_EQUAL);
+            
+            // Jump to next case if not equal
+            size_t next_case_jump = codegen_emit_jump(codegen, OP_JUMP_IF_FALSE);
+            
+            // Generate the case body
+            if (case_node->body->type == AST_BLOCK) {
+                codegen_emit_block_expression(codegen, (ast_block*)case_node->body);
+            } else if (case_node->body->type == AST_EXPRESSION_STMT) {
+                codegen_emit_expression(codegen, ((ast_expression_stmt*)case_node->body)->expression);
+            } else {
+                codegen_emit_expression(codegen, case_node->body);
+            }
+            
+            // Clean up: [match_value, case_result] -> [case_result]
+            codegen_emit_op(codegen, OP_SWAP);  // [case_result, match_value]
+            codegen_emit_op(codegen, OP_POP);   // [case_result]
+            
+            // Jump to end of match expression
+            end_jumps[i] = codegen_emit_jump(codegen, OP_JUMP);
+            
+            // Patch the next case jump for literal patterns
+            codegen_patch_jump(codegen, next_case_jump);
+        }
+    }
+    
+    // If we reach here, no literal case matched and there's no variable case
+    if (!has_variable_case) {
+        // Non-exhaustive match - pop the match value and return null for now
+        codegen_emit_op(codegen, OP_POP);
+        codegen_emit_op(codegen, OP_PUSH_NULL);
+    }
+    
+    // Patch all end jumps from literal cases
+    for (size_t i = 0; i < node->case_count; i++) {
+        if (!node->cases[i].is_variable) {
+            codegen_patch_jump(codegen, end_jumps[i]);
+        }
+    }
+    
+    free(end_jumps);
+}
+
 void codegen_emit_block_expression(codegen_t* codegen, ast_block* node) {
     if (node->statement_count == 0) {
         // Empty block returns null

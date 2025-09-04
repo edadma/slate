@@ -45,6 +45,8 @@ typedef enum {
     TOKEN_PACKAGE,       // package (package declaration)
     TOKEN_PRIVATE,       // private (private members)
     TOKEN_STEP,          // step (range step size)
+    TOKEN_MATCH,         // match
+    TOKEN_CASE,          // case
     
     // Operators
     TOKEN_PLUS,          // +

@@ -193,6 +193,117 @@ ast_node* parse_if_expression(parser_t* parser) {
                                    parser->previous.line, parser->previous.column);
 }
 
+// Parse match expression with Scala-style syntax
+ast_node* parse_match_expression(parser_t* parser) {
+    int match_line = parser->previous.line;
+    int match_column = parser->previous.column;
+    
+    // Parse the expression to match against
+    ast_node* expression = parse_expression(parser);
+    
+    // Skip optional newlines before cases
+    while (parser_match(parser, TOKEN_NEWLINE));
+    
+    // Expect indented block of cases
+    if (!parser_match(parser, TOKEN_INDENT)) {
+        parser_error_at_current(parser, "Expected indented block after match expression.");
+        ast_free(expression);
+        return NULL;
+    }
+    
+    // Parse cases
+    ast_case* cases = NULL;
+    size_t case_count = 0;
+    size_t case_capacity = 0;
+    
+    while (!parser_check(parser, TOKEN_DEDENT) && !parser_check(parser, TOKEN_EOF)) {
+        // Skip newlines between cases
+        while (parser_match(parser, TOKEN_NEWLINE));
+        
+        if (parser_check(parser, TOKEN_DEDENT)) break;
+        
+        // Expect 'case' keyword
+        if (!parser_match(parser, TOKEN_CASE)) {
+            parser_error_at_current(parser, "Expected 'case' in match expression.");
+            break;
+        }
+        
+        // Parse case pattern (literal or variable binding)
+        ast_node* pattern = NULL;
+        char* variable_name = NULL;
+        int is_variable = 0;
+        
+        if (parser_match(parser, TOKEN_IDENTIFIER)) {
+            // Variable binding case: case x do ...
+            variable_name = token_to_string(&parser->previous);
+            is_variable = 1;
+        } else {
+            // Literal pattern case: case 42 do ...
+            pattern = parse_expression(parser);
+        }
+        
+        ast_node* case_body = NULL;
+        
+        // Parse case body - supports multiple forms:
+        // 1. case pattern do expression (single-line)
+        // 2. case pattern do + newline + indented block
+        // 3. case pattern + newline + indented block (no 'do')
+        
+        if (parser_match(parser, TOKEN_DO)) {
+            // 'do' was matched - check what follows
+            if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+                // 'do' followed by newline/indent - parse indented block
+                case_body = parse_indented_block(parser);
+            } else {
+                // 'do' followed by expression on same line
+                case_body = parse_expression(parser);
+            }
+        } else if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+            // No 'do' but newline/indent follows - parse indented block
+            case_body = parse_indented_block(parser);
+        } else {
+            parser_error_at_current(parser, "Expected 'do' or indented block after case pattern.");
+            free(variable_name);
+            ast_free(pattern);
+            break;
+        }
+        
+        // Grow cases array if needed
+        if (case_count >= case_capacity) {
+            size_t new_capacity = case_capacity == 0 ? 8 : case_capacity * 2;
+            cases = realloc(cases, sizeof(ast_case) * new_capacity);
+            case_capacity = new_capacity;
+        }
+        
+        // Create and add the case
+        ast_case* new_case = ast_create_case(pattern, variable_name, case_body, is_variable);
+        cases[case_count++] = *new_case;
+        free(new_case);  // We copied the contents, free the wrapper
+        
+        free(variable_name);  // ast_create_case makes its own copy
+        
+        // Skip optional newlines
+        while (parser_match(parser, TOKEN_NEWLINE));
+    }
+    
+    // Consume the DEDENT
+    parser_consume(parser, TOKEN_DEDENT, "Expected dedent to end match expression.");
+    
+    // Check for optional 'end match'
+    if (parser_match(parser, TOKEN_END)) {
+        parser_consume(parser, TOKEN_MATCH, "Expected 'match' after 'end'.");
+    }
+    
+    if (case_count == 0) {
+        parser_error_at_current(parser, "Match expression must have at least one case.");
+        ast_free(expression);
+        free(cases);
+        return NULL;
+    }
+    
+    return (ast_node*)ast_create_match(expression, cases, case_count, match_line, match_column);
+}
+
 // Validate that a block expression ultimately ends with a non-block expression
 int validate_block_expression(ast_node* expr, parser_mode_t mode) {
     if (expr->type != AST_BLOCK) {

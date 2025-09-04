@@ -45,6 +45,9 @@ typedef enum {
     AST_MEMBER,
     AST_OBJECT_LITERAL,
 
+    // Match expression
+    AST_MATCH,
+
     // Statements
     AST_VAR_DECLARATION,
     AST_ASSIGNMENT,
@@ -255,6 +258,22 @@ typedef struct {
     size_t property_count;
 } ast_object_literal;
 
+// Match case node
+typedef struct {
+    ast_node* pattern;    // The pattern to match against (literal or identifier)
+    char* variable_name;  // Variable name for binding (NULL for literal patterns)
+    ast_node* body;       // The code to execute if this case matches
+    int is_variable;      // 1 if this case binds a variable, 0 for literal match
+} ast_case;
+
+// Match expression node
+typedef struct {
+    ast_node base;
+    ast_node* expression; // The expression to match against
+    ast_case* cases;      // Array of cases
+    size_t case_count;    // Number of cases
+} ast_match;
+
 // Variable declaration node
 typedef struct {
     ast_node base;
@@ -399,6 +418,9 @@ ast_call* ast_create_call(ast_node* function, ast_node** arguments, size_t arg_c
 
 ast_member* ast_create_member(ast_node* object, const char* property, int is_optional, int line, int column);
 ast_object_literal* ast_create_object_literal(object_property* properties, size_t property_count, int line, int column);
+
+ast_case* ast_create_case(ast_node* pattern, const char* variable_name, ast_node* body, int is_variable);
+ast_match* ast_create_match(ast_node* expression, ast_case* cases, size_t case_count, int line, int column);
 
 ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int is_immutable, int line, int column);
 ast_assignment* ast_create_assignment(ast_node* target, ast_node* value, int line, int column);

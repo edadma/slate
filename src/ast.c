@@ -283,6 +283,32 @@ ast_object_literal* ast_create_object_literal(object_property* properties, size_
     return node;
 }
 
+ast_case* ast_create_case(ast_node* pattern, const char* variable_name, ast_node* body, int is_variable) {
+    ast_case* case_node = malloc(sizeof(ast_case));
+    if (!case_node) return NULL;
+    
+    case_node->pattern = pattern;
+    case_node->variable_name = variable_name ? strdup_safe(variable_name) : NULL;
+    case_node->body = body;
+    case_node->is_variable = is_variable;
+    
+    return case_node;
+}
+
+ast_match* ast_create_match(ast_node* expression, ast_case* cases, size_t case_count, int line, int column) {
+    ast_match* node = malloc(sizeof(ast_match));
+    if (!node) return NULL;
+    
+    node->base.type = AST_MATCH;
+    node->base.line = line;
+    node->base.column = column;
+    node->expression = expression;
+    node->cases = cases;
+    node->case_count = case_count;
+    
+    return node;
+}
+
 ast_var_declaration* ast_create_var_declaration(const char* name, ast_node* initializer, int is_immutable, int line, int column) {
     ast_var_declaration* node = malloc(sizeof(ast_var_declaration));
     if (!node) return NULL;
@@ -616,6 +642,18 @@ void ast_free(ast_node* node) {
             break;
         }
         
+        case AST_MATCH: {
+            ast_match* match_node = (ast_match*)node;
+            ast_free(match_node->expression);
+            for (size_t i = 0; i < match_node->case_count; i++) {
+                ast_free(match_node->cases[i].pattern);
+                free(match_node->cases[i].variable_name);
+                ast_free(match_node->cases[i].body);
+            }
+            free(match_node->cases);
+            break;
+        }
+        
         case AST_VAR_DECLARATION: {
             ast_var_declaration* var_node = (ast_var_declaration*)node;
             free(var_node->name);
@@ -756,6 +794,7 @@ const char* ast_node_type_name(ast_node_type type) {
         case AST_CALL: return "CALL";
         case AST_MEMBER: return "MEMBER";
         case AST_OBJECT_LITERAL: return "OBJECT_LITERAL";
+        case AST_MATCH: return "MATCH";
         case AST_VAR_DECLARATION: return "VAR_DECLARATION";
         case AST_ASSIGNMENT: return "ASSIGNMENT";
         case AST_COMPOUND_ASSIGNMENT: return "COMPOUND_ASSIGNMENT";

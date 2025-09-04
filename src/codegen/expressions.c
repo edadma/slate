@@ -245,6 +245,10 @@ void codegen_emit_expression(codegen_t* codegen, ast_node* expr) {
             codegen_emit_if(codegen, (ast_if*)expr);
             break;
 
+        case AST_MATCH:
+            codegen_emit_match(codegen, (ast_match*)expr);
+            break;
+
         case AST_BLOCK:
             codegen_emit_block_expression(codegen, (ast_block*)expr);
             break;
@@ -298,6 +302,10 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             
         case AST_IF:
             codegen_emit_if(codegen, (ast_if*)stmt);
+            break;
+            
+        case AST_MATCH:
+            codegen_emit_match(codegen, (ast_match*)stmt);
             break;
             
         case AST_BREAK:
