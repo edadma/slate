@@ -293,6 +293,59 @@ void test_adt_basic_constructor_calls(void) {
     vm_release(result);
 }
 
+// Test ADT equality - comprehensive structural equality testing
+void test_adt_equality(void) {
+    // Test singleton equality
+    value_t result = test_execute_expression("data Option\n"
+                                            "  case None\n"
+                                            "  case Some(value)\n"
+                                            "None == None");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);  // This should pass
+    vm_release(result);
+    
+    // Test parameterized constructor equality with same values - THE BUG
+    result = test_execute_expression("data Option\n"
+                                   "  case None\n"
+                                   "  case Some(value)\n"
+                                   "Some(3) == Some(3)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);  // This currently FAILS - should be true
+    vm_release(result);
+    
+    // Test parameterized constructor inequality with different values
+    result = test_execute_expression("data Option\n"
+                                   "  case None\n"
+                                   "  case Some(value)\n"
+                                   "Some(3) == Some(4)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean);  // This should be false
+    vm_release(result);
+    
+    // Test cross-constructor inequality
+    result = test_execute_expression("data Option\n"
+                                   "  case None\n"
+                                   "  case Some(value)\n"
+                                   "None == Some(3)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean);  // This should be false
+    vm_release(result);
+    
+    // Test complex parameter equality
+    result = test_execute_expression("data Point(x, y)\n"
+                                   "Point(10, 20) == Point(10, 20)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_TRUE(result.as.boolean);  // This should be true
+    vm_release(result);
+    
+    // Test complex parameter inequality
+    result = test_execute_expression("data Point(x, y)\n"
+                                   "Point(10, 20) == Point(20, 10)");
+    TEST_ASSERT_EQUAL(VAL_BOOLEAN, result.type);
+    TEST_ASSERT_FALSE(result.as.boolean);  // This should be false
+    vm_release(result);
+}
+
 
 // ===========================
 // DATA TYPE TEST SUITE
@@ -327,4 +380,5 @@ void test_data_types_suite(void) {
     RUN_TEST(test_adt_parameter_access);
     
     RUN_TEST(test_adt_basic_constructor_calls);
+    RUN_TEST(test_adt_equality);
 }

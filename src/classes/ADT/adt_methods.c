@@ -117,63 +117,61 @@ value_t adt_instance_equals(vm_t* vm, int arg_count, value_t* args) {
         return make_boolean(1);
     }
     
-    // Get type information from both objects
-    ds_string* type1 = (ds_string*)do_get(receiver.as.object, "__type");
-    ds_string* case_type1 = (ds_string*)do_get(receiver.as.object, "__case_type");
-    ds_string* type2 = (ds_string*)do_get(other.as.object, "__type");
-    ds_string* case_type2 = (ds_string*)do_get(other.as.object, "__case_type");
-    
-    // Both must be ADT instances with same type and case
-    if (!type1 || !case_type1 || !type2 || !case_type2) {
+    // Check if both values have classes (all ADT instances should have classes)
+    if (!receiver.class || !other.class || 
+        receiver.class->type != VAL_CLASS || other.class->type != VAL_CLASS) {
         return make_boolean(0);
     }
     
-    if (strcmp(*type1, *type2) != 0 || strcmp(*case_type1, *case_type2) != 0) {
+    // ADT instances must be from the same constructor class to be equal
+    if (receiver.class->as.class != other.class->as.class) {
         return make_boolean(0);
     }
     
-    // For singletons, type and case equality is sufficient
-    if (strcmp(*case_type1, "singleton") == 0) {
+    // If they're from the same constructor class, check if it's a singleton
+    ds_string* case_type = NULL;
+    if (receiver.class->as.class->static_properties) {
+        case_type = (ds_string*)do_get(receiver.class->as.class->static_properties, "__constructor_case_type");
+    }
+    
+    // For singletons, class equality is sufficient (None == None)
+    if (case_type && strcmp(*case_type, "singleton") == 0) {
         return make_boolean(1);
     }
     
-    // For constructors, compare all parameters
-    // TODO: Implement proper parameter comparison once we have parameter names
-    // For now, fall back to generic object comparison
-    const char** keys1 = do_get_own_keys(receiver.as.object);
-    const char** keys2 = do_get_own_keys(other.as.object);
-    
-    size_t count1 = arrlen(keys1);
-    size_t count2 = arrlen(keys2);
-    
-    if (count1 != count2) {
-        arrfree(keys1);
-        arrfree(keys2);
-        return make_boolean(0);
+    // For constructors, compare all parameters structurally
+    // Get parameter count from the constructor class
+    int32_t* param_count_ptr = NULL;
+    if (receiver.class->as.class->static_properties) {
+        param_count_ptr = (int32_t*)do_get(receiver.class->as.class->static_properties, "__constructor_param_count");
     }
+    int param_count = param_count_ptr ? *param_count_ptr : 0;
     
-    // Compare all properties (including __type, __case_type and parameters)
-    for (size_t i = 0; i < count1; i++) {
-        value_t* val1 = (value_t*)do_get(receiver.as.object, keys1[i]);
-        value_t* val2 = (value_t*)do_get(other.as.object, keys1[i]);
+    // Compare each parameter by name
+    for (int i = 0; i < param_count; i++) {
+        char param_key[32];
+        snprintf(param_key, sizeof(param_key), "__param_%d", i);
+        ds_string* param_name_ptr = (ds_string*)do_get(receiver.class->as.class->static_properties, param_key);
+        
+        if (!param_name_ptr) {
+            continue; // Skip if parameter name not found
+        }
+        
+        ds_string param_name = *param_name_ptr;
+        value_t* val1 = (value_t*)do_get(receiver.as.object, param_name);
+        value_t* val2 = (value_t*)do_get(other.as.object, param_name);
         
         if (!val1 || !val2) {
-            arrfree(keys1);
-            arrfree(keys2);
-            return make_boolean(0);
+            return make_boolean(0); // Parameter missing
         }
         
-        // TODO: Use proper equals method dispatch here
-        // For now, use simple value comparison
-        if (val1->type != val2->type) {
-            arrfree(keys1);
-            arrfree(keys2);
+        // Use proper equals comparison for parameter values
+        if (!call_equals_method(vm, *val1, *val2)) {
             return make_boolean(0);
         }
     }
     
-    arrfree(keys1);
-    arrfree(keys2);
+    // All parameters match - the instances are equal
     return make_boolean(1);
 }
 
