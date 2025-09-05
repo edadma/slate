@@ -1,0 +1,1 @@
+rm -rf cmake-build-debug-ninja && cmake -B cmake-build-debug-ninja -G Ninja && cmake --build cmake-build-debug-ninja

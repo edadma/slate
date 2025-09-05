@@ -163,6 +163,20 @@ int compare_numbers(value_t a, value_t b) {
 
 // Helper function to call .toString() method on values using method dispatch
 value_t call_toString_method(vm_t* vm, value_t value) {
+    // For classes (VAL_CLASS), check static properties first
+    if (value.type == VAL_CLASS && value.as.class) {
+        value_t* static_toString = lookup_static_property(value.as.class, "toString");
+        if (static_toString && static_toString->type == VAL_NATIVE) {
+            value_t args[1] = { value };
+            native_t native_func = (native_t)static_toString->as.native;
+            value_t result = native_func(vm, 1, args);
+            
+            if (result.type == VAL_STRING) {
+                return result;
+            }
+        }
+    }
+    
     // For objects, first check instance properties for toString method
     if (value.type == VAL_OBJECT && value.as.object) {
         value_t* instance_toString = (value_t*)do_get(value.as.object, "toString");
@@ -177,7 +191,7 @@ value_t call_toString_method(vm_t* vm, value_t value) {
         }
     }
     
-    // Then check class prototype chain
+    // Then check class prototype chain for instance methods
     value_t* current_class = value.class;
     
     while (current_class && current_class->type == VAL_CLASS) {
@@ -226,7 +240,22 @@ ds_string display_value_to_string(vm_t* vm, value_t value) {
 
 // Helper function to call .equals() method on values using method dispatch
 int call_equals_method(vm_t* vm, value_t a, value_t b) {
-    // Call .equals() method on the left operand using method dispatch
+    // For classes (VAL_CLASS), check static properties first
+    if (a.type == VAL_CLASS && a.as.class) {
+        value_t* static_equals = lookup_static_property(a.as.class, "equals");
+        if (static_equals && static_equals->type == VAL_NATIVE) {
+            value_t args[2] = { a, b };
+            native_t native_func = (native_t)static_equals->as.native;
+            value_t result = native_func(vm, 2, args);
+            
+            if (result.type == VAL_BOOLEAN) {
+                return result.as.boolean;
+            }
+            return 0; // Default to false if method doesn't return boolean
+        }
+    }
+    
+    // Call .equals() method on the left operand using instance method dispatch
     value_t* current_class = a.class;
     
     while (current_class && current_class->type == VAL_CLASS) {
