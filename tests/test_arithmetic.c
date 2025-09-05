@@ -761,6 +761,61 @@ void test_increment_decrement_advanced_scenarios() {
     }
 }
 
+// Test BigInt multiplication preserves integer type (doesn't convert to float)
+void test_bigint_multiplication_preserves_type(void) {
+    // Test BigInt * int32 stays as BigInt
+    {
+        value_t result = execute_expression("5079110400 * 12");
+        TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
+        char* str = di_to_string(result.as.bigint, 10);
+        TEST_ASSERT_EQUAL_STRING("60949324800", str);
+        free(str);
+        vm_release(result);
+    }
+    
+    // Test int32 * BigInt stays as BigInt
+    {
+        value_t result = execute_expression("12 * 5079110400");
+        TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
+        char* str = di_to_string(result.as.bigint, 10);
+        TEST_ASSERT_EQUAL_STRING("60949324800", str);
+        free(str);
+        vm_release(result);
+    }
+    
+    // Test BigInt * BigInt stays as BigInt
+    {
+        value_t result = execute_expression("5079110400 * 60949324800");
+        TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
+        // Result should be 309568349464657920000
+        char* str = di_to_string(result.as.bigint, 10);
+        TEST_ASSERT_EQUAL_STRING("309568349464657920000", str);
+        free(str);
+        vm_release(result);
+    }
+    
+    // Test factorial(20) stays as BigInt (regression test)
+    {
+        value_t result = execute_expression(
+            "def factorial(n) = if n <= 0 then 1 else n * factorial(n - 1)\n"
+            "factorial(20)"
+        );
+        TEST_ASSERT_EQUAL(VAL_BIGINT, result.type);
+        char* str = di_to_string(result.as.bigint, 10);
+        TEST_ASSERT_EQUAL_STRING("2432902008176640000", str);
+        free(str);
+        vm_release(result);
+    }
+    
+    // Test type of BigInt multiplication
+    {
+        value_t result = execute_expression("type(5079110400 * 12)");
+        TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+        TEST_ASSERT_EQUAL_STRING("bigint", result.as.string);
+        vm_release(result);
+    }
+}
+
 // Test suite function for integration with main test runner
 void test_arithmetic_suite(void) {
     RUN_TEST(test_basic_int32_arithmetic);
@@ -783,4 +838,5 @@ void test_arithmetic_suite(void) {
     RUN_TEST(test_comprehensive_unary);
     RUN_TEST(test_division_by_zero_errors);
     RUN_TEST(test_modulo_by_zero_errors);
+    RUN_TEST(test_bigint_multiplication_preserves_type);
 }

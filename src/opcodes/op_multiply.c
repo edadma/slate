@@ -15,7 +15,26 @@ vm_result op_multiply(vm_t* vm) {
                 di_int big_result = di_from_int64(result);
                 vm_push(vm, make_bigint_with_debug(big_result, a.debug));
             }
-        } else {
+        } 
+        // BigInt * int32 or int32 * BigInt
+        else if ((a.type == VAL_BIGINT && b.type == VAL_INT32) || 
+                 (a.type == VAL_INT32 && b.type == VAL_BIGINT)) {
+            di_int big_a = (a.type == VAL_BIGINT) ? a.as.bigint : di_from_int32(a.as.int32);
+            di_int big_b = (b.type == VAL_BIGINT) ? b.as.bigint : di_from_int32(b.as.int32);
+            di_int result = di_mul(big_a, big_b);
+            
+            // Clean up temporary BigInts if created
+            if (a.type == VAL_INT32) di_release(&big_a);
+            if (b.type == VAL_INT32) di_release(&big_b);
+            
+            vm_push(vm, make_bigint_with_debug(result, a.debug));
+        }
+        // BigInt * BigInt
+        else if (a.type == VAL_BIGINT && b.type == VAL_BIGINT) {
+            di_int result = di_mul(a.as.bigint, b.as.bigint);
+            vm_push(vm, make_bigint_with_debug(result, a.debug));
+        }
+        else {
             // Mixed with floating point - handle float32/float64 promotion
             // Determine result type based on operands (promote to highest precision)
             int has_float64 = (a.type == VAL_FLOAT64) || (b.type == VAL_FLOAT64);
