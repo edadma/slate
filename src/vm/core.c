@@ -469,6 +469,10 @@ vm_result vm_execute(vm_t* vm, function_t* function) {
     // Clean up closure if execution completed normally
     if (result == VM_OK) {
         closure_destroy(closure);
+        // Reset frame count for REPL (when frame_count would be 1 after returning from main)
+        if (vm->frame_count == 1) {
+            vm->frame_count = 0;
+        }
     }
     
     return result;
