@@ -370,24 +370,6 @@ void test_adt_singleton_constructor_display(void) {
     // TEST_ASSERT_EQUAL(VAL_STRING, result.type);
     // TEST_ASSERT_EQUAL_STRING("None", result.as.string);
     // vm_release(result);
-
-    // // Test that parameterized constructors remain as classes
-    // result = test_execute_expression("data Option\n"
-    //                                "  case None\n"
-    //                                "  case Some(value)\n"
-    //                                "Some");  // Constructor reference, not call
-    // TEST_ASSERT_EQUAL(VAL_CLASS, result.type);
-    // TEST_ASSERT_NOT_NULL(result.as.class);
-    // vm_release(result);
-
-    // // Test the parameterized constructor also displays correctly
-    // result = test_execute_expression("data Option\n"
-    //                                "  case None\n"
-    //                                "  case Some(value)\n"
-    //                                "Some.toString()");
-    // TEST_ASSERT_EQUAL(VAL_STRING, result.type);
-    // TEST_ASSERT_EQUAL_STRING("Some", result.as.string);
-    // vm_release(result);
 }
 
 
