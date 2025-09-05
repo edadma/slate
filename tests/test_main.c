@@ -36,6 +36,7 @@ void test_immutable_variables_suite(void);
 void test_optional_chaining_suite(void);
 void test_match_suite(void);
 void test_data_types_suite(void);
+void test_module_system_suite(void);
 
 void setUp(void) {
     // Setup code that runs before each test
@@ -84,6 +85,7 @@ int main(void) {
     test_optional_chaining_suite();
     test_match_suite();
     test_data_types_suite();
+    test_module_system_suite();
 
     return UNITY_END();
 }

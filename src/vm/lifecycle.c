@@ -58,6 +58,15 @@ vm_t* vm_create(void) {
         return NULL;
     }
 
+    // Initialize module search paths
+    vm->module_search_paths = da_create(sizeof(ds_string), 4, 
+                                       (void (*)(void*))ds_retain, 
+                                       (void (*)(void*))ds_release);
+    if (!vm->module_search_paths) {
+        vm_destroy(vm);
+        return NULL;
+    }
+
     // Initialize built-in functions
     builtins_init(vm);
 
@@ -121,6 +130,9 @@ void vm_destroy(vm_t* vm) {
     
     // Release function table (functions handle their own ref counting)
     da_release(&vm->functions);
+    
+    // Release module search paths
+    da_release(&vm->module_search_paths);
 
     // Release result register
     free_value(vm->result);

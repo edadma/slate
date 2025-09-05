@@ -218,6 +218,7 @@ typedef struct slate_vm {
     do_object module_cache;     // Cache of loaded modules (path -> module_t*)
     do_object builtin_modules;  // Built-in modules (name -> module_t*)
     struct module_t* current_module;  // Currently executing module
+    da_array module_search_paths; // Array of ds_string search paths
 
     // Function table - stores all defined functions with proper reference counting
     da_array functions; // Global function table

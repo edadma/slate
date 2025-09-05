@@ -106,3 +106,239 @@ bool test_expect_error(const char* source, ErrorKind expected_error) {
 
     return error_occurred && actual_error == expected_error;
 }
+
+// === Module Testing Helper Implementations ===
+
+#include "module.h"
+#include "lexer.h"
+#include "parser.h"
+#include "codegen.h"
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+// Forward declaration of helper function from module.c
+void copy_global_to_exports(const char* key, void* data, size_t size, void* context);
+
+// Helper to get the full path to a test module file
+char* test_get_module_path(const char* module_name) {
+    // Get current working directory
+    char* cwd = getcwd(NULL, 0);
+    if (!cwd) return NULL;
+    
+    // Build path: cwd/tests/modules/module_name.slate
+    size_t path_len = strlen(cwd) + strlen("/tests/modules/") + strlen(module_name) + strlen(".slate") + 1;
+    char* full_path = malloc(path_len);
+    if (!full_path) {
+        free(cwd);
+        return NULL;
+    }
+    
+    snprintf(full_path, path_len, "%s/tests/modules/%s.slate", cwd, module_name);
+    free(cwd);
+    return full_path;
+}
+
+// Create a temporary module from source code for testing
+module_t* test_create_temp_module(const char* name, const char* source) {
+    // Parse the source code
+    lexer_t lexer;
+    lexer_init(&lexer, source);
+
+    parser_t parser;
+    parser_init(&parser, &lexer);
+
+    ast_program* program = parse_program(&parser);
+    if (parser.had_error || !program) {
+        if (program) ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
+        return NULL;
+    }
+
+    // Create VM for module compilation
+    vm_t* vm = vm_create();
+    vm->context = CTX_TEST;
+    
+    // Compile the program
+    codegen_t* codegen = codegen_create(vm);
+    function_t* init_function = codegen_compile(codegen, program);
+    if (codegen->had_error || !init_function) {
+        vm_destroy(vm);
+        codegen_destroy(codegen);
+        ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
+        return NULL;
+    }
+
+    // Create the module
+    module_t* module = module_create(name, "");
+    module->init_function = init_function;
+    
+    // Execute the initialization to populate globals
+    if (setjmp(vm->trap) == 0) {
+        vm_result result = vm_execute(vm, init_function);
+        if (result == VM_OK) {
+            // Copy globals to module exports
+            do_foreach_property(vm->globals, copy_global_to_exports, module);
+            module->state = MODULE_LOADED;
+        } else {
+            module_destroy(module);
+            module = NULL;
+        }
+    } else {
+        // Error during execution
+        module_destroy(module);  
+        module = NULL;
+    }
+
+    vm_destroy(vm);
+    codegen_destroy(codegen);
+    ast_free((ast_node*)program);
+    lexer_cleanup(&lexer);
+
+    return module;
+}
+
+// Execute code with access to test modules (resolves modules from tests/modules/ directory)
+value_t test_execute_with_imports(const char* source) {
+    lexer_t lexer;
+    lexer_init(&lexer, source);
+
+    parser_t parser;
+    parser_init(&parser, &lexer);
+
+    ast_program* program = parse_program(&parser);
+    if (parser.had_error || !program) {
+        if (program) ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
+        return make_null();
+    }
+
+    vm_t* vm = vm_create();
+    vm->context = CTX_TEST;
+    
+    // Initialize module system
+    module_system_init(vm);
+    
+    // Add tests/modules directory to module search paths
+    char* cwd = getcwd(NULL, 0);
+    if (cwd) {
+        char* test_modules_path = malloc(strlen(cwd) + strlen("/tests/modules") + 1);
+        if (test_modules_path) {
+            snprintf(test_modules_path, strlen(cwd) + strlen("/tests/modules") + 1, "%s/tests/modules", cwd);
+            module_add_search_path(vm, test_modules_path);
+            free(test_modules_path);
+        }
+        free(cwd);
+    }
+    
+    codegen_t* codegen = codegen_create(vm);
+    function_t* function = codegen_compile(codegen, program);
+    if (codegen->had_error || !function) {
+        module_system_cleanup(vm);
+        vm_destroy(vm);
+        codegen_destroy(codegen);
+        ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
+        return make_null();
+    }
+
+    value_t return_value = make_null();
+    
+    // Execute with module support
+    if (setjmp(vm->trap) == 0) {
+        vm_result result = vm_execute(vm, function);
+        if (result == VM_OK) {
+            return_value = vm->result;
+            return_value = vm_retain(return_value);
+        }
+    }
+
+    module_system_cleanup(vm);
+    vm_destroy(vm);
+    codegen_destroy(codegen);
+    ast_free((ast_node*)program);
+    lexer_cleanup(&lexer);
+
+    return return_value;
+}
+
+// Test that an import statement fails with expected error
+bool test_expect_import_error(const char* import_source, ErrorKind expected_error) {
+    lexer_t lexer;
+    lexer_init(&lexer, import_source);
+
+    parser_t parser;
+    parser_init(&parser, &lexer);
+
+    ast_program* program = parse_program(&parser);
+    if (parser.had_error) {
+        // Parse error - check if this is the expected error type
+        if (program) ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
+        return false; // For now, focus on runtime import errors
+    }
+    
+    if (!program) {
+        lexer_cleanup(&lexer);
+        return false;
+    }
+
+    vm_t* vm = vm_create();
+    vm->context = CTX_TEST;
+    
+    // Initialize module system
+    module_system_init(vm);
+    
+    // Add tests/modules directory to module search paths for error testing too
+    char* cwd = getcwd(NULL, 0);
+    if (cwd) {
+        char* test_modules_path = malloc(strlen(cwd) + strlen("/tests/modules") + 1);
+        if (test_modules_path) {
+            snprintf(test_modules_path, strlen(cwd) + strlen("/tests/modules") + 1, "%s/tests/modules", cwd);
+            module_add_search_path(vm, test_modules_path);
+            free(test_modules_path);
+        }
+        free(cwd);
+    }
+    
+    codegen_t* codegen = codegen_create(vm);
+    function_t* function = codegen_compile(codegen, program);
+    if (codegen->had_error) {
+        module_system_cleanup(vm);
+        vm_destroy(vm);
+        codegen_destroy(codegen);
+        ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
+        return false; // Compile error, not import error
+    }
+    
+    if (!function) {
+        module_system_cleanup(vm);
+        vm_destroy(vm);
+        codegen_destroy(codegen);
+        ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
+        return false;
+    }
+
+    bool error_occurred = false;
+    ErrorKind actual_error = ERR_NONE;
+    
+    // Execute and catch import errors
+    if (setjmp(vm->trap) == 0) {
+        vm_result result = vm_execute(vm, function);
+        error_occurred = false;
+    } else {
+        error_occurred = true;
+        actual_error = vm->error.kind;
+    }
+
+    module_system_cleanup(vm);
+    vm_destroy(vm);
+    codegen_destroy(codegen);
+    ast_free((ast_node*)program);
+    lexer_cleanup(&lexer);
+
+    return error_occurred && actual_error == expected_error;
+}

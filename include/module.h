@@ -44,7 +44,13 @@ module_t* module_load_from_directory(struct slate_vm* vm, const char* dir_path);
 
 // Module resolution
 char* module_resolve_path(const char* module_name, const char* current_dir);
+char* module_resolve_path_with_search_paths(struct slate_vm* vm, const char* module_name, const char* current_dir);
 int module_file_exists(const char* path);
+
+// Module search path management
+void module_add_search_path(struct slate_vm* vm, const char* search_path);
+void module_clear_search_paths(struct slate_vm* vm);
+const char** module_get_search_paths(struct slate_vm* vm, size_t* count);
 
 // Module management
 module_t* module_create(const char* name, const char* path);

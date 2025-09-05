@@ -28,6 +28,8 @@ void module_system_init(struct slate_vm* vm) {
     // Initialize builtin modules  
     vm->builtin_modules = do_create(NULL);
     
+    // Note: module_search_paths is now initialized in vm_create()
+    
     // Set current module to NULL (will be set during module loading)
     vm->current_module = NULL;
 }
@@ -47,6 +49,8 @@ void module_system_cleanup(struct slate_vm* vm) {
         // TODO: Properly release all builtin modules
         do_release(&vm->builtin_modules);
     }
+    
+    // Note: module_search_paths is now cleaned up in vm_destroy()
     
     vm->current_module = NULL;
 }
@@ -199,7 +203,6 @@ module_t* module_load_from_file(struct slate_vm* vm, const char* file_path) {
     // Read the file
     FILE* file = fopen(file_path, "r");
     if (!file) {
-        printf("DEBUG: Could not open module file: %s\n", file_path);
         return NULL;
     }
     
@@ -275,8 +278,8 @@ module_t* module_load(struct slate_vm* vm, const char* module_path) {
     // TODO: Implement proper module caching later
     // For now, just resolve and load from file
     
-    // Resolve file system path
-    char* file_path = module_resolve_path(module_path, ".");
+    // Resolve file system path using VM's search paths
+    char* file_path = module_resolve_path_with_search_paths(vm, module_path, ".");
     if (!file_path) {
         return NULL; // Module not found
     }
@@ -286,4 +289,102 @@ module_t* module_load(struct slate_vm* vm, const char* module_path) {
     free(file_path);
     
     return module;
+}
+
+// === MODULE SEARCH PATH MANAGEMENT ===
+
+// Add a search path to the VM's module search paths
+void module_add_search_path(struct slate_vm* vm, const char* search_path) {
+    if (!vm || !search_path) return;
+    
+    // Create a dynamic string copy of the search path
+    ds_string path_copy = ds_new(search_path);
+    
+    // Add to the dynamic array
+    da_push(vm->module_search_paths, &path_copy);
+}
+
+// Clear all search paths
+void module_clear_search_paths(struct slate_vm* vm) {
+    if (!vm) return;
+    
+    // Clear the array - da_clear will call release callbacks automatically
+    da_clear(vm->module_search_paths);
+}
+
+// Get all search paths (caller must free the returned array, not the strings)
+const char** module_get_search_paths(struct slate_vm* vm, size_t* count) {
+    if (!vm || !count) {
+        if (count) *count = 0;
+        return NULL;
+    }
+    
+    size_t path_count = da_length(vm->module_search_paths);
+    *count = path_count;
+    
+    if (path_count == 0) return NULL;
+    
+    // Allocate array of const char* pointers
+    const char** paths = malloc(path_count * sizeof(const char*));
+    if (!paths) return NULL;
+    
+    // Fill array with pointers to the actual string data
+    for (size_t i = 0; i < path_count; i++) {
+        ds_string* path = (ds_string*)da_get(vm->module_search_paths, i);
+        paths[i] = path ? *path : "";
+    }
+    
+    return paths;
+}
+
+// Enhanced module path resolution that uses search paths
+char* module_resolve_path_with_search_paths(struct slate_vm* vm, const char* module_name, const char* current_dir) {
+    if (!module_name) return NULL;
+    
+    // First try the original resolution (current directory, examples/, etc.)
+    char* resolved = module_resolve_path(module_name, current_dir);
+    if (resolved) return resolved;
+    
+    // If not found and we have a VM, try the search paths
+    if (!vm) return NULL;
+    
+    // Convert module name to filesystem path
+    size_t name_len = strlen(module_name);
+    char* fs_path = malloc(name_len + 7); // +6 for ".slate" + 1 for null
+    if (!fs_path) return NULL;
+    
+    strcpy(fs_path, module_name);
+    
+    // Replace dots with slashes
+    for (char* p = fs_path; *p; p++) {
+        if (*p == '.') *p = '/';
+    }
+    
+    // Add .slate extension
+    strcat(fs_path, ".slate");
+    
+    // Try each search path
+    size_t search_path_count = da_length(vm->module_search_paths);
+    for (size_t i = 0; i < search_path_count; i++) {
+        ds_string* search_path = (ds_string*)da_get(vm->module_search_paths, i);
+        if (!search_path) continue;
+        
+        // Build full path: search_path/module_path
+        size_t full_len = strlen(*search_path) + 1 + strlen(fs_path) + 1;
+        char* full_path = malloc(full_len);
+        if (!full_path) continue;
+        
+        snprintf(full_path, full_len, "%s/%s", *search_path, fs_path);
+        
+        // Check if file exists
+        if (module_file_exists(full_path)) {
+            free(fs_path);
+            return full_path;
+        }
+        
+        free(full_path);
+    }
+    
+    free(fs_path);
+    return NULL;
 }

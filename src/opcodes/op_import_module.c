@@ -70,8 +70,7 @@ vm_result op_import_module(vm_t* vm) {
     // Load the module
     module_t* module = module_load(vm, module_path);
     if (!module) {
-        printf("Runtime error: Module not found: %s\n", module_path);
-        return VM_RUNTIME_ERROR;
+        runtime_error(vm, "Module not found: %s", module_path);
     }
     
     if (is_wildcard) {

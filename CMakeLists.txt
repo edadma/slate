@@ -288,6 +288,7 @@ if (BUILD_TESTS)
             tests/test_optional_chaining.c
             tests/test_match.c
             tests/test_data_types.c
+            tests/test_module_system.c
             deps/cargs/src/cargs.c
             src/lexer.c
             src/parser/parser.c
