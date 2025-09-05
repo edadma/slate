@@ -7,7 +7,7 @@
 #include <math.h>
 
 // Factory function for Float(value) constructor
-value_t float_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t float_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     if (arg_count == 0) {
         // Use build default for Float() with no arguments
 #ifdef DEFAULT_FLOAT32

@@ -13,7 +13,7 @@
 int64_t instant_parse_iso(const char* iso_string);
 
 // Main Instant factory function
-value_t instant_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t instant_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     // Case 1: Single integer argument (epoch milliseconds)
     if (arg_count == 1) {
         if (is_int(args[0])) {

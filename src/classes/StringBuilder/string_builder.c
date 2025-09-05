@@ -50,7 +50,7 @@ void string_builder_class_init(vm_t* vm) {
 }
 
 // StringBuilder factory function
-value_t string_builder_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t string_builder_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     // Parse optional initial capacity (first arg if it's an integer)
     size_t initial_capacity = 16; // default capacity
     int string_arg_start = 0;

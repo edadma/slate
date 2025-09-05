@@ -11,7 +11,7 @@
 extern value_t* global_local_time_class;
 
 // LocalTime factory function
-value_t local_time_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t local_time_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     if (arg_count != 3 && arg_count != 4) {
         runtime_error(vm, "LocalTime() requires 3 or 4 arguments: hour, minute, second, [millisecond]");
     }

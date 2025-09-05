@@ -5,7 +5,7 @@
 #include "vm.h"
 
 // Zone factory function (constructor)
-value_t zone_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t zone_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     runtime_error(vm, "Zone() constructor is not available. Use Zone.of(), Zone.utc(), or Zone.system()");
     return make_null();
 }

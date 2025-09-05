@@ -217,7 +217,7 @@ vm_result op_call(vm_t* vm) {
         class_t* cls = callable.as.class;
         if (cls->factory != NULL) {
             // Call the factory function to create an instance
-            value_t result = cls->factory(vm, arg_count, args);
+            value_t result = cls->factory(vm, cls, arg_count, args);
             vm_push(vm, result);
 
             if (args) {

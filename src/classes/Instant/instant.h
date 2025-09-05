@@ -4,7 +4,7 @@
 #include "vm.h"
 
 // Instant factory functions (implemented in factory.c)
-value_t instant_factory(vm_t* vm, int arg_count, value_t* args);
+value_t instant_factory(vm_t* vm, class_t* self, int arg_count, value_t* args);
 value_t instant_now(vm_t* vm, int arg_count, value_t* args);
 value_t instant_of_epoch_second(vm_t* vm, int arg_count, value_t* args);
 value_t instant_parse(vm_t* vm, int arg_count, value_t* args);

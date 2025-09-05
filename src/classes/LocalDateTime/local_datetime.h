@@ -8,7 +8,7 @@
 void local_datetime_class_init(vm_t* vm);
 
 // LocalDateTime Factory Function
-value_t local_datetime_factory(vm_t* vm, int arg_count, value_t* args);
+value_t local_datetime_factory(vm_t* vm, class_t* self, int arg_count, value_t* args);
 
 // LocalDateTime Instance Methods
 value_t builtin_local_datetime_date(vm_t* vm, int arg_count, value_t* args);

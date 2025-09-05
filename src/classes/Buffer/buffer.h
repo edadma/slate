@@ -9,7 +9,7 @@
 void buffer_class_init(vm_t* vm);
 
 // Buffer Factory Function (forward declaration)
-value_t buffer_factory(vm_t* vm, int arg_count, value_t* args);
+value_t buffer_factory(vm_t* vm, class_t* self, int arg_count, value_t* args);
 
 // Buffer Instance Methods
 value_t builtin_buffer_method_slice(vm_t* vm, int arg_count, value_t* args);

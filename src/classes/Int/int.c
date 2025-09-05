@@ -380,7 +380,7 @@ int is_integer(value_t value) {
 value_t* global_int_class = NULL;
 
 // Int factory function for converting strings to integers with optional base
-value_t int_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t int_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     if (arg_count == 0) {
         runtime_error(vm, "Int() requires at least 1 argument (the string to parse)");
         return make_null();

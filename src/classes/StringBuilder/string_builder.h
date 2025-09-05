@@ -8,7 +8,7 @@
 value_t builtin_value_to_string(vm_t* vm, int arg_count, value_t* args);
 
 // StringBuilder Factory and Methods  
-value_t string_builder_factory(vm_t* vm, int arg_count, value_t* args);
+value_t string_builder_factory(vm_t* vm, class_t* self, int arg_count, value_t* args);
 value_t builtin_string_builder_append(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_string_builder_append_char(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_string_builder_to_string(vm_t* vm, int arg_count, value_t* args);

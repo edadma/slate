@@ -3,6 +3,7 @@
 #include "runtime_error.h"
 #include "dynamic_string.h"
 #include "dynamic_object.h"
+#include "dynamic_array.h"
 #include <stdio.h>
 #include <string.h>
 #include <stb_ds.h>
@@ -24,67 +25,65 @@ value_t adt_instance_toString(vm_t* vm, int arg_count, value_t* args) {
         return make_null();
     }
     
-    // Get ADT type information
-    ds_string* case_type = (ds_string*)do_get(receiver.as.object, "__case_type");
-    ds_string* type_name = (ds_string*)do_get(receiver.as.object, "__type");
-    
-    const char* constructor_name = "ADTInstance"; // fallback
-    
-    // Get the constructor name from the stored type name
-    if (type_name) {
-        constructor_name = *type_name;
+    // Get constructor information from the receiver's class
+    if (!receiver.class || receiver.class->type != VAL_CLASS || !receiver.class->as.class) {
+        return make_string("ADTInstance");
     }
     
-    if (!case_type) {
-        return make_string(constructor_name);
+    const char* constructor_name = receiver.class->as.class->name;
+    if (!constructor_name) {
+        return make_string("ADTInstance");
     }
     
-    if (strcmp(*case_type, "singleton") == 0) {
-        // Singleton case: just return the case name
+    // Get parameter metadata from the constructor class
+    da_array* param_names_array = NULL;
+    if (receiver.class->as.class->static_properties) {
+        param_names_array = (da_array*)do_get(receiver.class->as.class->static_properties, "__params__");
+    }
+    
+    // Format the constructor display
+    char buffer[512];
+    
+    if (!param_names_array || da_length(*param_names_array) == 0) {
+        // No parameters - singleton case
         return make_string(constructor_name);
-    } else if (strcmp(*case_type, "constructor") == 0) {
-        // Constructor case: show case name with actual parameters
-        char buffer[256];
+    } else {
+        // Format with actual parameter names and values
+        snprintf(buffer, sizeof(buffer), "%s(", constructor_name);
         
-        // Count how many parameters we have
-        int param_count = 0;
-        const char** keys = do_get_own_keys(receiver.as.object);
-        if (keys) {
-            for (int i = 0; i < (int)arrlen(keys); i++) {
-                if (strncmp(keys[i], "param_", 6) == 0) {
-                    param_count++;
-                }
-            }
-            arrfree(keys);
-        }
-        
-        if (param_count == 0) {
-            // No parameters - just show constructor name
-            snprintf(buffer, sizeof(buffer), "%s", constructor_name);
-        } else if (param_count == 1) {
-            // Single parameter - show the actual value
-            value_t* param = (value_t*)do_get(receiver.as.object, "param_0");
-            if (param) {
-                // Show the constructor with the single parameter value
-                if (param->type == VAL_INT32) {
-                    snprintf(buffer, sizeof(buffer), "%s(%d)", constructor_name, param->as.int32);
-                } else if (param->type == VAL_STRING) {
-                    snprintf(buffer, sizeof(buffer), "%s(\"%s\")", constructor_name, param->as.string);
+        for (int i = 0; i < (int)da_length(*param_names_array); i++) {
+            ds_string* param_name_ptr = (ds_string*)da_get(*param_names_array, i);
+            if (param_name_ptr) {
+                value_t* param_value = (value_t*)do_get(receiver.as.object, *param_name_ptr);
+                if (param_value) {
+                    if (i > 0) strcat(buffer, ", ");
+                    
+                    // Format the parameter value
+                    if (param_value->type == VAL_INT32) {
+                        char temp[32];
+                        snprintf(temp, sizeof(temp), "%d", param_value->as.int32);
+                        strcat(buffer, temp);
+                    } else if (param_value->type == VAL_STRING) {
+                        char temp[128];
+                        snprintf(temp, sizeof(temp), "\"%s\"", param_value->as.string);
+                        strcat(buffer, temp);
+                    } else if (param_value->type == VAL_BOOLEAN) {
+                        strcat(buffer, param_value->as.boolean ? "true" : "false");
+                    } else if (param_value->type == VAL_NULL) {
+                        strcat(buffer, "null");
+                    } else {
+                        strcat(buffer, "...");
+                    }
                 } else {
-                    snprintf(buffer, sizeof(buffer), "%s(...)", constructor_name);
+                    if (i > 0) strcat(buffer, ", ");
+                    strcat(buffer, "?");
                 }
-            } else {
-                snprintf(buffer, sizeof(buffer), "%s(...)", constructor_name);
             }
-        } else {
-            // Multiple parameters - show constructor with ellipsis for now
-            snprintf(buffer, sizeof(buffer), "%s(...)", constructor_name);
         }
+        strcat(buffer, ")");
         
         return make_string(buffer);
     }
-    
-    return make_string("ADTInstance");
 }
 
 // ADT instance equals: structural equality

@@ -151,7 +151,7 @@ struct class {
     char* name; // Class name (owned string)
     do_object instance_properties; // Hash table of instance methods/prototype properties
     do_object static_properties; // Hash table of static methods/class properties
-    value_t (*factory)(vm_t* vm, int arg_count,
+    value_t (*factory)(vm_t* vm, class_t* self, int arg_count,
                        value_t* args); // Factory function for creating instances (NULL if not callable)
 };
 

@@ -6,7 +6,7 @@
 value_t* global_array_class = NULL;
 
 // Array factory function
-value_t array_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t array_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     // Case 0: no args -> empty array
     if (arg_count == 0) {
         da_array arr = da_new(sizeof(value_t));

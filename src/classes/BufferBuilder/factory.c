@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 // BufferBuilder(capacity) - Constructor function
-value_t buffer_builder_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t buffer_builder_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error(vm, "BufferBuilder() takes exactly 1 argument (%d given)", arg_count);
     }

@@ -12,7 +12,7 @@ extern value_t* global_buffer_builder_class;
 void buffer_builder_class_init(vm_t* vm);
 
 // Factory function
-value_t buffer_builder_factory(vm_t* vm, int arg_count, value_t* args);
+value_t buffer_builder_factory(vm_t* vm, class_t* self, int arg_count, value_t* args);
 
 // Instance methods
 value_t builtin_buffer_builder_append_uint8(vm_t* vm, int arg_count, value_t* args);

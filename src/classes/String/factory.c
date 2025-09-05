@@ -4,7 +4,7 @@
 #include "dynamic_array.h"
 
 // String factory function for creating strings from codepoints
-value_t string_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t string_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     // Create a string builder for efficient construction
     ds_builder sb = ds_builder_create();
     

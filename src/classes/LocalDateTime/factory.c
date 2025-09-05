@@ -12,7 +12,7 @@
 local_datetime_t* local_datetime_parse_iso(vm_t* vm, const char* iso_string);
 
 // LocalDateTime factory function
-value_t local_datetime_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t local_datetime_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     // Case 1: Single string argument (ISO 8601 format)
     if (arg_count == 1 && args[0].type == VAL_STRING) {
         const char* iso_string = args[0].as.string;

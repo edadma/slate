@@ -9,7 +9,7 @@
 extern value_t* global_local_date_class;
 
 // LocalDate factory function
-value_t local_date_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t local_date_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     if (arg_count != 3) {
         runtime_error(vm, "LocalDate() requires 3 arguments: year, month, day");
     }

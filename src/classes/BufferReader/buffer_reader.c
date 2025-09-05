@@ -125,7 +125,7 @@ value_t builtin_reader_remaining(vm_t* vm, int arg_count, value_t* args) {
 // ============================================================================
 
 // BufferReader factory function
-value_t buffer_reader_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t buffer_reader_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error(vm, "BufferReader() requires 1 argument: buffer");
     }

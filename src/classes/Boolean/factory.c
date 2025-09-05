@@ -2,7 +2,7 @@
 #include "builtins.h"
 
 // Boolean factory function - converts any value to boolean based on truthiness
-value_t boolean_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t boolean_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     // Case 1: No arguments - return false
     if (arg_count == 0) {
         return make_boolean(false);

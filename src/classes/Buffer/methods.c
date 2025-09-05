@@ -178,7 +178,8 @@ value_t builtin_buffer_method_reader(vm_t* vm, int arg_count, value_t* args) {
     }
     
     // Use BufferReader factory to create a proper BufferReader class instance
-    return buffer_reader_factory(vm, 1, &receiver);
+    extern value_t* global_buffer_reader_class;
+    return buffer_reader_factory(vm, global_buffer_reader_class->as.class, 1, &receiver);
 }
 
 // Buffer method: hash()

@@ -8,7 +8,7 @@
 void float_class_init(vm_t* vm);
 
 // Float Factory Function
-value_t float_factory(vm_t* vm, int arg_count, value_t* args);
+value_t float_factory(vm_t* vm, class_t* self, int arg_count, value_t* args);
 
 // Float Instance Methods
 value_t builtin_float_hash(vm_t* vm, int arg_count, value_t* args);

@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 // Buffer factory function for class instantiation
-value_t buffer_factory(vm_t* vm, int arg_count, value_t* args) {
+value_t buffer_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
     if (arg_count == 0) {
         runtime_error(vm, "Buffer() requires at least 1 argument");
         return make_null();
