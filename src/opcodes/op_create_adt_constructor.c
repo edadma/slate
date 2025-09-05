@@ -47,20 +47,22 @@ static value_t adt_constructor_wrapper(vm_t* vm, class_t* self, int arg_count, v
     // No need to store metadata in instance - it's all in the class now
     
     // Store constructor arguments using parameter names from class metadata
-    void* param_names_data = do_get(self->static_properties, "__params__");
-    if (param_names_data && arg_count > 0) {
-        // The stored data contains the da_array pointer value
-        da_array param_names_array = *(da_array*)param_names_data;
+    int32_t* param_count_ptr = (int32_t*)do_get(self->static_properties, "__constructor_param_count");
+    int stored_param_count = param_count_ptr ? *param_count_ptr : 0;
+    
+    
+    // Arguments are passed directly without receiver (different from op_call_method)
+    if (stored_param_count > 0 && arg_count > 0) {
         // Use actual parameter names from class metadata
-        for (int i = 0; i < arg_count && i < (int)da_length(param_names_array); i++) {
-            ds_string* param_name_ptr = (ds_string*)da_get(param_names_array, i);
+        for (int i = 0; i < arg_count && i < stored_param_count; i++) {
+            char param_key[32];
+            snprintf(param_key, sizeof(param_key), "__param_%d", i);
+            ds_string* param_name_ptr = (ds_string*)do_get(self->static_properties, param_key);
             if (param_name_ptr) {
-                value_t* arg_copy = malloc(sizeof(value_t));
-                if (arg_copy) {
-                    *arg_copy = vm_retain(args[i]);
-                    // Store the pointer to the value_t
-                    do_set(instance.as.object, *param_name_ptr, arg_copy, sizeof(value_t*));
-                }
+                ds_string param_name = *param_name_ptr; // dereference to get the actual ds_string
+                value_t retained_arg = vm_retain(args[i]); // Direct indexing, no receiver to skip
+                // Store the value_t struct directly
+                do_set(instance.as.object, param_name, &retained_arg, sizeof(value_t));
             }
         }
     } else if (arg_count > 0) {
@@ -68,12 +70,9 @@ static value_t adt_constructor_wrapper(vm_t* vm, class_t* self, int arg_count, v
         for (int i = 0; i < arg_count; i++) {
             char param_name[32];
             snprintf(param_name, sizeof(param_name), "param_%d", i);
-            value_t* arg_copy = malloc(sizeof(value_t));
-            if (arg_copy) {
-                *arg_copy = vm_retain(args[i]);
-                // Store the pointer itself (not what it points to)
-                do_set(instance.as.object, param_name, arg_copy, sizeof(value_t*));
-            }
+            value_t retained_arg = vm_retain(args[i]); // Direct indexing, no receiver to skip
+            // Store the value_t struct directly
+            do_set(instance.as.object, param_name, &retained_arg, sizeof(value_t));
         }
     }
     
@@ -158,19 +157,13 @@ vm_result op_create_adt_constructor(vm_t* vm) {
             do_set(constructor_class.as.class->static_properties, "__constructor_param_count", param_count_ptr, sizeof(int32_t));
         }
         
-        // Store parameter names as an array for easy access
+        // Store parameter names as individual string properties
         if (param_count > 0) {
-            // Create array of parameter names with proper ds_string management
-            da_array param_names_array = da_create(sizeof(ds_string), 0, 
-                                                   (void(*)(void*))ds_retain,
-                                                   (void(*)(void*))ds_release);
-            if (param_names_array) {
-                for (size_t i = 0; i < param_count; i++) {
-                    ds_string param_name_str = ds_new(param_names[i]);
-                    da_push(param_names_array, &param_name_str);
-                }
-                // Store the da_array pointer value
-                do_set(constructor_class.as.class->static_properties, "__params__", &param_names_array, sizeof(da_array));
+            for (size_t i = 0; i < param_count; i++) {
+                char param_key[32];
+                snprintf(param_key, sizeof(param_key), "__param_%zu", i);
+                ds_string param_name_str = ds_new(param_names[i]);
+                do_set(constructor_class.as.class->static_properties, param_key, &param_name_str, sizeof(ds_string));
             }
         }
         

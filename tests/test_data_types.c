@@ -158,6 +158,81 @@ void test_adt_instances_assignable(void) {
     vm_release(result);
 }
 
+// Test empty constructor toString method
+void test_adt_empty_constructor_toString(void) {
+    const char* code = "data Empty\n"
+                      "var e = Empty()\n"
+                      "e.toString()";
+    value_t result = test_execute_expression(code);
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Empty", result.as.string);
+    vm_release(result);
+}
+
+// Test parameterized constructor toString method
+void test_adt_parameterized_constructor_toString(void) {
+    const char* code = "data Point(x, y)\n"
+                      "var p = Point(10, 20)\n"
+                      "p.toString()";
+    value_t result = test_execute_expression(code);
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Point(10, 20)", result.as.string);
+    vm_release(result);
+}
+
+// Test multi-case constructor toString method
+void test_adt_multi_case_constructor_toString(void) {
+    const char* code = "data Option\n"
+                      "  case Some(value)\n"
+                      "  case None\n"
+                      "var s = Some(42)\n"
+                      "s.toString()";
+    value_t result = test_execute_expression(code);
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Some(42)", result.as.string);
+    vm_release(result);
+    
+    const char* code2 = "data Option\n"
+                       "  case Some(value)\n"
+                       "  case None\n"
+                       "var n = None()\n"
+                       "n.toString()";
+    value_t result2 = test_execute_expression(code2);
+    TEST_ASSERT_EQUAL(VAL_STRING, result2.type);
+    TEST_ASSERT_EQUAL_STRING("None", result2.as.string);
+    vm_release(result2);
+}
+
+// Test ADT string concatenation
+void test_adt_string_concatenation(void) {
+    const char* code = "data Point(x, y)\n"
+                      "var p = Point(10, 20)\n"
+                      "\"Point is: \" + p";
+    value_t result = test_execute_expression(code);
+    TEST_ASSERT_EQUAL(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("Point is: Point(10, 20)", result.as.string);
+    vm_release(result);
+}
+
+// Test ADT parameter access
+void test_adt_parameter_access(void) {
+    const char* code = "data Point(x, y)\n"
+                      "var p = Point(10, 20)\n"
+                      "p.x";
+    value_t result = test_execute_expression(code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(10, result.as.int32);
+    vm_release(result);
+    
+    const char* code2 = "data Point(x, y)\n"
+                       "var p = Point(10, 20)\n"
+                       "p.y";
+    value_t result2 = test_execute_expression(code2);
+    TEST_ASSERT_EQUAL(VAL_INT32, result2.type);
+    TEST_ASSERT_EQUAL_INT32(20, result2.as.int32);
+    vm_release(result2);
+}
+
 // Test data type with function calls
 void test_data_constructor_function_usage(void) {
     const char* code = "data Status\n"
@@ -243,5 +318,13 @@ void test_data_types_suite(void) {
     
     RUN_TEST(test_data_complex_case_parsing);
     RUN_TEST(test_data_with_end_marker);
+    
+    // ADT string representation tests
+    RUN_TEST(test_adt_empty_constructor_toString);
+    RUN_TEST(test_adt_parameterized_constructor_toString);
+    RUN_TEST(test_adt_multi_case_constructor_toString);
+    RUN_TEST(test_adt_string_concatenation);
+    RUN_TEST(test_adt_parameter_access);
+    
     RUN_TEST(test_adt_basic_constructor_calls);
 }

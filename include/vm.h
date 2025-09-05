@@ -287,8 +287,14 @@ value_t vm_call_function(vm_t* vm, value_t callable, int arg_count, value_t* arg
 // Function calling helper for calling Slate functions from C code (uses isolated VM)
 value_t vm_call_slate_function_from_c(vm_t* vm, value_t callable, int arg_count, value_t* args);
 
-// String conversion helper for opcodes
-ds_string value_to_string_representation(vm_t* vm, value_t value);
+// Utility function to call toString method on values (returns value_t)
+value_t call_toString_method(vm_t* vm, value_t value);
+
+// Utility function to call toString method and return ds_string
+ds_string call_toString_for_string_conversion(vm_t* vm, value_t value);
+
+// Helper function to convert values to display string (with quotes for strings)
+ds_string display_value_to_string(vm_t* vm, value_t value);
 
 
 // Iterator creation helpers

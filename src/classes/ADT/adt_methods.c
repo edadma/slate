@@ -35,28 +35,33 @@ value_t adt_instance_toString(vm_t* vm, int arg_count, value_t* args) {
         return make_string("ADTInstance");
     }
     
-    // Get parameter metadata from the constructor class
-    da_array* param_names_array = NULL;
+    // Get parameter count from the constructor class
+    int32_t* param_count_ptr = NULL;
     if (receiver.class->as.class->static_properties) {
-        param_names_array = (da_array*)do_get(receiver.class->as.class->static_properties, "__params__");
+        param_count_ptr = (int32_t*)do_get(receiver.class->as.class->static_properties, "__constructor_param_count");
     }
+    int param_count = param_count_ptr ? *param_count_ptr : 0;
     
     // Format the constructor display
     char buffer[512];
     
-    if (!param_names_array || da_length(*param_names_array) == 0) {
+    if (param_count == 0) {
         // No parameters - singleton case
         return make_string(constructor_name);
     } else {
         // Format with actual parameter names and values
         snprintf(buffer, sizeof(buffer), "%s(", constructor_name);
         
-        for (int i = 0; i < (int)da_length(*param_names_array); i++) {
-            ds_string* param_name_ptr = (ds_string*)da_get(*param_names_array, i);
+        for (int i = 0; i < param_count; i++) {
+            // Get parameter name from class metadata
+            char param_key[32];
+            snprintf(param_key, sizeof(param_key), "__param_%d", i);
+            ds_string* param_name_ptr = (ds_string*)do_get(receiver.class->as.class->static_properties, param_key);
+            
             if (param_name_ptr) {
-                value_t** param_value_ptr = (value_t**)do_get(receiver.as.object, *param_name_ptr);
-                if (param_value_ptr && *param_value_ptr) {
-                    value_t* param_value = *param_value_ptr;
+                // Get parameter value from instance
+                value_t* param_value = (value_t*)do_get(receiver.as.object, *param_name_ptr);
+                if (param_value) {
                     if (i > 0) strcat(buffer, ", ");
                     
                     // Format the parameter value

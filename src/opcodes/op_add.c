@@ -6,9 +6,9 @@ vm_result op_add(vm_t* vm) {
 
     // String concatenation (if either operand is a string)
     if (a.type == VAL_STRING || b.type == VAL_STRING) {
-        // Convert both to strings using helper function
-        ds_string str_a = value_to_string_representation(vm, a);
-        ds_string str_b = value_to_string_representation(vm, b);
+        // Convert both to strings using toString method
+        ds_string str_a = call_toString_for_string_conversion(vm, a);
+        ds_string str_b = call_toString_for_string_conversion(vm, b);
 
         // Concatenate using DS library
         ds_string result = ds_append(str_a, str_b);

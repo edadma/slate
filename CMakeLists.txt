@@ -93,7 +93,7 @@ add_executable(slate
         src/vm/stack.c
         src/vm/execution.c
         src/vm/values.c
-        src/vm/utilities.c
+        src/utilities.c
         src/vm/constants.c
         src/vm/functions.c
         src/vm/opcodes.c
@@ -313,7 +313,7 @@ if (BUILD_TESTS)
         src/vm/stack.c
         src/vm/execution.c
         src/vm/values.c
-        src/vm/utilities.c
+        src/utilities.c
         src/vm/constants.c
         src/vm/functions.c
         src/vm/opcodes.c

@@ -415,3 +415,45 @@ value_t builtin_array_fill(vm_t* vm, int arg_count, value_t* args) {
     
     return make_array(arr);
 }
+
+// Array method: toString()
+// Creates string representation like [1, "hello", true, null]
+value_t builtin_array_toString(vm_t* vm, int arg_count, value_t* args) {
+    if (arg_count != 1) {
+        runtime_error(vm, "toString() takes no arguments (%d given)", arg_count - 1);
+    }
+    
+    value_t receiver = args[0];
+    if (receiver.type != VAL_ARRAY) {
+        runtime_error(vm, "toString() can only be called on arrays");
+    }
+    
+    // Create string representation like [1, 2, 3]
+    ds_string result = ds_new("[");
+    if (receiver.as.array) {
+        int length = da_length(receiver.as.array);
+        for (int i = 0; i < length; i++) {
+            if (i > 0) {
+                ds_string comma = ds_new(", ");
+                ds_string temp = ds_concat(result, comma);
+                ds_release(&result);
+                ds_release(&comma);
+                result = temp;
+            }
+            value_t* element = (value_t*)da_get(receiver.as.array, i);
+            if (element) {
+                ds_string element_str = display_value_to_string(vm, *element);
+                ds_string temp = ds_concat(result, element_str);
+                ds_release(&result);
+                ds_release(&element_str);
+                result = temp;
+            }
+        }
+    }
+    ds_string bracket = ds_new("]");
+    ds_string temp = ds_concat(result, bracket);
+    ds_release(&result);
+    ds_release(&bracket);
+    
+    return make_string_ds(temp);
+}

@@ -162,7 +162,7 @@ int compare_numbers(value_t a, value_t b) {
 }
 
 // Helper function to call .toString() method on values using method dispatch
-static value_t call_toString_method(vm_t* vm, value_t value) {
+value_t call_toString_method(vm_t* vm, value_t value) {
     // For objects, first check instance properties for toString method
     if (value.type == VAL_OBJECT && value.as.object) {
         value_t* instance_toString = (value_t*)do_get(value.as.object, "toString");
@@ -199,6 +199,29 @@ static value_t call_toString_method(vm_t* vm, value_t value) {
     
     // No toString method found or it didn't return a string - return null
     return make_null();
+}
+
+// Helper function to convert values to display string (with quotes for strings, for use inside aggregates)
+ds_string display_value_to_string(vm_t* vm, value_t value) {
+    switch (value.type) {
+    case VAL_STRING: {
+        // Add quotes around strings for display inside aggregates
+        ds_string quoted = ds_new("\"");
+        if (value.as.string) {
+            ds_string temp1 = ds_concat(quoted, value.as.string);
+            ds_release(&quoted);
+            quoted = temp1;
+        }
+        ds_string end_quote = ds_new("\"");
+        ds_string temp2 = ds_concat(quoted, end_quote);
+        ds_release(&quoted);
+        ds_release(&end_quote);
+        return temp2;
+    }
+    default:
+        // For all other types, use the toString method
+        return call_toString_for_string_conversion(vm, value);
+    }
 }
 
 // Helper function to call .equals() method on values using method dispatch

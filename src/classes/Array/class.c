@@ -95,6 +95,9 @@ void array_class_init(vm_t* vm) {
     
     value_t array_equals_method = make_native(builtin_array_equals);
     do_set(array_proto, "equals", &array_equals_method, sizeof(value_t));
+    
+    value_t array_toString_method = make_native(builtin_array_toString);
+    do_set(array_proto, "toString", &array_toString_method, sizeof(value_t));
 
     // Create static methods object
     do_object array_static = do_create(NULL);

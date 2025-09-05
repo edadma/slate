@@ -218,8 +218,68 @@ value_t builtin_object_to_string(vm_t* vm, int arg_count, value_t* args) {
         }
     }
     
-    // Fallback to generic object representation
-    return make_string("{object}");
+    // Fallback to generic object representation showing actual properties
+    // Create string representation like {key: value, key2: value2}
+    ds_string result = ds_new("{");
+    
+    if (receiver.as.object) {
+        const char** keys = do_get_own_keys(receiver.as.object);
+        size_t key_count = arrlen(keys);
+        int property_count = 0;
+        
+        for (size_t i = 0; i < key_count; i++) {
+            // Skip ADT metadata keys
+            if (strstr(keys[i], "__") == keys[i]) {
+                continue;
+            }
+            
+            // Add comma separator for subsequent properties
+            if (property_count > 0) {
+                ds_string comma = ds_new(", ");
+                ds_string temp = ds_concat(result, comma);
+                ds_release(&result);
+                ds_release(&comma);
+                result = temp;
+            }
+            
+            // Add key: value
+            ds_string key_str = ds_new(keys[i]);
+            ds_string colon = ds_new(": ");
+            ds_string temp1 = ds_concat(result, key_str);
+            ds_string temp2 = ds_concat(temp1, colon);
+            ds_release(&result);
+            ds_release(&key_str);
+            ds_release(&colon);
+            ds_release(&temp1);
+            
+            // Get and convert the value
+            value_t* val = (value_t*)do_get(receiver.as.object, keys[i]);
+            if (val) {
+                ds_string val_str = display_value_to_string(vm, *val);
+                ds_string temp3 = ds_concat(temp2, val_str);
+                ds_release(&temp2);
+                ds_release(&val_str);
+                result = temp3;
+            } else {
+                ds_string unknown = ds_new("?");
+                ds_string temp3 = ds_concat(temp2, unknown);
+                ds_release(&temp2);
+                ds_release(&unknown);
+                result = temp3;
+            }
+            
+            property_count++;
+        }
+        
+        arrfree(keys);
+    }
+    
+    ds_string bracket = ds_new("}");
+    ds_string temp = ds_concat(result, bracket);
+    ds_release(&result);
+    ds_release(&bracket);
+    
+    return make_string_ds(temp);
 }
 
 // Stub implementations for other methods

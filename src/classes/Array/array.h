@@ -25,6 +25,7 @@ value_t builtin_array_copy(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_array_slice(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_array_reverse(vm_t* vm, int arg_count, value_t* args);
 value_t builtin_array_fill(vm_t* vm, int arg_count, value_t* args);
+value_t builtin_array_toString(vm_t* vm, int arg_count, value_t* args);
 
 // Array Functional Methods
 value_t builtin_array_map(vm_t* vm, int arg_count, value_t* args);

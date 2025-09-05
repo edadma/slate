@@ -326,7 +326,7 @@ value_t builtin_value_to_string(vm_t* vm, int arg_count, value_t* args) {
             return make_string("native function");
             
         case VAL_BOUND_METHOD:
-            return make_string("bound method");
+            return make_string("Bound Method");
             
         default:
             return make_string("unknown");

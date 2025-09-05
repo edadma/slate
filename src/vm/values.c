@@ -9,8 +9,7 @@
 // Value creation functions with debug info
 
 // Forward declarations
-ds_string value_to_string_representation(vm_t* vm, value_t value);
-static ds_string display_value_to_string(vm_t* vm, value_t value);
+static ds_string value_to_builtin_string(vm_t* vm, value_t value);
 
 // Context for object property iteration
 struct object_string_context {
@@ -63,8 +62,25 @@ static void object_property_to_string_callback(const char* key, void* data, size
     context->count++;
 }
 
-// Helper function to convert any value to string representation for concatenation
-ds_string value_to_string_representation(vm_t* vm, value_t value) {
+// Wrapper function that calls toString method and returns ds_string
+ds_string call_toString_for_string_conversion(vm_t* vm, value_t value) {
+    // Use the existing toString method dispatcher
+    value_t result = call_toString_method(vm, value);
+    
+    // If we got a string result, return it
+    if (result.type == VAL_STRING) {
+        ds_string str = ds_retain(result.as.string);
+        vm_release(result);
+        return str;
+    }
+    
+    // If no toString method or it didn't return a string, fall back to built-in
+    vm_release(result);
+    return value_to_builtin_string(vm, value);
+}
+
+// Built-in string representations for primitive types
+static ds_string value_to_builtin_string(vm_t* vm, value_t value) {
     switch (value.type) {
     case VAL_STRING:
         return ds_retain(value.as.string);
@@ -181,9 +197,9 @@ ds_string value_to_string_representation(vm_t* vm, value_t value) {
             return ds_new("{null range}");
         }
 
-        ds_string start_str = value_to_string_representation(vm, value.as.range->start);
+        ds_string start_str = call_toString_for_string_conversion(vm, value.as.range->start);
         ds_string range_op = ds_new(value.as.range->exclusive ? "..<" : "..");
-        ds_string end_str = value_to_string_representation(vm, value.as.range->end);
+        ds_string end_str = call_toString_for_string_conversion(vm, value.as.range->end);
 
         // Concatenate: start + range_op + end
         ds_string temp1 = ds_concat(start_str, range_op);
@@ -289,27 +305,6 @@ ds_string value_to_string_representation(vm_t* vm, value_t value) {
 }
 
 // Helper function to convert values to display string (with quotes for strings, for use inside aggregates)
-static ds_string display_value_to_string(vm_t* vm, value_t value) {
-    switch (value.type) {
-    case VAL_STRING: {
-        // Add quotes around strings for display inside aggregates
-        ds_string quoted = ds_new("\"");
-        if (value.as.string) {
-            ds_string temp1 = ds_concat(quoted, value.as.string);
-            ds_release(&quoted);
-            quoted = temp1;
-        }
-        ds_string end_quote = ds_new("\"");
-        ds_string temp2 = ds_concat(quoted, end_quote);
-        ds_release(&quoted);
-        ds_release(&end_quote);
-        return temp2;
-    }
-    default:
-        // For all other types, use the regular representation
-        return value_to_string_representation(vm, value);
-    }
-}
 
 // Print function specifically for the print() builtin - shows strings without quotes
 void print_for_builtin(vm_t* vm, value_t value) {
@@ -320,7 +315,7 @@ void print_for_builtin(vm_t* vm, value_t value) {
         break;
     default: {
         // For aggregates and other types, use the string representation and print it
-        ds_string str = value_to_string_representation(vm, value);
+        ds_string str = call_toString_for_string_conversion(vm, value);
         printf("%s", str);
         ds_release(&str);
         break;
