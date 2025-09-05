@@ -231,23 +231,26 @@ module_t* module_load_from_file(struct slate_vm* vm, const char* file_path) {
     
     module->state = MODULE_LOADING;
     
-    // For now, execute module in current VM context
-    // TODO: Implement proper module isolation
-    // do_object saved_globals = vm->globals;
-    // vm->globals = module->globals;
-    
-    // Execute the module code in a separate VM instance to avoid corrupting the main VM state
-    
-    // Create a new VM instance for module execution
+    // Create a new VM instance for module execution to avoid state corruption
     vm_t* module_vm = vm_create();
     if (!module_vm) {
         free(source);
         return NULL;
     }
     
-    // Module should execute in isolation - it gets its own empty globals
-    // Any existing builtins will be available through the VM's global function table
+    // Initialize module system in the module VM to support nested imports
+    module_system_init(module_vm);
     
+    // Copy search paths from parent VM to module VM
+    size_t search_path_count = da_length(vm->module_search_paths);
+    for (size_t i = 0; i < search_path_count; i++) {
+        ds_string* search_path = (ds_string*)da_get(vm->module_search_paths, i);
+        if (search_path) {
+            module_add_search_path(module_vm, *search_path);
+        }
+    }
+    
+    // Execute module in isolation
     vm_result result = vm_interpret(module_vm, source);
     
     // Copy module globals to module exports (for import system)
@@ -256,8 +259,8 @@ module_t* module_load_from_file(struct slate_vm* vm, const char* file_path) {
         do_foreach_property(module_vm->globals, copy_global_to_exports, module);
     }
     
-    // Clean up module VM (don't destroy main VM's globals that were copied back)
-    do_release(&module_vm->globals);
+    // Clean up module VM
+    module_system_cleanup(module_vm);
     vm_destroy(module_vm);
     
     free(source);
@@ -275,8 +278,13 @@ module_t* module_load_from_file(struct slate_vm* vm, const char* file_path) {
 module_t* module_load(struct slate_vm* vm, const char* module_path) {
     if (!vm || !module_path) return NULL;
     
-    // TODO: Implement proper module caching later
-    // For now, just resolve and load from file
+    // Check if module is already cached
+    if (do_has(vm->module_cache, module_path)) {
+        module_t** cached = (module_t**)do_get(vm->module_cache, module_path);
+        if (cached && *cached) {
+            return module_retain(*cached); // Return cached module with increased ref count
+        }
+    }
     
     // Resolve file system path using VM's search paths
     char* file_path = module_resolve_path_with_search_paths(vm, module_path, ".");
@@ -287,6 +295,11 @@ module_t* module_load(struct slate_vm* vm, const char* module_path) {
     // Load from file
     module_t* module = module_load_from_file(vm, file_path);
     free(file_path);
+    
+    // Cache the module if successfully loaded
+    if (module) {
+        do_set(vm->module_cache, module_path, &module, sizeof(module_t*));
+    }
     
     return module;
 }
