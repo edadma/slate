@@ -171,7 +171,7 @@ module_t* test_create_temp_module(const char* name, const char* source) {
     }
 
     // Create the module
-    module_t* module = module_create(name, "");
+    module_t* module = module_create(name, "", vm);
     module->init_function = init_function;
     
     // Execute the initialization to populate globals

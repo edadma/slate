@@ -1,5 +1,12 @@
 #include "vm.h"
 #include "runtime_error.h"
+#include "module.h"
+
+// Helper function to get the appropriate namespace for global operations
+static inline do_object get_current_namespace(vm_t* vm) {
+    module_t* current_module = module_get_current_context(vm);
+    return current_module ? current_module->namespace : vm->globals;
+}
 
 vm_result op_set_global(vm_t* vm) {
     // Pop the value to store and get the variable name constant
@@ -30,8 +37,18 @@ vm_result op_set_global(vm_t* vm) {
         return VM_RUNTIME_ERROR;
     }
 
-    // Check if variable exists
-    value_t* stored_value = (value_t*)do_get(vm->globals, name_val.as.string);
+    // Check if variable exists in current namespace
+    do_object target_namespace = get_current_namespace(vm);
+    value_t* stored_value = (value_t*)do_get(target_namespace, name_val.as.string);
+    
+    // If not found in current namespace and we're in a module, try VM globals
+    if (!stored_value && target_namespace != vm->globals) {
+        stored_value = (value_t*)do_get(vm->globals, name_val.as.string);
+        if (stored_value) {
+            target_namespace = vm->globals; // Update target for immutability check
+        }
+    }
+    
     if (stored_value) {
         // Check if variable is immutable
         bool* immutable_flag = (bool*)do_get(vm->global_immutability, name_val.as.string);

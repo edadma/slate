@@ -1,5 +1,12 @@
 #include "vm.h"
 #include "runtime_error.h"
+#include "module.h"
+
+// Helper function to get the appropriate namespace for global operations
+static inline do_object get_current_namespace(vm_t* vm) {
+    module_t* current_module = module_get_current_context(vm);
+    return current_module ? current_module->namespace : vm->globals;
+}
 
 vm_result op_define_global(vm_t* vm) {
     // Pop the value to store and the variable name constant
@@ -30,8 +37,11 @@ vm_result op_define_global(vm_t* vm) {
         return VM_RUNTIME_ERROR;
     }
 
+    // Get the appropriate namespace (module namespace or VM globals)
+    do_object target_namespace = get_current_namespace(vm);
+    
     // Check if variable already exists (prevent redeclaration in scripts, allow in REPL)
-    value_t* existing_value = (value_t*)do_get(vm->globals, name_val.as.string);
+    value_t* existing_value = (value_t*)do_get(target_namespace, name_val.as.string);
     if (existing_value && vm->context == CTX_SCRIPT) {
         char error_msg[256];
         snprintf(error_msg, sizeof(error_msg), "Variable '%s' is already declared", name_val.as.string);
@@ -76,7 +86,7 @@ vm_result op_define_global(vm_t* vm) {
         
         // ds_string can be used directly as char* - no ds_cstr needed
         // do_set needs key, data pointer, and size
-        do_set(vm->globals, name_val.as.string, stored_value, sizeof(value_t));
+        do_set(target_namespace, name_val.as.string, stored_value, sizeof(value_t));
         
         // Store immutability flag in parallel object
         immutable_flag = malloc(sizeof(bool));

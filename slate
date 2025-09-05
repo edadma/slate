@@ -1,2 +1,3 @@
 #!/bin/bash
-./cmake-build-debug-ninja/slate "$@"
+cd "$(dirname "$0")"
+./cmake-build-debug/slate "$@"

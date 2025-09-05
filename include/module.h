@@ -21,10 +21,11 @@ typedef struct module_t {
     ds_string name;           // Module name (e.g., "examples.modules.math")
     ds_string path;           // File system path
     do_object exports;        // Exported symbols
-    do_object globals;        // Module's global namespace
+    do_object namespace;      // Module's private namespace (replaces separate VM globals)
     module_state_t state;     // Loading state
     struct function* init_function; // Module initialization code
     int ref_count;            // Reference counting
+    struct slate_vm* vm;      // Reference to the shared VM
 } module_t;
 
 // Module cache entry
@@ -53,10 +54,15 @@ void module_clear_search_paths(struct slate_vm* vm);
 const char** module_get_search_paths(struct slate_vm* vm, size_t* count);
 
 // Module management
-module_t* module_create(const char* name, const char* path);
+module_t* module_create(const char* name, const char* path, struct slate_vm* vm);
 void module_destroy(module_t* module);
 module_t* module_retain(module_t* module);
 void module_release(module_t* module);
+
+// Module namespace management
+void module_push_context(struct slate_vm* vm, module_t* module);
+void module_pop_context(struct slate_vm* vm);
+module_t* module_get_current_context(struct slate_vm* vm);
 
 // Module exports
 void module_export(module_t* module, const char* name, value_t value);

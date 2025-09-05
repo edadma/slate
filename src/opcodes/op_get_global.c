@@ -1,5 +1,12 @@
 #include "vm.h"
 #include "runtime_error.h"
+#include "module.h"
+
+// Helper function to get the appropriate namespace for global operations
+static inline do_object get_current_namespace(vm_t* vm) {
+    module_t* current_module = module_get_current_context(vm);
+    return current_module ? current_module->namespace : vm->globals;
+}
 
 vm_result op_get_global(vm_t* vm) {
     uint16_t name_constant = *vm->ip | (*(vm->ip + 1) << 8);
@@ -33,11 +40,20 @@ vm_result op_get_global(vm_t* vm) {
         }
     }
     
-    // Fall through to global variable lookup
-    value_t* stored_value = (value_t*)do_get(vm->globals, name);
+    // Fall through to namespace-aware global variable lookup
+    do_object target_namespace = get_current_namespace(vm);
+    value_t* stored_value = (value_t*)do_get(target_namespace, name);
     if (stored_value) {
         vm_push(vm, *stored_value);
     } else {
+        // If not found in current namespace, try VM globals (for built-ins)
+        if (target_namespace != vm->globals) {
+            stored_value = (value_t*)do_get(vm->globals, name);
+            if (stored_value) {
+                vm_push(vm, *stored_value);
+                return VM_OK;
+            }
+        }
         slate_runtime_error(vm, ERR_REFERENCE, __FILE__, __LINE__, -1, "Undefined variable '%s'", name);
     }
     

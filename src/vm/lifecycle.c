@@ -66,6 +66,13 @@ vm_t* vm_create(void) {
         vm_destroy(vm);
         return NULL;
     }
+    
+    // Initialize module context stack
+    vm->module_context_stack = da_new(sizeof(module_t*)); // Store pointers to modules
+    if (!vm->module_context_stack) {
+        vm_destroy(vm);
+        return NULL;
+    }
 
     // Initialize built-in functions
     builtins_init(vm);
@@ -133,6 +140,9 @@ void vm_destroy(vm_t* vm) {
     
     // Release module search paths
     da_release(&vm->module_search_paths);
+    
+    // Release module context stack
+    da_release(&vm->module_context_stack);
 
     // Release result register
     free_value(vm->result);

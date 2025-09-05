@@ -71,6 +71,7 @@ vm_result op_import_module(vm_t* vm) {
     module_t* module = module_load(vm, module_path);
     if (!module) {
         runtime_error(vm, "Module not found: %s", module_path);
+        return VM_RUNTIME_ERROR;
     }
     
     if (is_wildcard) {

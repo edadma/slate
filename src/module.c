@@ -122,17 +122,18 @@ char* module_resolve_path(const char* module_name, const char* current_dir) {
 }
 
 // Create a new module
-module_t* module_create(const char* name, const char* path) {
+module_t* module_create(const char* name, const char* path, struct slate_vm* vm) {
     module_t* module = malloc(sizeof(module_t));
     if (!module) return NULL;
     
     module->name = name ? ds_new(name) : ds_new("");
     module->path = path ? ds_new(path) : ds_new("");
     module->exports = do_create(NULL);
-    module->globals = do_create(NULL);
+    module->namespace = do_create(NULL);
     module->state = MODULE_UNLOADED;
     module->init_function = NULL;
     module->ref_count = 1;
+    module->vm = vm;
     
     return module;
 }
@@ -144,7 +145,7 @@ void module_destroy(module_t* module) {
     ds_release(&module->name);
     ds_release(&module->path);
     do_release(&module->exports);
-    do_release(&module->globals);
+    do_release(&module->namespace);
     
     // TODO: Release init_function if needed
     
@@ -223,7 +224,7 @@ module_t* module_load_from_file(struct slate_vm* vm, const char* file_path) {
     fclose(file);
     
     // Create module
-    module_t* module = module_create(file_path, file_path);
+    module_t* module = module_create(file_path, file_path, vm);
     if (!module) {
         free(source);
         return NULL;
@@ -231,37 +232,20 @@ module_t* module_load_from_file(struct slate_vm* vm, const char* file_path) {
     
     module->state = MODULE_LOADING;
     
-    // Create a new VM instance for module execution to avoid state corruption
-    vm_t* module_vm = vm_create();
-    if (!module_vm) {
-        free(source);
-        return NULL;
-    }
+    // Push module context - all global operations will now use this module's namespace
+    module_push_context(vm, module);
     
-    // Initialize module system in the module VM to support nested imports
-    module_system_init(module_vm);
+    // Execute module in the shared VM with namespace isolation
+    vm_result result = vm_interpret(vm, source);
     
-    // Copy search paths from parent VM to module VM
-    size_t search_path_count = da_length(vm->module_search_paths);
-    for (size_t i = 0; i < search_path_count; i++) {
-        ds_string* search_path = (ds_string*)da_get(vm->module_search_paths, i);
-        if (search_path) {
-            module_add_search_path(module_vm, *search_path);
-        }
-    }
-    
-    // Execute module in isolation
-    vm_result result = vm_interpret(module_vm, source);
-    
-    // Copy module globals to module exports (for import system)
+    // Copy module namespace to module exports (for import system)
     if (result == VM_OK) {
-        // Copy all globals from the module VM to the module's exports
-        do_foreach_property(module_vm->globals, copy_global_to_exports, module);
+        // Copy all variables from the module's namespace to the module's exports
+        do_foreach_property(module->namespace, copy_global_to_exports, module);
     }
     
-    // Clean up module VM
-    module_system_cleanup(module_vm);
-    vm_destroy(module_vm);
+    // Pop module context to restore previous state
+    module_pop_context(vm);
     
     free(source);
     
@@ -400,4 +384,43 @@ char* module_resolve_path_with_search_paths(struct slate_vm* vm, const char* mod
     
     free(fs_path);
     return NULL;
+}
+
+// === MODULE NAMESPACE CONTEXT MANAGEMENT ===
+
+// Push a module context onto the stack
+void module_push_context(struct slate_vm* vm, module_t* module) {
+    if (!vm || !module) return;
+    
+    // Save the current module on the context stack
+    if (vm->current_module) {
+        // Store the pointer value in the array - use temporary to get correct semantics
+        module_t* temp_module = vm->current_module;
+        da_push(vm->module_context_stack, &temp_module);
+    }
+    
+    // Set the new current module
+    vm->current_module = module;
+}
+
+// Pop a module context from the stack
+void module_pop_context(struct slate_vm* vm) {
+    if (!vm) return;
+    
+    // Restore the previous module from the stack
+    size_t stack_size = da_length(vm->module_context_stack);
+    if (stack_size > 0) {
+        // Get the stored pointer value - da_get returns pointer to the stored data
+        module_t** ptr_to_module_ptr = (module_t**)da_get(vm->module_context_stack, stack_size - 1);
+        vm->current_module = *ptr_to_module_ptr;
+        da_pop(vm->module_context_stack, NULL); // Discard the popped value
+    } else {
+        vm->current_module = NULL;
+    }
+}
+
+// Get the current module context
+module_t* module_get_current_context(struct slate_vm* vm) {
+    if (!vm) return NULL;
+    return vm->current_module;
 }
