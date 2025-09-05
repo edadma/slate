@@ -383,7 +383,10 @@ static void repl_with_args(int argc, char** argv) {
                     if (setjmp(vm->trap) == 0) {
                         interpret_with_vm(accumulated_input, vm);  // Use normal strict mode for execution
                     } else {
-                        // Error was handled by runtime_error, just continue
+                        // Error was handled by runtime_error - reset VM state for REPL
+                        vm->stack_top = vm->stack;  // Clear stack
+                        vm->frame_count = 0;        // Reset frame count
+                        
                         // Error message already printed by runtime_error
                     }
                 }
@@ -481,7 +484,10 @@ static void repl_with_args(int argc, char** argv) {
             if (setjmp(vm->trap) == 0) {
                 interpret_with_vm(accumulated_input, vm);
             } else {
-                // Error was handled by runtime_error, just continue
+                // Error was handled by runtime_error - reset VM state for REPL
+                vm->stack_top = vm->stack;  // Clear stack
+                vm->frame_count = 0;        // Reset frame count
+                
                 // Error message already printed by runtime_error
             }
             

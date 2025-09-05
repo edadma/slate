@@ -466,12 +466,24 @@ vm_result vm_execute(vm_t* vm, function_t* function) {
     // Run the VM using the new core execution function
     vm_result result = vm_run(vm);
     
-    // Clean up closure if execution completed normally
+    // Always clean up closure and reset VM state for REPL
     if (result == VM_OK) {
         closure_destroy(closure);
         // Reset frame count for REPL (when frame_count would be 1 after returning from main)
         if (vm->frame_count == 1) {
             vm->frame_count = 0;
+        }
+    } else {
+        // Error occurred - clean up and reset VM state for REPL to continue
+        closure_destroy(closure);
+        
+        // Reset VM state to clean condition
+        vm->stack_top = vm->stack;  // Clear stack
+        vm->frame_count = 0;        // Reset frame count
+        
+        // Clear any leftover values on the stack
+        for (int i = 0; i < vm->stack_capacity; i++) {
+            vm->stack[i] = make_null();
         }
     }
     
