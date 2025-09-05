@@ -10,7 +10,8 @@
 
 // Wrapper factory function that creates ADT instances
 static value_t adt_constructor_wrapper(vm_t* vm, class_t* self, int arg_count, value_t* args) {
-    // Create a basic ADT instance  
+    // Create a basic ADT instance without a release function
+    // We'll handle cleanup manually when the object is destroyed
     do_object object = do_create(NULL);
     if (!object) {
         return make_null();
@@ -39,22 +40,26 @@ static value_t adt_constructor_wrapper(vm_t* vm, class_t* self, int arg_count, v
     if (class_value) {
         *class_value = (value_t){.type = VAL_CLASS, .as.class = self};
         instance.class = class_value;
+        // Note: The class value is stored directly on the instance, not as a property
+        // It will be freed when the instance is destroyed via free_value
     }
     
     // No need to store metadata in instance - it's all in the class now
     
     // Store constructor arguments using parameter names from class metadata
-    da_array* param_names_array = (da_array*)do_get(self->static_properties, "__params__");
-    if (param_names_array && arg_count > 0) {
+    void* param_names_data = do_get(self->static_properties, "__params__");
+    if (param_names_data && arg_count > 0) {
+        // The stored data contains the da_array pointer value
+        da_array param_names_array = *(da_array*)param_names_data;
         // Use actual parameter names from class metadata
-        for (int i = 0; i < arg_count && i < (int)da_length(*param_names_array); i++) {
-            ds_string* param_name_ptr = (ds_string*)da_get(*param_names_array, i);
+        for (int i = 0; i < arg_count && i < (int)da_length(param_names_array); i++) {
+            ds_string* param_name_ptr = (ds_string*)da_get(param_names_array, i);
             if (param_name_ptr) {
                 value_t* arg_copy = malloc(sizeof(value_t));
                 if (arg_copy) {
                     *arg_copy = vm_retain(args[i]);
                     // Store the pointer to the value_t
-                    do_set(instance.as.object, *param_name_ptr, &arg_copy, sizeof(value_t*));
+                    do_set(instance.as.object, *param_name_ptr, arg_copy, sizeof(value_t*));
                 }
             }
         }
@@ -67,7 +72,7 @@ static value_t adt_constructor_wrapper(vm_t* vm, class_t* self, int arg_count, v
             if (arg_copy) {
                 *arg_copy = vm_retain(args[i]);
                 // Store the pointer itself (not what it points to)
-                do_set(instance.as.object, param_name, &arg_copy, sizeof(value_t*));
+                do_set(instance.as.object, param_name, arg_copy, sizeof(value_t*));
             }
         }
     }
@@ -156,17 +161,16 @@ vm_result op_create_adt_constructor(vm_t* vm) {
         // Store parameter names as an array for easy access
         if (param_count > 0) {
             // Create array of parameter names with proper ds_string management
-            da_array* param_names_array = malloc(sizeof(da_array));
+            da_array param_names_array = da_create(sizeof(ds_string), 0, 
+                                                   (void(*)(void*))ds_retain,
+                                                   (void(*)(void*))ds_release);
             if (param_names_array) {
-                *param_names_array = da_create(sizeof(ds_string), 0, 
-                                               (void(*)(void*))ds_retain,
-                                               (void(*)(void*))ds_release);
                 for (size_t i = 0; i < param_count; i++) {
                     ds_string param_name_str = ds_new(param_names[i]);
-                    da_push(*param_names_array, &param_name_str);
+                    da_push(param_names_array, &param_name_str);
                 }
-                // Store the da_array structure itself (not a pointer to it)
-                do_set(constructor_class.as.class->static_properties, "__params__", param_names_array, sizeof(da_array));
+                // Store the da_array pointer value
+                do_set(constructor_class.as.class->static_properties, "__params__", &param_names_array, sizeof(da_array));
             }
         }
         
