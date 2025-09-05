@@ -13,7 +13,7 @@ value_t date_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
 }
 
 // Date.now() - Get current date/time in system timezone
-value_t date_now_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
+value_t date_now_factory(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 0) {
         runtime_error(vm, "Date.now() takes no arguments");
         return make_null();
@@ -26,7 +26,7 @@ value_t date_now_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) 
 }
 
 // Date.nowInZone(zone) - Get current date/time in specified timezone
-value_t date_now_in_zone_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
+value_t date_now_in_zone_factory(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 1) {
         runtime_error(vm, "Date.nowInZone() takes exactly 1 argument (Zone)");
         return make_null();
@@ -45,7 +45,7 @@ value_t date_now_in_zone_factory(vm_t* vm, class_t* self, int arg_count, value_t
 }
 
 // Date.of(year, month, day, hour, minute, second, zone)
-value_t date_of_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
+value_t date_of_factory(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 7) {
         runtime_error(vm, "Date.of() requires 7 arguments: year, month, day, hour, minute, second, zone");
         return make_null();
@@ -80,7 +80,7 @@ value_t date_of_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
 }
 
 // Date.fromInstant(instant, zone)
-value_t date_from_instant_factory(vm_t* vm, class_t* self, int arg_count, value_t* args) {
+value_t date_from_instant_factory(vm_t* vm, int arg_count, value_t* args) {
     if (arg_count != 2) {
         runtime_error(vm, "Date.fromInstant() takes exactly 2 arguments (Instant, Zone)");
         return make_null();

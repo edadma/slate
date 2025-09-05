@@ -53,7 +53,8 @@ static value_t adt_constructor_wrapper(vm_t* vm, class_t* self, int arg_count, v
                 value_t* arg_copy = malloc(sizeof(value_t));
                 if (arg_copy) {
                     *arg_copy = vm_retain(args[i]);
-                    do_set(instance.as.object, *param_name_ptr, arg_copy, sizeof(value_t));
+                    // Store the pointer to the value_t
+                    do_set(instance.as.object, *param_name_ptr, &arg_copy, sizeof(value_t*));
                 }
             }
         }
@@ -65,7 +66,8 @@ static value_t adt_constructor_wrapper(vm_t* vm, class_t* self, int arg_count, v
             value_t* arg_copy = malloc(sizeof(value_t));
             if (arg_copy) {
                 *arg_copy = vm_retain(args[i]);
-                do_set(instance.as.object, param_name, arg_copy, sizeof(value_t));
+                // Store the pointer itself (not what it points to)
+                do_set(instance.as.object, param_name, &arg_copy, sizeof(value_t*));
             }
         }
     }
@@ -154,14 +156,18 @@ vm_result op_create_adt_constructor(vm_t* vm) {
         // Store parameter names as an array for easy access
         if (param_count > 0) {
             // Create array of parameter names with proper ds_string management
-            da_array param_names_array = da_create(sizeof(ds_string), 0, 
-                                                   (void(*)(void*))ds_retain,
-                                                   (void(*)(void*))ds_release);
-            for (size_t i = 0; i < param_count; i++) {
-                ds_string param_name_str = ds_new(param_names[i]);
-                da_push(param_names_array, &param_name_str);
+            da_array* param_names_array = malloc(sizeof(da_array));
+            if (param_names_array) {
+                *param_names_array = da_create(sizeof(ds_string), 0, 
+                                               (void(*)(void*))ds_retain,
+                                               (void(*)(void*))ds_release);
+                for (size_t i = 0; i < param_count; i++) {
+                    ds_string param_name_str = ds_new(param_names[i]);
+                    da_push(*param_names_array, &param_name_str);
+                }
+                // Store the da_array structure itself (not a pointer to it)
+                do_set(constructor_class.as.class->static_properties, "__params__", param_names_array, sizeof(da_array));
             }
-            do_set(constructor_class.as.class->static_properties, "__params__", &param_names_array, sizeof(da_array));
         }
         
         // Add static methods to constructor class

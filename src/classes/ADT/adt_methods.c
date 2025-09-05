@@ -54,8 +54,9 @@ value_t adt_instance_toString(vm_t* vm, int arg_count, value_t* args) {
         for (int i = 0; i < (int)da_length(*param_names_array); i++) {
             ds_string* param_name_ptr = (ds_string*)da_get(*param_names_array, i);
             if (param_name_ptr) {
-                value_t* param_value = (value_t*)do_get(receiver.as.object, *param_name_ptr);
-                if (param_value) {
+                value_t** param_value_ptr = (value_t**)do_get(receiver.as.object, *param_name_ptr);
+                if (param_value_ptr && *param_value_ptr) {
+                    value_t* param_value = *param_value_ptr;
                     if (i > 0) strcat(buffer, ", ");
                     
                     // Format the parameter value
