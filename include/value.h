@@ -37,7 +37,6 @@ typedef enum {
     VAL_CLOSURE,
     VAL_NATIVE,
     VAL_BOUND_METHOD,
-    // Date/Time types
     VAL_LOCAL_DATE, // Date without time zone (2024-12-25)
     VAL_LOCAL_TIME, // Time without date or time zone (15:30:45)
     VAL_LOCAL_DATETIME, // Date and time without time zone (2024-12-25T15:30:45)
@@ -278,7 +277,8 @@ value_t make_string_ds_with_debug(ds_string string, debug_location* debug);
 value_t make_string_builder_with_debug(ds_builder builder, debug_location* debug);
 value_t make_array_with_debug(da_array array, debug_location* debug);
 value_t make_object_with_debug(do_object object, debug_location* debug);
-value_t make_class_with_debug(const char* name, do_object instance_properties, do_object static_properties, debug_location* debug);
+value_t make_class_with_debug(const char* name, do_object instance_properties, do_object static_properties,
+                              debug_location* debug);
 value_t make_range_with_debug(value_t start, value_t end, int exclusive, value_t step, debug_location* debug);
 value_t make_iterator_with_debug(iterator_t* iterator, debug_location* debug);
 value_t make_function_with_debug(struct function* function, debug_location* debug);
