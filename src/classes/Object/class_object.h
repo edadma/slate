@@ -4,6 +4,9 @@
 #include "vm.h"
 #include "value.h"
 
+// Global Object class for inheritance
+extern value_t* global_object_class;
+
 void initialize_object_class(vm_t* vm);
 
 value_t builtin_object_hash(vm_t* vm, int arg_count, value_t* args);

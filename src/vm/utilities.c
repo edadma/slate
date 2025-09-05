@@ -161,6 +161,46 @@ int compare_numbers(value_t a, value_t b) {
     return 0;
 }
 
+// Helper function to call .toString() method on values using method dispatch
+static value_t call_toString_method(vm_t* vm, value_t value) {
+    // For objects, first check instance properties for toString method
+    if (value.type == VAL_OBJECT && value.as.object) {
+        value_t* instance_toString = (value_t*)do_get(value.as.object, "toString");
+        if (instance_toString && instance_toString->type == VAL_NATIVE) {
+            value_t args[1] = { value };
+            native_t native_func = (native_t)instance_toString->as.native;
+            value_t result = native_func(vm, 1, args);
+            
+            if (result.type == VAL_STRING) {
+                return result;
+            }
+        }
+    }
+    
+    // Then check class prototype chain
+    value_t* current_class = value.class;
+    
+    while (current_class && current_class->type == VAL_CLASS) {
+        class_t* cls = current_class->as.class;
+        value_t* toString_method = lookup_instance_property(cls, "toString");
+        if (toString_method && toString_method->type == VAL_NATIVE) {
+            value_t args[1] = { value };
+            native_t native_func = (native_t)toString_method->as.native;
+            value_t result = native_func(vm, 1, args);
+            
+            if (result.type == VAL_STRING) {
+                return result;
+            }
+            break; // Method found but didn't return string - stop looking
+        }
+        // Move to parent class if any
+        current_class = current_class->class;
+    }
+    
+    // No toString method found or it didn't return a string - return null
+    return make_null();
+}
+
 // Helper function to call .equals() method on values using method dispatch
 int call_equals_method(vm_t* vm, value_t a, value_t b) {
     // Call .equals() method on the left operand using method dispatch
@@ -257,16 +297,41 @@ void print_value(vm_t* vm, value_t value) {
         break;
     }
     case VAL_OBJECT: {
-        printf("{");
         if (value.as.object) {
-            // For now, just show it's an object - full object printing would be more complex
-            printf("Object");
+            // Try to call .toString() method first
+            value_t toString_result = call_toString_method(vm, value);
+            if (toString_result.type == VAL_STRING) {
+                printf("%s", toString_result.as.string);
+                vm_release(toString_result);
+            } else {
+                // Fallback to generic object representation
+                printf("{Object}");
+            }
+        } else {
+            printf("null");
         }
-        printf("}");
         break;
     }
     case VAL_CLASS: {
         if (value.as.class) {
+            // Try to call class-level toString method first
+            if (value.as.class->static_properties) {
+                value_t* toString_method = (value_t*)do_get(value.as.class->static_properties, "toString");
+                if (toString_method && toString_method->type == VAL_NATIVE) {
+                    value_t args[1] = { value };
+                    native_t native_func = (native_t)toString_method->as.native;
+                    value_t result = native_func(vm, 1, args);
+                    
+                    if (result.type == VAL_STRING) {
+                        printf("%s", result.as.string);
+                        vm_release(result);
+                        break;
+                    }
+                    vm_release(result);
+                }
+            }
+            
+            // Fallback to default class representation
             printf("<class %s>", value.as.class->name ? value.as.class->name : "anonymous");
         } else {
             printf("<null class>");

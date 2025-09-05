@@ -205,6 +205,19 @@ void test_data_with_end_marker(void) {
     vm_release(result);
 }
 
+// Test basic ADT constructor calls that were causing segfault  
+void test_adt_basic_constructor_calls(void) {
+    const char* code = "data Option\n"
+                      "  case Some(value)\n"  
+                      "  case None\n"
+                      "var instance = Some(42)\n"
+                      "instance";
+    value_t result = test_execute_expression(code);
+    // Should return an ADT instance, not crash
+    TEST_ASSERT_EQUAL(VAL_OBJECT, result.type);
+    vm_release(result);
+}
+
 
 // ===========================
 // DATA TYPE TEST SUITE
@@ -230,4 +243,5 @@ void test_data_types_suite(void) {
     
     RUN_TEST(test_data_complex_case_parsing);
     RUN_TEST(test_data_with_end_marker);
+    RUN_TEST(test_adt_basic_constructor_calls);
 }

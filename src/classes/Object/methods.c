@@ -201,7 +201,24 @@ value_t builtin_object_to_string(vm_t* vm, int arg_count, value_t* args) {
         runtime_error(vm, "toString() can only be called on objects");
     }
     
-    // Simple object string representation for now
+    // Check if this is an ADT object with type information
+    ds_string* type_name = (ds_string*)do_get(receiver.as.object, "__type");
+    ds_string* case_type = (ds_string*)do_get(receiver.as.object, "__case_type");
+    
+    if (type_name && case_type) {
+        if (strcmp(*case_type, "singleton") == 0) {
+            // Singleton case: just return the case name
+            return make_string(*type_name);
+        } else if (strcmp(*case_type, "constructor") == 0) {
+            // Constructor case: show case name with parameters
+            // For now, show the case name - could be enhanced to show parameter values
+            char buffer[256];
+            snprintf(buffer, sizeof(buffer), "%s(...)", *type_name);
+            return make_string(buffer);
+        }
+    }
+    
+    // Fallback to generic object representation
     return make_string("{object}");
 }
 

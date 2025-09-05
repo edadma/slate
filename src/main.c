@@ -316,6 +316,7 @@ static char* read_file(const char* path) {
 
 static void repl_with_args(int argc, char** argv);
 static void repl(void) { repl_with_args(0, NULL); }
+static int should_continue_for_data_declaration(ast_program* program);
 
 static void repl_with_args(int argc, char** argv) {
     char line[1024];
@@ -456,8 +457,18 @@ static void repl_with_args(int argc, char** argv) {
         // Parse succeeded - but stay in continuation mode until empty line
         fclose(error_capture);
 
+        // Check if this is a data declaration that should trigger continuation mode
+        int should_continue = should_continue_for_data_declaration(program);
+
         if (program) {
             ast_free((ast_node*)program);
+        }
+
+        // If this is a data declaration, enter continuation mode
+        if (should_continue && !in_continuation) {
+            in_continuation = 1;
+            lexer_cleanup(&lexer);
+            continue;
         }
 
         // If not in continuation mode, this was a complete single-line input
@@ -484,6 +495,20 @@ static void repl_with_args(int argc, char** argv) {
 
     // Cleanup the persistent VM
     vm_destroy(vm);
+}
+
+// Helper function to check if a parsed program contains data declarations that should trigger continuation mode
+static int should_continue_for_data_declaration(ast_program* program) {
+    if (!program || !program->statements) return 0;
+    
+    for (int i = 0; i < program->statement_count; i++) {
+        ast_node* stmt = program->statements[i];
+        if (stmt && stmt->type == AST_DATA_DECLARATION) {
+            // For data declarations, always enter continuation mode to allow cases/methods
+            return 1;
+        }
+    }
+    return 0;
 }
 
 static void run_tests(void) {

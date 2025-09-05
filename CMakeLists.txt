@@ -63,6 +63,7 @@ include_directories(src/classes/Date)
 include_directories(src/classes/Instant)
 include_directories(src/classes/Null)
 include_directories(src/classes/Object)
+include_directories(src/classes/ADT)
 
 # Main executable
 add_executable(slate
@@ -151,6 +152,7 @@ add_executable(slate
         src/classes/Null/class.c
         src/classes/Object/methods.c
         src/classes/Object/class.c
+        src/classes/ADT/adt_methods.c
         src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c
@@ -369,6 +371,7 @@ if (BUILD_TESTS)
         src/classes/Null/class.c
         src/classes/Object/methods.c
         src/classes/Object/class.c
+        src/classes/ADT/adt_methods.c
             src/opcodes/op_add.c
         src/opcodes/op_subtract.c
         src/opcodes/op_multiply.c
