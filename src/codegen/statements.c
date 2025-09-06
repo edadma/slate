@@ -336,7 +336,10 @@ void codegen_emit_if(codegen_t* codegen, ast_if* node) {
                node->then_stmt->type == AST_CONTINUE ||
                node->then_stmt->type == AST_RETURN) {
         codegen_emit_statement(codegen, node->then_stmt);
-        codegen_emit_op(codegen, OP_PUSH_NULL);
+        // Don't push null after return statements - they exit the function immediately
+        if (node->then_stmt->type != AST_RETURN) {
+            codegen_emit_op(codegen, OP_PUSH_NULL);
+        }
     } else {
         // Regular expression
         codegen_emit_expression(codegen, node->then_stmt);
@@ -364,7 +367,10 @@ void codegen_emit_if(codegen_t* codegen, ast_if* node) {
                    node->else_stmt->type == AST_CONTINUE ||
                    node->else_stmt->type == AST_RETURN) {
             codegen_emit_statement(codegen, node->else_stmt);
-            codegen_emit_op(codegen, OP_PUSH_NULL);
+            // Don't push null after return statements - they exit the function immediately
+            if (node->else_stmt->type != AST_RETURN) {
+                codegen_emit_op(codegen, OP_PUSH_NULL);
+            }
         } else {
             // Regular expression
             codegen_emit_expression(codegen, node->else_stmt);
