@@ -57,16 +57,21 @@ ast_node* parse_indented_block(parser_t* parser) {
     } else {
         ast_node* last_stmt = statements[statement_count - 1];
         if (last_stmt->type != AST_EXPRESSION_STMT) {
-            // In lenient mode, allow variable declarations with initializers as valid block endings
-            if (parser->mode == PARSER_MODE_LENIENT && last_stmt->type == AST_VAR_DECLARATION) {
-                ast_var_declaration* var_decl = (ast_var_declaration*)last_stmt;
-                if (var_decl->initializer) {
-                    // Variable declaration with initializer is valid - it produces the initialized value
-                    // Continue without error
-                } else {
-                    parser_error(parser, "Block expressions must end with an expression, not a statement");
-                    return NULL;
+            // Allow certain statements as valid block endings
+            if ((parser->mode == PARSER_MODE_LENIENT && last_stmt->type == AST_VAR_DECLARATION) ||
+                last_stmt->type == AST_ASSIGNMENT || 
+                last_stmt->type == AST_COMPOUND_ASSIGNMENT ||
+                last_stmt->type == AST_RETURN) {
+                
+                if (last_stmt->type == AST_VAR_DECLARATION) {
+                    ast_var_declaration* var_decl = (ast_var_declaration*)last_stmt;
+                    if (!var_decl->initializer) {
+                        parser_error(parser, "Block expressions must end with an expression, not a statement");
+                        return NULL;
+                    }
                 }
+                // Assignments, compound assignments, and return statements are valid block endings
+                // Continue without error
             } else {
                 parser_error(parser, "Block expressions must end with an expression, not a statement");
                 return NULL;
