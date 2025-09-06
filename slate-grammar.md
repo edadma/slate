@@ -88,25 +88,25 @@ anonymous_function ::= identifier '->' expression                  // single par
 ### Control Flow Expressions
 ```
 if_expression  ::= 'if' expression 'then' expression elif_part* else_part?
-                 | 'if' expression indented_block elif_part* else_part?
+                 | 'if' expression ['then'] indented_block elif_part* else_part? ['end' 'if']
 
 elif_part      ::= 'elif' expression 'then' expression
-                 | 'elif' expression indented_block
+                 | 'elif' expression ['then'] indented_block
 
 else_part      ::= 'else' expression
 
 while_expression ::= 'while' expression 'do' expression
-                   | 'while' expression indented_block
+                   | 'while' expression indented_block ['end' 'while']
 
 do_while_expression ::= 'do' expression 'while' expression
 
 for_expression ::= 'for' (var_decl | expression)? ';' expression? ';' expression?
-                   ('do' expression | indented_block)
+                   ('do' expression | indented_block ['end' 'for'])
 
 loop_expression ::= 'loop' expression
-                  | 'loop' indented_block
+                  | 'loop' indented_block ['end' 'loop']
 
-match_expression ::= 'match' expression indented_match_block
+match_expression ::= 'match' expression indented_match_block ['end' 'match']
 
 indented_match_block ::= NEWLINE INDENT
                         match_arm+
@@ -177,6 +177,7 @@ ternary        ::= null_coalesce ('?' assignment ':' assignment)?
 ```
 expression     ::= assignment
                  | anonymous_function
+                 | indented_block
 ```
 
 ## Statements
@@ -192,6 +193,7 @@ val_decl       ::= 'val' identifier '=' expression
 ### Function Declarations
 ```
 function_decl  ::= 'def' identifier '(' parameters? ')' '=' expression
+                 | 'def' identifier '(' parameters? ')' '=' indented_block ['end' identifier]
 parameters     ::= identifier (',' identifier)*
 ```
 
@@ -244,6 +246,72 @@ block          ::= (statement | expression)*
 program        ::= block
 ```
 
+## End Markers
+
+Slate supports optional end markers for constructs that use indented blocks. End markers provide visual clarity and help with error checking, especially in large blocks.
+
+### End Marker Rules
+
+**End markers are only available when using indented blocks:**
+- Single-line forms (using `do`, `then`, or direct expressions) do not support end markers
+- Multi-line indented block forms support optional end markers
+
+**Supported end markers:**
+- **Control flow**: `end if`, `end while`, `end for`, `end loop`, `end match`
+- **Function declarations**: `end <function_name>` (where `<function_name>` is the actual function name)  
+- **Data declarations**: `end <DataTypeName>` (where `<DataTypeName>` is the actual data type name)
+
+### Examples
+
+```slate
+\ Control flow with end markers
+if condition
+    do_something()
+    result = compute()
+    result
+end if
+
+while condition
+    process_item()
+    update_condition()
+end while
+
+for var i = 0; i < 10; i += 1
+    print(i)
+end for
+
+loop
+    if should_exit() then break
+    process()
+end loop
+
+match value
+    case 1 do "one"
+    case 2 do "two"
+    default "other"
+end match
+
+\ Function with end marker
+def fibonacci(n) =
+    if n <= 1 then
+        return n
+    fibonacci(n-1) + fibonacci(n-2)
+end fibonacci
+
+\ Data declaration with end marker
+data BinaryTree(value)
+    case Leaf
+    case Node(left, right)
+        
+    def size() =
+        match this
+            case Leaf do 0
+            case Node(l, r) do 1 + l.size() + r.size()
+end BinaryTree
+```
+
+**Note:** `do...while` loops are self-delimiting and do not support end markers since they end with the `while` keyword.
+
 ## Language Semantics
 
 ### Expression Return Values
@@ -282,29 +350,62 @@ These are parsed as statements to allow them at the end of blocks (which are exp
 - When used in expression context, they evaluate to `undefined` before causing control flow change
 - They require special codegen handling due to their dual nature
 
-### Block Expressions
+### Block Expressions (Indented Blocks)
 
-**Indented blocks** (`indented_block`) are a type of expression that uses indentation syntax. Like any expression, they return values. An indented block is created by:
-- A newline followed by increased indentation
+**Indented blocks are first-class expressions** in Slate. They can appear anywhere an expression is expected and always return a value.
+
+#### Syntax
+```
+indented_block ::= NEWLINE INDENT block DEDENT
+block          ::= (statement | expression)*
+```
+
+#### Block Expression Semantics
+An indented block is created by:
+- A newline followed by increased indentation (INDENT)
 - A sequence of statements and/or expressions  
-- A dedent (return to previous indentation level)
+- A dedent back to the previous indentation level (DEDENT)
 
-Since indented blocks are expressions, they can be used anywhere an expression is expected. The value of an indented block is:
+The **return value** of an indented block is:
 1. The value of the last expression in the block, OR
 2. `undefined` if the block ends with a statement, OR  
 3. `undefined` if the block is empty
 
-Examples:
+#### Usage as Expressions
+Since indented blocks are expressions, they can be used:
+- As the right-hand side of assignments (`var x = indented_block`)
+- As function arguments (`print(indented_block)`)
+- As operands in binary operations (`indented_block + 5`)
+- Anywhere else an expression is valid
+
+#### Examples
 ```slate
-var result = 
+\ Assignment to variable
+val result = 
     var x = 5      \ Statement - doesn't contribute to block value
     x + 10         \ Expression - block evaluates to 15
+print(result)      \ Prints: 15
 
-var result2 =
-    print("hello") \ Expression statement - block evaluates to undefined
+\ As function argument
+print(
+    var temp = 100
+    temp / 2
+)                  \ Prints: 50
+
+\ In arithmetic operations
+val sum = 10 + 
+    var a = 5
+    var b = 3
+    a * b          \ Block evaluates to 15
+print(sum)         \ Prints: 25
+
+\ Nested blocks
+val nested =
+    val outer = 10
     
-var result3 =
-    if true then 5 else 10  \ Expression - block evaluates to 5
+        val inner = 5
+        outer + inner     \ Inner block evaluates to 15
+print(nested)      \ Prints: 15
 ```
 
 ## Indentation and Scoping
