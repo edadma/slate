@@ -7,6 +7,7 @@
 #include "parser.h"
 #include "vm.h"
 #include "cargs.h"
+#include "module.h"
 
 // Global debug flag
 static int debug_mode = 0;
@@ -69,6 +70,13 @@ static struct cag_option options[] = {
         .access_name = "disassemble",
         .value_name = "CODE",
         .description = "Disassemble script bytecode without executing"
+    },
+    {
+        .identifier = 'I',
+        .access_letters = "I",
+        .access_name = "include",
+        .value_name = "PATH",
+        .description = "Add directory to module search path (can be used multiple times)"
     }
 };
 
@@ -88,6 +96,8 @@ static void show_help(const char* program_name) {
     printf("  %s --stdin < input.txt       # Execute from stdin\n", program_name);
     printf("  %s --test                    # Run built-in tests\n", program_name);
     printf("  %s -D \"f(g(3))\"              # Disassemble bytecode\n", program_name);
+    printf("  %s -I /path/to/modules script.slate  # Add module search path\n", program_name);
+    printf("  SLATEPATH=/path/to/modules %s script.slate  # Use environment variable\n", program_name);
     printf("\nShebang usage:\n");
     printf("  #!/usr/bin/env %s\n", program_name);
     printf("  # Your Slate script here\n");
@@ -172,6 +182,49 @@ static void disassemble(const char* source) {
 
 // Forward declaration
 static void interpret_with_vm(const char* source, vm_t* vm);
+
+// Add search paths from SLATEPATH environment variable
+static void add_env_search_paths(vm_t* vm) {
+    const char* slate_path = getenv("SLATEPATH");
+    if (!slate_path) return;
+    
+    // Make a copy since we'll modify it with strtok
+    char* path_copy = strdup(slate_path);
+    if (!path_copy) return;
+    
+    // Split by colon (Unix) or semicolon (Windows)
+    const char* delimiter = ":";
+    #ifdef _WIN32
+    delimiter = ";";
+    #endif
+    
+    char* token = strtok(path_copy, delimiter);
+    while (token != NULL) {
+        // Skip empty tokens
+        if (strlen(token) > 0) {
+            module_add_search_path(vm, token);
+        }
+        token = strtok(NULL, delimiter);
+    }
+    
+    free(path_copy);
+}
+
+// Apply both environment variable and command line search paths to a VM
+static void configure_search_paths(vm_t* vm, char** include_paths, int include_count) {
+    // First add current working directory (default behavior)
+    module_add_search_path(vm, ".");
+    
+    // Then add environment paths
+    add_env_search_paths(vm);
+    
+    // Finally add command line paths (highest priority)
+    for (int i = 0; i < include_count; i++) {
+        if (include_paths[i]) {
+            module_add_search_path(vm, include_paths[i]);
+        }
+    }
+}
 static void interpret_with_vm_mode(const char* source, vm_t* vm, int show_undefined);
 static void interpret_with_vm_mode_parser(const char* source, vm_t* vm, int show_undefined, parser_mode_t parser_mode);
 
@@ -314,11 +367,11 @@ static char* read_file(const char* path) {
     return buffer;
 }
 
-static void repl_with_args(int argc, char** argv);
-static void repl(void) { repl_with_args(0, NULL); }
+static void repl_with_args(int argc, char** argv, char** include_paths, int include_count);
+static void repl(void) { repl_with_args(0, NULL, NULL, 0); }
 static int should_continue_for_data_declaration(ast_program* program);
 
-static void repl_with_args(int argc, char** argv) {
+static void repl_with_args(int argc, char** argv, char** include_paths, int include_count) {
     char line[1024];
     char accumulated_input[4096] = "";
     int in_continuation = 0;
@@ -335,6 +388,9 @@ static void repl_with_args(int argc, char** argv) {
     
     // Set REPL context for error handling
     vm->context = CTX_INTERACTIVE;
+    
+    // Configure module search paths
+    configure_search_paths(vm, include_paths, include_count);
 
     for (;;) {
         // Show appropriate prompt
@@ -637,6 +693,10 @@ int main(int argc, char* argv[]) {
     const char* disassemble_content = NULL;
     int start_repl = 0;
     
+    // Collect include paths
+    char** include_paths = NULL;
+    int include_count = 0;
+    
     // Check if first argument is a file path (for shebang support)
     // This happens when slate is used as: slate script.slate [args...]
     if (argc > 1 && argv[1][0] != '-') {
@@ -647,11 +707,14 @@ int main(int argc, char* argv[]) {
         char** script_argv = (argc > 2) ? &argv[2] : NULL;
         int script_argc = (argc > 2) ? argc - 2 : 0;
         
+        // For shebang mode, we don't have include paths yet, so use basic setup
         // Run the script file
         char* source = read_file(script_file);
         if (source) {
             vm_t* vm = vm_create_with_args(script_argc, script_argv);
             vm->context = CTX_SCRIPT;
+            module_add_search_path(vm, ".");  // Current directory
+            add_env_search_paths(vm); // Environment paths
             interpret_with_vm_mode(source, vm, 0); // Hide undefined results
             vm_destroy(vm);
             free(source);
@@ -692,6 +755,14 @@ int main(int argc, char* argv[]) {
             case 'D':
                 disassemble_content = cag_option_get_value(&context);
                 break;
+            case 'I':
+                // Add include path
+                include_paths = realloc(include_paths, sizeof(char*) * (include_count + 1));
+                if (include_paths) {
+                    include_paths[include_count] = strdup(cag_option_get_value(&context));
+                    include_count++;
+                }
+                break;
             case '?':
                 // Invalid option
                 cag_option_print_error(&context, stdout);
@@ -729,6 +800,7 @@ int main(int argc, char* argv[]) {
             // Create a shared VM to maintain state and show results
             vm_t* vm = vm_create_with_args(script_argc, script_argv);
             vm->context = CTX_INTERACTIVE;  // Set REPL context to allow redeclaration
+            configure_search_paths(vm, include_paths, include_count);
 
             // Split by lines and interpret each one
             char* line = strtok(source, "\n");
@@ -747,6 +819,7 @@ int main(int argc, char* argv[]) {
         // Execute script content directly with result display
         vm_t* vm = vm_create_with_args(script_argc, script_argv);
         vm->context = CTX_SCRIPT;  // Set script context for --script option too
+        configure_search_paths(vm, include_paths, include_count);
         interpret_with_vm_mode(script_content, vm, 1);
         vm_destroy(vm);
     } else if (script_file) {
@@ -755,6 +828,7 @@ int main(int argc, char* argv[]) {
         if (source) {
             vm_t* vm = vm_create_with_args(script_argc, script_argv);
             vm->context = CTX_SCRIPT;  // Set script context
+            configure_search_paths(vm, include_paths, include_count);
             
             // In script mode, we don't use setjmp because runtime_error will call exit(1)
             // The error handler will print the error and exit directly
@@ -765,8 +839,14 @@ int main(int argc, char* argv[]) {
         }
     } else {
         // No execution mode specified or explicit --repl - start REPL
-        repl_with_args(script_argc, script_argv);
+        repl_with_args(script_argc, script_argv, include_paths, include_count);
     }
+
+    // Clean up include paths
+    for (int i = 0; i < include_count; i++) {
+        free(include_paths[i]);
+    }
+    free(include_paths);
 
     return 0;
 }
