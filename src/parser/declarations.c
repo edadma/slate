@@ -211,8 +211,28 @@ ast_node* parse_import_statement(parser_t* parser) {
     import_specifier* specifiers = NULL;
     size_t specifier_count = 0;
     
+    // Check if this is a single item import (e.g., import module.item)
+    // This happens when we're at end of statement (no { or other tokens) and have a dot-separated path
+    if (!parser_check(parser, TOKEN_LEFT_BRACE) && !is_wildcard && 
+        (parser_check(parser, TOKEN_SEMICOLON) || parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_EOF))) {
+        
+        // Find the last dot in the module path to split module from item
+        char* last_dot = strrchr(module_path, '.');
+        if (last_dot) {
+            // Split the path: everything before last dot is module, after is item
+            char* item_name = strdup(last_dot + 1);
+            *last_dot = '\0'; // Truncate module_path at the last dot
+            
+            // Create a single specifier for this item
+            specifiers = malloc(sizeof(import_specifier));
+            specifiers[0].name = item_name;
+            specifiers[0].alias = NULL; // No alias for single imports
+            specifier_count = 1;
+        }
+    }
+    
     // Check for selective imports after we've built the module path
-    if (parser_match(parser, TOKEN_LEFT_BRACE)) {
+    else if (parser_match(parser, TOKEN_LEFT_BRACE)) {
         // Parse specific imports: {name1, name2 => alias, name3}
         do {
             parser_consume(parser, TOKEN_IDENTIFIER, "Expected identifier in import specifier");

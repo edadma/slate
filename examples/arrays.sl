@@ -21,8 +21,8 @@ print("Mixed array at index 2: " + mixed(2))
 print("")
 
 \ Array lengths
-print("Fruits length: " + fruits.length)
-print("Numbers length: " + numbers.length)
+print("Fruits length: " + fruits.length())
+print("Numbers length: " + numbers.length())
 
 print("")
 
@@ -46,6 +46,6 @@ print("")
 \ Empty arrays
 var empty = []
 print("Empty array: " + empty)
-print("Empty length: " + empty.length)
+print("Empty length: " + empty.length())
 var combined = empty + [1, 2, 3]
 print("Empty + [1,2,3]: " + combined)

@@ -63,6 +63,7 @@ typedef enum {
     TOKEN_DIV_ASSIGN,    // /=
     TOKEN_MOD_ASSIGN,    // %=
     TOKEN_POWER_ASSIGN,  // **=
+    TOKEN_FLOOR_DIV_ASSIGN, // //=
     TOKEN_BITWISE_AND_ASSIGN,   // &=
     TOKEN_BITWISE_OR_ASSIGN,    // |=
     TOKEN_BITWISE_XOR_ASSIGN,   // ^=

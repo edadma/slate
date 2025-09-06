@@ -179,6 +179,7 @@ typedef struct closure {
     function_t* function;
     value_t* upvalues; // Captured variables from outer scopes
     size_t upvalue_count;
+    struct module_t* module; // Module context where closure was created (for namespace resolution)
 } closure_t;
 
 // Call frame for function calls
@@ -374,6 +375,7 @@ function_t* vm_get_function(vm_t* vm, size_t index);
 function_t* function_create(const char* name);
 void function_destroy(function_t* function);
 closure_t* closure_create(function_t* function);
+closure_t* closure_create_with_module(function_t* function, vm_t* vm);
 void closure_destroy(closure_t* closure);
 
 // Bytecode utilities

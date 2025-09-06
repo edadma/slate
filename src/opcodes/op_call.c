@@ -1,5 +1,6 @@
 #include "vm.h"
 #include "runtime_error.h"
+#include "module.h"
 
 vm_result op_call(vm_t* vm) {
     uint16_t arg_count = *vm->ip | (*(vm->ip + 1) << 8);
@@ -101,6 +102,11 @@ vm_result op_call(vm_t* vm) {
         frame->closure = closure;
         frame->ip = vm->ip; // Save return address (current IP)
         frame->slots = vm->stack_top - arg_count; // Point to function's arguments
+        
+        // Push module context if the closure has one (for proper namespace resolution)
+        if (closure->module) {
+            module_push_context(vm, closure->module);
+        }
         
         // Switch execution to the function
         vm->ip = func->bytecode;

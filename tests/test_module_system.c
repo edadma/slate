@@ -267,6 +267,97 @@ void test_functions_with_imported_data(void) {
     vm_release(result);
 }
 
+// Test module namespace access (regression test for module.function() bug)
+void test_module_namespace_access(void) {
+    // This test reproduces the bug where after importing a module,
+    // accessing functions via module.functionName fails with ReferenceError
+    // when the function tries to call itself or other functions in the same module
+    
+    // Test recursive factorial function
+    const char* factorial_code = 
+        "import recursive_math\n"
+        "recursive_math.factorial(5)";
+    
+    value_t result = test_execute_with_imports(factorial_code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(120, result.as.int32); // 5! = 120
+    vm_release(result);
+    
+    // Test recursive GCD function
+    const char* gcd_code = 
+        "import recursive_math\n" 
+        "recursive_math.gcd(48, 18)";
+    
+    result = test_execute_with_imports(gcd_code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(6, result.as.int32); // gcd(48, 18) = 6
+    vm_release(result);
+    
+    // Test fibonacci function (double recursion)
+    const char* fib_code = 
+        "import recursive_math\n" 
+        "recursive_math.fibonacci(6)";
+    
+    result = test_execute_with_imports(fib_code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(8, result.as.int32); // fib(6) = 8
+    vm_release(result);
+    
+    // Test function that calls another function in the same module
+    const char* mixed_code = 
+        "import recursive_math\n" 
+        "recursive_math.factorial_and_gcd(3, 12, 8)";
+    
+    result = test_execute_with_imports(mixed_code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(10, result.as.int32); // factorial(3) + gcd(12, 8) = 6 + 4 = 10
+    vm_release(result);
+}
+
+// Test single item imports (e.g., import module.item)
+void test_single_item_import(void) {
+    // Test importing a single function using dot notation
+    const char* factorial_code = 
+        "import recursive_math.factorial\n"
+        "factorial(4)";
+    
+    value_t result = test_execute_with_imports(factorial_code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(24, result.as.int32); // 4! = 24
+    vm_release(result);
+    
+    // Test importing a different single function
+    const char* gcd_code = 
+        "import recursive_math.gcd\n" 
+        "gcd(15, 25)";
+    
+    result = test_execute_with_imports(gcd_code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(5, result.as.int32); // gcd(15, 25) = 5
+    vm_release(result);
+    
+    // Test importing a constant value using single import
+    const char* const_code = 
+        "import declarations.PI\n" 
+        "PI";
+    
+    result = test_execute_with_imports(const_code);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 3.14159, result.as.float64);
+    vm_release(result);
+    
+    // Test that single import doesn't conflict with namespace access
+    const char* mixed_code = 
+        "import recursive_math.factorial\n"
+        "import recursive_math\n"
+        "factorial(3) + recursive_math.gcd(10, 15)";
+    
+    result = test_execute_with_imports(mixed_code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(11, result.as.int32); // factorial(3) + gcd(10, 15) = 6 + 5 = 11
+    vm_release(result);
+}
+
 // ===========================
 // TEST SUITE SETUP
 // ===========================
@@ -297,4 +388,10 @@ void test_module_system_suite(void) {
     RUN_TEST(test_empty_module_import);
     // RUN_TEST(test_immutable_module_constants); // TODO: Requires module/closure redesign
     RUN_TEST(test_functions_with_imported_data);
+    
+    // Regression test for module namespace access bug
+    RUN_TEST(test_module_namespace_access);
+    
+    // Test for single item imports
+    RUN_TEST(test_single_item_import);
 }

@@ -83,6 +83,7 @@ ast_node* parse_assignment(parser_t* parser) {
     if (parser_check(parser, TOKEN_PLUS_ASSIGN) || parser_check(parser, TOKEN_MINUS_ASSIGN) ||
         parser_check(parser, TOKEN_MULT_ASSIGN) || parser_check(parser, TOKEN_DIV_ASSIGN) ||
         parser_check(parser, TOKEN_MOD_ASSIGN) || parser_check(parser, TOKEN_POWER_ASSIGN) ||
+        parser_check(parser, TOKEN_FLOOR_DIV_ASSIGN) ||
         parser_check(parser, TOKEN_BITWISE_AND_ASSIGN) || parser_check(parser, TOKEN_BITWISE_OR_ASSIGN) ||
         parser_check(parser, TOKEN_BITWISE_XOR_ASSIGN) || parser_check(parser, TOKEN_LEFT_SHIFT_ASSIGN) ||
         parser_check(parser, TOKEN_RIGHT_SHIFT_ASSIGN) || parser_check(parser, TOKEN_LOGICAL_RIGHT_SHIFT_ASSIGN) ||
@@ -102,6 +103,7 @@ ast_node* parse_assignment(parser_t* parser) {
             case TOKEN_DIV_ASSIGN:   binary_op = BIN_DIVIDE; break;
             case TOKEN_MOD_ASSIGN:   binary_op = BIN_MOD; break;
             case TOKEN_POWER_ASSIGN: binary_op = BIN_POWER; break;
+            case TOKEN_FLOOR_DIV_ASSIGN: binary_op = BIN_FLOOR_DIV; break;
             case TOKEN_BITWISE_AND_ASSIGN: binary_op = BIN_BITWISE_AND; break;
             case TOKEN_BITWISE_OR_ASSIGN:  binary_op = BIN_BITWISE_OR; break;
             case TOKEN_BITWISE_XOR_ASSIGN: binary_op = BIN_BITWISE_XOR; break;

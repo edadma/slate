@@ -180,3 +180,176 @@ def also_works() =
 
 ### User Preferences  
 - **No AI attribution in commits**: User prefers clean commit messages without AI tool attribution
+
+---
+
+## CRITICAL: Built-in Function Shadowing Architecture Bug 🚨
+
+### Status: IDENTIFIED BUT NOT FIXED - Needs Complete Architecture Redesign
+
+### Problem Summary
+**Built-in function shadowing is completely broken** due to fundamental architectural flaw in variable declaration system. This is NOT a simple bug - it's a core language design issue that needs proper scoping system implementation.
+
+### Current Broken Behavior
+```slate
+var input = "test"     // ❌ Error: "Variable 'input' is already declared"  
+var print = "shadow"   // ❌ Error: "Variable 'print' is already declared"
+var abs = 5            // ❌ Error: "Variable 'abs' is already declared"
+```
+
+**Expected Behavior (Proper Scoped Shadowing)**:
+```slate
+// Built-in shadowing at any scope
+var input = "global shadow"  // Should shadow built-in input()
+
+// Function parameter shadowing  
+def test(input) = print(input)  // Parameter shadows global or built-in
+
+// Loop variable shadowing
+for var i = 0; i < 3; i += 1 do
+    print(i)  // Loop variable shadows any outer 'i'
+// 'i' from outer scope (if any) should be available here
+
+// Block scoping
+{
+    var input = "block local"  // Should shadow outer input
+    print(input)
+}
+print(input)  // Should use outer scope input
+```
+
+### Root Cause Analysis ✅ COMPLETE
+
+#### Current Architecture Problem
+**Slate has TWO separate variable declaration systems**:
+
+1. **✅ Local Variables** (`src/codegen/scope.c`) - **CORRECT IMPLEMENTATION**
+   - Proper lexical scoping with `scope_depth` tracking
+   - Conflict detection within current scope only (lines 100-108)
+   - Variable resolution chain: local → upvalue → global
+   - Proper scope entry/exit with cleanup
+   - **Perfect shadowing behavior**: `if (local->depth < codegen->scope.scope_depth) break;`
+
+2. **❌ Global Variables** (`src/opcodes/op_define_global.c`) - **BROKEN IMPLEMENTATION**
+   - No scoping - treats ALL globals as single flat namespace
+   - Prevents ANY redeclaration in script context
+   - Cannot distinguish between built-ins and user variables
+   - **Line 45**: `if (existing_value && vm->context == CTX_SCRIPT)` prevents all shadowing
+
+#### Evidence of Correct Scoping System
+**Found in `src/codegen/scope.c:100-108`** - this is the CORRECT implementation:
+```c
+// Check if variable already exists in current scope
+for (int i = codegen->scope.local_count - 1; i >= 0; i--) {
+    local_var_t* local = &codegen->scope.locals[i];
+    if (local->depth < codegen->scope.scope_depth) {
+        break; // Found variable from outer scope, no conflict ✅
+    }
+    if (strcmp(local->name, name) == 0) {
+        // Variable already exists in CURRENT scope only ✅
+    }
+}
+```
+
+### Files Involved in Architecture
+
+#### ✅ Correct Scoping Implementation
+- **`src/codegen/scope.c`** - Complete lexical scoping system with:
+  - `codegen_begin_scope()` / `codegen_end_scope()`
+  - `codegen_declare_variable()` - proper current-scope conflict detection
+  - `codegen_resolve_variable()` - proper lookup chain
+  - Full upvalue and closure support
+
+#### ❌ Broken Global System  
+- **`src/opcodes/op_define_global.c:45`** - Problematic check:
+  ```c
+  if (existing_value && vm->context == CTX_SCRIPT) {
+      // This prevents ALL global shadowing including built-ins
+  }
+  ```
+
+#### 🎯 Integration Points
+- **`src/codegen/statements.c`** - Routes declarations to global vs local systems
+- **Built-in registration** - Built-ins stored as `VAL_NATIVE` in global namespace during VM init
+
+### Failed "Bandaid" Fix Attempt ❌
+**Attempted**: Added `&& existing_value->type != VAL_NATIVE` to allow shadowing built-ins only
+**Problem**: This was a bandaid that didn't fix the fundamental architecture issue
+**Reverted**: Yes - returned to original broken state for proper fix later
+
+### Proper Solution Architecture 🎯
+
+#### Required Changes
+1. **Unify Variable Declaration Systems**
+   - Make global scope work like any other scope in the scoping system
+   - Route ALL variable declarations through `scope.c` system
+   - Eliminate the separate global declaration path
+
+2. **Extend Scope System for Global Handling**  
+   - Treat global scope as `scope_depth = 0`
+   - Built-ins exist in "pre-global" scope (depth = -1) 
+   - User globals exist in normal global scope (depth = 0)
+   - Allow shadowing from depth -1 to depth 0+
+
+3. **Fix Integration Points**
+   - Update `src/codegen/statements.c` variable routing
+   - Ensure module namespace system works with unified scoping
+   - Preserve REPL vs script context behaviors
+
+#### Implementation Strategy
+```c
+// In scope.c - extend to handle global scope properly
+int codegen_declare_variable(codegen_t* codegen, const char* name, int is_immutable) {
+    if (codegen->scope.scope_depth == 0) {
+        // Global scope - check for conflicts with user globals only
+        // Allow shadowing of built-ins (stored at depth = -1)
+        // Use existing conflict detection logic but with depth awareness
+    }
+    // ... existing local scope logic
+}
+```
+
+#### Files Needing Changes
+1. **`src/codegen/scope.c`** - Extend to handle global scope properly
+2. **`src/codegen/statements.c`** - Route all declarations through unified system  
+3. **`src/opcodes/op_define_global.c`** - Simplify or eliminate separate path
+4. **VM initialization** - Register built-ins at special depth (-1)
+5. **Module system integration** - Ensure compatibility with namespace system
+
+### Test Cases for Verification
+```slate
+// Global shadowing  
+var input = "shadows built-in"        // Should work
+var x = 1; var x = 2                 // Should fail (user variable conflict)
+
+// Function parameter shadowing
+def test(input) = print(input)        // Should work
+
+// Loop variable shadowing  
+for var input = 0; input < 3; input += 1 do
+    print(input)                      // Should work - shadows all outer
+// Built-in input() should work here   // Should work
+
+// Block scoping
+{
+    var input = "block"               // Should shadow outer
+}
+// Original input available here      // Should work
+```
+
+### Impact Assessment
+- **Severity**: HIGH - Core language feature completely broken
+- **Complexity**: HIGH - Requires significant architecture changes
+- **Examples Affected**: `examples/strings.sl` fails due to `var input = "secret123"`
+- **User Impact**: Cannot shadow any built-in functions, limiting language expressiveness
+
+### Files Currently Broken Due to This Issue
+- **`examples/strings.sl`** - Line 120: `var input = "secret123"` fails  
+- Any script trying to use common variable names like `input`, `print`, `abs`, etc.
+
+### Future Session TODO
+1. **Design unified scoping architecture** - How to integrate global and local systems
+2. **Implement scope depth extension** - Handle depth -1 for built-ins, depth 0+ for user code
+3. **Update variable routing** - Make all declarations go through `scope.c` 
+4. **Test extensively** - Ensure no regression in module system or existing functionality
+5. **Update examples** - Remove any workarounds for this issue

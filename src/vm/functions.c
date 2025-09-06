@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "codegen.h"
+#include "module.h"
 
 // Function operations
 function_t* function_create(const char* name) {
@@ -55,6 +56,21 @@ closure_t* closure_create(function_t* function) {
     closure->function = function;
     closure->upvalues = NULL;
     closure->upvalue_count = 0;
+    closure->module = NULL; // No module context for legacy calls
+
+    return closure;
+}
+
+closure_t* closure_create_with_module(function_t* function, vm_t* vm) {
+    closure_t* closure = malloc(sizeof(closure_t));
+    if (!closure)
+        return NULL;
+
+    closure->function = function;
+    closure->upvalues = NULL;
+    closure->upvalue_count = 0;
+    // Capture current module context for namespace resolution
+    closure->module = module_get_current_context(vm);
 
     return closure;
 }

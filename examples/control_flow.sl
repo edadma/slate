@@ -8,7 +8,7 @@ print("Temperature: " + temperature + "°F")
 
 if temperature > 80 then
     print("It's hot outside!")
-else if temperature > 65 then
+else if temperature > 65 then  
     print("Nice weather!")
 else
     print("It's a bit chilly")
@@ -22,11 +22,7 @@ print("Age " + age + " is classified as: " + status)
 
 \ Multiple conditions
 var score = 85
-var grade = if score >= 90 then "A"
-           else if score >= 80 then "B"
-           else if score >= 70 then "C"
-           else if score >= 60 then "D"
-           else "F"
+var grade = if score >= 90 then "A" else if score >= 80 then "B" else if score >= 70 then "C" else if score >= 60 then "D" else "F"
 print("Score " + score + " gets grade: " + grade)
 
 print("")
@@ -58,8 +54,8 @@ var numbers = [2, 4, 6, 8, 10]
 var sum = 0
 var index = 0
 
-print("Calculating sum of " + numbers + ":")
-while index < numbers.length do
+print("Calculating sum of array:")
+while index < numbers.length() do
     var current = numbers(index)
     print("Adding " + current + " (sum so far: " + sum + ")")
     sum = sum + current
@@ -75,7 +71,7 @@ var max_val = values(0)
 var pos = 1
 
 print("Finding maximum in " + values + ":")
-while pos < values.length do
+while pos < values.length() do
     if values(pos) > max_val then
         max_val = values(pos)
     pos = pos + 1

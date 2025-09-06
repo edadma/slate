@@ -1,4 +1,5 @@
 #include "vm.h"
+#include "module.h"
 
 vm_result op_return(vm_t* vm) {
     // Get return value from top of stack
@@ -6,6 +7,11 @@ vm_result op_return(vm_t* vm) {
     
     // Get frame we're returning from BEFORE decrementing frame_count
     call_frame* current_frame = &vm->frames[vm->frame_count - 1];  // Frame we're in
+    
+    // Pop module context if this function had one
+    if (current_frame->closure && current_frame->closure->module) {
+        module_pop_context(vm);
+    }
     
     // Restore previous call frame
     vm->frame_count--;

@@ -21,8 +21,8 @@ vm_result op_closure(vm_t* vm) {
         return VM_RUNTIME_ERROR;
     }
     
-    // Create closure with upvalues
-    closure_t* new_closure = closure_create(target_func);
+    // Create closure with upvalues and module context
+    closure_t* new_closure = closure_create_with_module(target_func, vm);
     if (!new_closure) {
         runtime_error(vm, "Failed to create closure");
         return VM_RUNTIME_ERROR;

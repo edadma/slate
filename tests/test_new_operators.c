@@ -75,6 +75,15 @@ void test_shift_assign_zero() {
     test_expression_equals_int("var x = 0; x <<= 5; x", 0);  // 0 << 5 = 0
 }
 
+// Floor division assignment tests
+void test_floor_div_assign() {
+    test_expression_equals_int("var x = 17; x //= 3; x", 5);  // 17 // 3 = 5
+}
+
+void test_floor_div_assign_negative() {
+    test_expression_equals_int("var x = -17; x //= 3; x", -6);  // -17 // 3 = -6
+}
+
 // Property existence operator tests
 void test_in_operator_exists() {
     test_expression_equals_bool("var obj = {a: 1, b: 2}; \"a\" in obj", 1);
@@ -152,6 +161,10 @@ void test_new_operators_suite() {
     RUN_TEST(test_right_shift_assign);
     RUN_TEST(test_logical_right_shift_assign);
     RUN_TEST(test_shift_assign_zero);
+    
+    // Floor division assignment tests
+    RUN_TEST(test_floor_div_assign);
+    RUN_TEST(test_floor_div_assign_negative);
     
     // Property existence tests
     RUN_TEST(test_in_operator_exists);

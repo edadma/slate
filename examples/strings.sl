@@ -129,10 +129,10 @@ var status = if true then "active" else "inactive"
 print("System status: " + status)
 
 \ Advanced string processing
-var data = "name:John,age:30,city:Boston"
-print("CSV-like data: " + data)
-print("Extract name: " + data.substring(5, 4))
-print("Find age position: " + data.indexOf("age:"))
-var step1 = data.replace(":", " = ")
+var csv_data = "name:John,age:30,city:Boston"
+print("CSV-like data: " + csv_data)
+print("Extract name: " + csv_data.substring(5, 4))
+print("Find age position: " + csv_data.indexOf("age:"))
+var step1 = csv_data.replace(":", " = ")
 var formatted = step1.replace(",", " | ")
 print("Clean and format: " + formatted)

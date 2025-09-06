@@ -228,6 +228,7 @@ void codegen_emit_compound_assignment(codegen_t* codegen, ast_compound_assignmen
         case BIN_DIVIDE:   codegen_emit_op(codegen, OP_DIVIDE); break;
         case BIN_MOD:      codegen_emit_op(codegen, OP_MOD); break;
         case BIN_POWER:    codegen_emit_op(codegen, OP_POWER); break;
+        case BIN_FLOOR_DIV: codegen_emit_op(codegen, OP_FLOOR_DIV); break;
         case BIN_BITWISE_AND:  codegen_emit_op(codegen, OP_BITWISE_AND); break;
         case BIN_BITWISE_OR:   codegen_emit_op(codegen, OP_BITWISE_OR); break;
         case BIN_BITWISE_XOR:  codegen_emit_op(codegen, OP_BITWISE_XOR); break;

@@ -512,6 +512,9 @@ token_t lexer_next_token(lexer_t* lexer) {
                 if (match(lexer, '=')) {
                     return make_token(lexer, TOKEN_DIV_ASSIGN);
                 } else if (match(lexer, '/')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_FLOOR_DIV_ASSIGN);
+                    }
                     return make_token(lexer, TOKEN_FLOOR_DIV);
                 }
                 return make_token(lexer, TOKEN_DIVIDE);
@@ -675,6 +678,9 @@ token_t lexer_next_token(lexer_t* lexer) {
                 if (match(lexer, '=')) {
                     return make_token(lexer, TOKEN_DIV_ASSIGN);
                 } else if (match(lexer, '/')) {
+                    if (match(lexer, '=')) {
+                        return make_token(lexer, TOKEN_FLOOR_DIV_ASSIGN);
+                    }
                     return make_token(lexer, TOKEN_FLOOR_DIV);
                 }
                 return make_token(lexer, TOKEN_DIVIDE);
@@ -820,6 +826,7 @@ const char* token_type_name(token_type_t type) {
         case TOKEN_DIV_ASSIGN: return "DIV_ASSIGN";
         case TOKEN_MOD_ASSIGN: return "MOD_ASSIGN";
         case TOKEN_POWER_ASSIGN: return "POWER_ASSIGN";
+        case TOKEN_FLOOR_DIV_ASSIGN: return "FLOOR_DIV_ASSIGN";
         case TOKEN_BITWISE_AND_ASSIGN: return "BITWISE_AND_ASSIGN";
         case TOKEN_BITWISE_OR_ASSIGN: return "BITWISE_OR_ASSIGN";
         case TOKEN_BITWISE_XOR_ASSIGN: return "BITWISE_XOR_ASSIGN";
