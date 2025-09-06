@@ -98,112 +98,30 @@ The module system redesign is **100% complete and deployed**. All major architec
 
 ---
 
-## Current Session: Return Statement Bug Investigation 🔍
-
-### Status: IN PROGRESS - Critical Bug Identified
-
-### Issue Summary
-Discovered and investigating a critical bug where return statements inside if blocks don't exit functions when followed by additional code.
-
-### Bug Details ❌ CRITICAL
-**Symptom**: Return statements inside if blocks fail to exit functions when there's code after the if statement.
-
-**Specific Pattern That Fails**:
-```slate
-def failing_case() =
-    if true then
-        return "should_return_this"
-    return "but_returns_this_instead"  # ← This executes instead!
-```
-
-**Pattern That Works**:
-```slate
-def working_case() = if true then return "works"  # ← Single line works
-def also_works() =
-    if true then
-        return "works"
-    # ← No trailing code, so this works too
-```
-
-### Investigation Findings 📊
-
-#### Test Results
-✅ **Single-line if-return**: `def test() = if true then return "works"` → Works correctly  
-✅ **Multi-line if-return (no trailing code)**: Works correctly  
-❌ **Multi-line if-return + trailing code**: Return statement doesn't execute  
-✅ **Direct return statements**: Work correctly  
-✅ **Return in while loops**: Work correctly  
-
-#### Root Cause Analysis
-**Confirmed behaviors**:
-1. ✅ If condition is correctly evaluated (`true`)  
-2. ✅ If block is entered and executed (print statements before return work)  
-3. ❌ Return statement inside if block doesn't exit the function  
-4. ❌ Execution continues to code after the if statement  
-
-**This indicates**: The return statement is being parsed and the if block is executed, but the `OP_RETURN` opcode either:
-- Isn't being generated correctly for returns inside if blocks, OR  
-- Is generated but not executing properly due to VM state/call frame issues
-
-### Files Modified in Investigation
-
-1. **src/codegen/statements.c** - Return statement fix:
-   ```c
-   // Don't push null after return statements - they exit the function immediately
-   if (node->then_stmt->type != AST_RETURN) {
-       codegen_emit_op(codegen, OP_PUSH_NULL);
-   }
-   ```
-   - Applied to both then and else branches of if statements
-   - **Partially effective**: Fixed some return cases but core issue remains
-
-2. **src/codegen/disassembler.c** - Enhanced disassembler for debugging:
-   - Added recursive function disassembly for `OP_PUSH_CONSTANT`  
-   - Enhanced `OP_CLOSURE` display to show function indices  
-   - **Result**: Now shows `(function index: N)` for closure constants  
-
-### Debug Tools Created ✅
-- **Enhanced `-D` flag**: Now properly shows function indices in closure opcodes
-- **Test files**: Created multiple test cases to isolate the exact failure pattern
-- **Confirmed working disassembler**: Can analyze bytecode generation
-
-### Next Steps 🎯
-1. **CRITICAL**: Debug why `OP_RETURN` inside if blocks doesn't exit functions
-2. Compare bytecode generation between working/failing cases  
-3. Investigate if statement jump logic vs return statement interaction
-4. Verify `OP_RETURN` opcode implementation handles nested contexts correctly
-
-### Impact Assessment
-**Severity**: CRITICAL - Return statements are a fundamental language feature  
-**Scope**: Affects any function using if statements with returns + trailing code  
-**User Impact**: "the language is unusable without it" (user feedback)
-
-### User Preferences  
-- **No AI attribution in commits**: User prefers clean commit messages without AI tool attribution
-
----
-
-## CRITICAL: Built-in Function Shadowing Architecture Bug 🚨
+## CRITICAL: Variable Shadowing Architecture Bug 🚨
 
 ### Status: IDENTIFIED BUT NOT FIXED - Needs Complete Architecture Redesign
 
 ### Problem Summary
-**Built-in function shadowing is completely broken** due to fundamental architectural flaw in variable declaration system. This is NOT a simple bug - it's a core language design issue that needs proper scoping system implementation.
+**Variable shadowing is completely broken** due to fundamental architectural flaw in variable declaration system. This affects ALL kinds of definitions - built-in functions, variables, constants, etc. This is NOT a simple bug - it's a core language design issue that needs proper scoping system implementation.
 
 ### Current Broken Behavior
 ```slate
 var input = "test"     // ❌ Error: "Variable 'input' is already declared"  
 var print = "shadow"   // ❌ Error: "Variable 'print' is already declared"
 var abs = 5            // ❌ Error: "Variable 'abs' is already declared"
+def input() = "user"   // ❌ Error: "Variable 'input' is already declared"
 ```
 
 **Expected Behavior (Proper Scoped Shadowing)**:
 ```slate
-// Built-in shadowing at any scope
-var input = "global shadow"  // Should shadow built-in input()
+// Built-in shadowing at any scope - ANY kind of definition
+var input = "global shadow"        // Should shadow built-in input()
+def print(msg) = builtin_print(msg) // Should shadow built-in print()
+var abs = "not a function"         // Should shadow built-in abs()
 
 // Function parameter shadowing  
-def test(input) = print(input)  // Parameter shadows global or built-in
+def test(input) = print(input)      // Parameter shadows global or built-in
 
 // Loop variable shadowing
 for var i = 0; i < 3; i += 1 do
@@ -212,7 +130,7 @@ for var i = 0; i < 3; i += 1 do
 
 // Block scoping
 {
-    var input = "block local"  // Should shadow outer input
+    var input = "block local"       // Should shadow outer input
     print(input)
 }
 print(input)  // Should use outer scope input
@@ -318,12 +236,15 @@ int codegen_declare_variable(codegen_t* codegen, const char* name, int is_immuta
 
 ### Test Cases for Verification
 ```slate
-// Global shadowing  
+// Global shadowing - ALL kinds of definitions
 var input = "shadows built-in"        // Should work
+def print(msg) = "custom print"       // Should work  
+var abs = "not math"                  // Should work
 var x = 1; var x = 2                 // Should fail (user variable conflict)
 
 // Function parameter shadowing
 def test(input) = print(input)        // Should work
+def func(print) = print("test")       // Should work
 
 // Loop variable shadowing  
 for var input = 0; input < 3; input += 1 do
@@ -333,15 +254,16 @@ for var input = 0; input < 3; input += 1 do
 // Block scoping
 {
     var input = "block"               // Should shadow outer
+    def print(x) = "block print"      // Should shadow outer
 }
-// Original input available here      // Should work
+// Original definitions available here // Should work
 ```
 
 ### Impact Assessment
 - **Severity**: HIGH - Core language feature completely broken
 - **Complexity**: HIGH - Requires significant architecture changes
 - **Examples Affected**: `examples/strings.sl` fails due to `var input = "secret123"`
-- **User Impact**: Cannot shadow any built-in functions, limiting language expressiveness
+- **User Impact**: Cannot shadow any built-in definitions (functions, variables, etc.), limiting language expressiveness
 
 ### Files Currently Broken Due to This Issue
 - **`examples/strings.sl`** - Line 120: `var input = "secret123"` fails  

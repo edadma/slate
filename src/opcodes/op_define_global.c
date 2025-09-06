@@ -41,8 +41,9 @@ vm_result op_define_global(vm_t* vm) {
     do_object target_namespace = get_current_namespace(vm);
     
     // Check if variable already exists (prevent redeclaration in scripts, allow in REPL)
+    // Allow shadowing built-ins (VAL_NATIVE) but prevent user variable redeclaration
     value_t* existing_value = (value_t*)do_get(target_namespace, name_val.as.string);
-    if (existing_value && vm->context == CTX_SCRIPT) {
+    if (existing_value && vm->context == CTX_SCRIPT && existing_value->type != VAL_NATIVE) {
         char error_msg[256];
         snprintf(error_msg, sizeof(error_msg), "Variable '%s' is already declared", name_val.as.string);
         vm_release(value);
