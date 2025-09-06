@@ -1,5 +1,5 @@
 \ Greeting program that uses command line arguments
-\ Usage: slate -f greeting.slate <name> [age]
+\ Usage: slate -f greeting.sl <name> [age]
 
 print("=== Slate Greeting Program ===")
 
@@ -19,4 +19,4 @@ else if arguments.length == 2 then
 else
     print("Too many arguments!")
     
-print("Usage: slate -f greeting.slate <name> [age]")
+print("Usage: slate -f greeting.sl <name> [age]")

@@ -5,6 +5,9 @@
 #include "dynamic_object.h"
 #include "dynamic_string.h"
 
+// Slate source file extension
+#define SLATE_FILE_EXTENSION ".sl"
+
 // Forward declarations to avoid circular includes
 struct slate_vm;
 struct function;

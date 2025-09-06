@@ -72,7 +72,8 @@ char* module_resolve_path(const char* module_name, const char* current_dir) {
     
     // Convert dots to slashes: "examples.modules.math" -> "examples/modules/math"
     size_t name_len = strlen(module_name);
-    char* fs_path = malloc(name_len + 7); // +6 for ".slate" + 1 for null
+    size_t ext_len = strlen(SLATE_FILE_EXTENSION);
+    char* fs_path = malloc(name_len + ext_len + 1); // +1 for null terminator
     if (!fs_path) return NULL;
     
     strcpy(fs_path, module_name);
@@ -82,8 +83,8 @@ char* module_resolve_path(const char* module_name, const char* current_dir) {
         if (*p == '.') *p = '/';
     }
     
-    // Add .slate extension
-    strcat(fs_path, ".slate");
+    // Add .sl extension
+    strcat(fs_path, SLATE_FILE_EXTENSION);
     
     // Try different search locations
     char* full_path = NULL;
@@ -350,7 +351,8 @@ char* module_resolve_path_with_search_paths(struct slate_vm* vm, const char* mod
     
     // Convert module name to filesystem path
     size_t name_len = strlen(module_name);
-    char* fs_path = malloc(name_len + 7); // +6 for ".slate" + 1 for null
+    size_t ext_len = strlen(SLATE_FILE_EXTENSION);
+    char* fs_path = malloc(name_len + ext_len + 1); // +1 for null terminator
     if (!fs_path) return NULL;
     
     strcpy(fs_path, module_name);
@@ -360,8 +362,8 @@ char* module_resolve_path_with_search_paths(struct slate_vm* vm, const char* mod
         if (*p == '.') *p = '/';
     }
     
-    // Add .slate extension
-    strcat(fs_path, ".slate");
+    // Add .sl extension
+    strcat(fs_path, SLATE_FILE_EXTENSION);
     
     // Try each search path
     size_t search_path_count = da_length(vm->module_search_paths);

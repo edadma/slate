@@ -84,20 +84,20 @@ static struct cag_option options[] = {
 static void show_help(const char* program_name) {
     printf("Slate Programming Language\n");
     printf("Usage: %s [OPTIONS] [script_args...]\n", program_name);
-    printf("       %s script.slate [script_args...]\n\n", program_name);
+    printf("       %s script.sl [script_args...]\n\n", program_name);
     
     cag_option_print(options, CAG_ARRAY_SIZE(options), stdout);
     
     printf("\nExamples:\n");
     printf("  %s                          # Start interactive REPL\n", program_name);
-    printf("  %s script.slate arg1 arg2    # Run file with arguments (shebang-compatible)\n", program_name);
+    printf("  %s script.sl arg1 arg2    # Run file with arguments (shebang-compatible)\n", program_name);
     printf("  %s -s \"print('Hello')\"       # Execute script directly\n", program_name);
-    printf("  %s -f script.slate arg1 arg2 # Run file with arguments (explicit flag)\n", program_name);
+    printf("  %s -f script.sl arg1 arg2 # Run file with arguments (explicit flag)\n", program_name);
     printf("  %s --stdin < input.txt       # Execute from stdin\n", program_name);
     printf("  %s --test                    # Run built-in tests\n", program_name);
     printf("  %s -D \"f(g(3))\"              # Disassemble bytecode\n", program_name);
-    printf("  %s -I /path/to/modules script.slate  # Add module search path\n", program_name);
-    printf("  SLATEPATH=/path/to/modules %s script.slate  # Use environment variable\n", program_name);
+    printf("  %s -I /path/to/modules script.sl  # Add module search path\n", program_name);
+    printf("  SLATEPATH=/path/to/modules %s script.sl  # Use environment variable\n", program_name);
     printf("\nShebang usage:\n");
     printf("  #!/usr/bin/env %s\n", program_name);
     printf("  # Your Slate script here\n");
@@ -698,7 +698,7 @@ int main(int argc, char* argv[]) {
     int include_count = 0;
     
     // Check if first argument is a file path (for shebang support)
-    // This happens when slate is used as: slate script.slate [args...]
+    // This happens when slate is used as: slate script.sl [args...]
     if (argc > 1 && argv[1][0] != '-') {
         // First argument is not a flag, treat it as a script file
         script_file = argv[1];

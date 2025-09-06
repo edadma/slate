@@ -68,7 +68,7 @@ rm -rf cmake-build-debug
 ./cmake-build-debug/slate
 
 # Execute a file with arguments
-./cmake-build-debug/slate -f script.slate [args...]
+./cmake-build-debug/slate -f script.sl [args...]
 
 # Execute script content directly
 ./cmake-build-debug/slate --script "print(2 + 3 * 4)"
@@ -92,7 +92,7 @@ echo "42 + 58" | ./cmake-build-debug/slate --stdin
 ./cmake-build-debug/slate --script "sign(-42)"           # Result: -1
 
 # File execution with arguments
-./cmake-build-debug/slate -f examples/greeting.slate Alice 25
+./cmake-build-debug/slate -f examples/greeting.sl Alice 25
 
 # Interactive REPL with enhanced editing
 ./cmake-build-debug/slate
@@ -118,7 +118,7 @@ slate/
 ├── include/           # Header files
 ├── src/              # Source implementation
 ├── tests/            # Unit tests (Unity framework) 
-├── examples/         # Example .slate programs
+├── examples/         # Example .sl programs
 ├── cmake-build-debug/ # Build output
 └── run               # Convenience script
 ```

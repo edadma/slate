@@ -3,6 +3,7 @@
 #include "codegen.h"
 #include "lexer.h"
 #include "parser.h"
+#include "module.h"
 #include <sys/stat.h>
 
 // Helper function to compile and execute a source string, returning the result value
@@ -143,14 +144,14 @@ char* test_get_module_path(const char* module_name) {
         NULL
     };
     
-    size_t base_len = strlen(module_name) + strlen(".slate") + 1;
+    size_t base_len = strlen(module_name) + strlen(SLATE_FILE_EXTENSION) + 1;
     
     for (int i = 0; possible_paths[i] != NULL; i++) {
         size_t path_len = strlen(possible_paths[i]) + base_len;
         char* full_path = malloc(path_len);
         if (!full_path) continue;
         
-        snprintf(full_path, path_len, "%s%s.slate", possible_paths[i], module_name);
+        snprintf(full_path, path_len, "%s%s%s", possible_paths[i], module_name, SLATE_FILE_EXTENSION);
         
         // Check if this path exists
         struct stat st;
@@ -260,7 +261,7 @@ value_t test_execute_with_imports(const char* source) {
     for (int i = 0; possible_search_paths[i] != NULL; i++) {
         // Check if this search path exists by testing a known file
         char test_path[512];
-        snprintf(test_path, sizeof(test_path), "%s/declarations.slate", possible_search_paths[i]);
+        snprintf(test_path, sizeof(test_path), "%s/declarations%s", possible_search_paths[i], SLATE_FILE_EXTENSION);
         
         struct stat st;
         if (stat(test_path, &st) == 0 && S_ISREG(st.st_mode)) {
@@ -340,7 +341,7 @@ bool test_expect_import_error(const char* import_source, ErrorKind expected_erro
     for (int i = 0; possible_search_paths2[i] != NULL; i++) {
         // Check if this search path exists by testing a known file
         char test_path[512];
-        snprintf(test_path, sizeof(test_path), "%s/declarations.slate", possible_search_paths2[i]);
+        snprintf(test_path, sizeof(test_path), "%s/declarations%s", possible_search_paths2[i], SLATE_FILE_EXTENSION);
         
         struct stat st;
         if (stat(test_path, &st) == 0 && S_ISREG(st.st_mode)) {

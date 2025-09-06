@@ -326,7 +326,7 @@ void test_syntax_error_reports_location(void) {
   VM vm; vm_init(&vm);
   const char* src = "def f( {"; // bad paren
 
-  bool ok = slate_test_eval_source(&vm, "file.slate", src);
+  bool ok = slate_test_eval_source(&vm, "file.sl", src);
   TEST_ASSERT_FALSE(ok);
   ASSERT_SlateErrorKind(&vm, ERR_SYNTAX);
   // Expect a sane 1-based line/column from your lexer

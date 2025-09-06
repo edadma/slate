@@ -57,7 +57,7 @@ All changes have been transferred to `/home/ed/dev/slate/`:
 - Better error reporting with unified stack traces
 
 ### Test Files Created
-- `/home/ed/dev/slate/test_math.slate` - Simple test module:
+- `/home/ed/dev/slate/test_math.sl` - Simple test module:
   ```slate
   def add(a, b) = a + b
   def multiply(a, b) = a * b
@@ -69,7 +69,7 @@ All commands now working successfully:
 ### Slate Language Notes
 - Comment character is `\` (not `//`)
 - Import syntax: `import module.{function}` 
-- Module files use `.slate` extension
+- Module files use `.sl` extension
 - Working directory affects module resolution
 
 ```bash
