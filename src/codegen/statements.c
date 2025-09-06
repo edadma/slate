@@ -506,11 +506,22 @@ void codegen_emit_block_expression(codegen_t* codegen, ast_block* node) {
     }
     
     if (!codegen->had_error) {
-        // The last statement must be an expression statement (validated by parser)
-        // Emit its expression directly to leave the value on the stack
+        // Handle the last statement based on its type
         ast_node* last_stmt = node->statements[node->statement_count - 1];
-        ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
-        codegen_emit_expression(codegen, expr_stmt->expression);
+        
+        if (last_stmt->type == AST_RETURN) {
+            // Return statement - emit it as a statement (it will emit OP_RETURN)
+            codegen_emit_statement(codegen, last_stmt);
+            // Return exits the function, so we don't need scope cleanup
+            return;
+        } else if (last_stmt->type == AST_EXPRESSION_STMT) {
+            // Expression statement - emit its expression to leave value on stack
+            ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
+            codegen_emit_expression(codegen, expr_stmt->expression);
+        } else {
+            // Handle other allowed block endings
+            codegen_emit_expression_or_statement(codegen, last_stmt);
+        }
     }
     
     // End scope with result preservation

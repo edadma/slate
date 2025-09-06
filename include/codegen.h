@@ -191,6 +191,8 @@ void codegen_error(codegen_t* codegen, const char* message);
 
 // Debug functions
 void chunk_disassemble(bytecode_chunk* chunk, const char* name);
+void chunk_disassemble_with_vm(bytecode_chunk* chunk, const char* name, vm_t* vm);
 size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset);
+size_t disassemble_instruction_with_vm(bytecode_chunk* chunk, size_t offset, vm_t* vm);
 
 #endif // CODEGEN_H

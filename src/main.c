@@ -169,7 +169,7 @@ static void disassemble(const char* source) {
         .constants = function->constants,
         .constant_count = function->constant_count
     };
-    chunk_disassemble(&chunk, "main");
+    chunk_disassemble_with_vm(&chunk, "main", temp_vm);
     printf("\n");
     
     // Clean up
@@ -280,6 +280,8 @@ static void interpret_with_vm_mode_parser(const char* source, vm_t* vm, int show
         return;
     }
 
+    vm_t* vm_to_use = vm ? vm : vm_create();
+
     if (debug_mode) {
         // Disassemble bytecode
         printf("=== BYTECODE ===\n");
@@ -287,14 +289,12 @@ static void interpret_with_vm_mode_parser(const char* source, vm_t* vm, int show
                                 .count = function->bytecode_length,
                                 .constants = function->constants,
                                 .constant_count = function->constant_count};
-        chunk_disassemble(&chunk, "main");
+        chunk_disassemble_with_vm(&chunk, "main", vm_to_use);
         printf("\n");
 
         // Execute
         printf("=== EXECUTION ===\n");
     }
-
-    vm_t* vm_to_use = vm ? vm : vm_create();
     vm_result result = vm_execute(vm_to_use, function);
 
     if (result == VM_OK) {

@@ -856,6 +856,139 @@ void test_elif_edge_cases(void) {
     vm_release(result);
 }
 
+// Test return statements in if blocks (regression test for critical bug)
+void test_return_in_if_blocks(void) {
+    value_t result;
+    
+    // Test 1: Single return in if block with trailing return
+    result = test_execute_expression(
+        "def test1() =\n"
+        "    if true then\n"
+        "        return \"correct\"\n"
+        "    return \"wrong\"\n"
+        "test1()"
+    );
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("correct", result.as.string);
+    vm_release(result);
+    
+    // Test 2: Single return in if block without else
+    result = test_execute_expression(
+        "def test2() =\n"
+        "    if false then\n"
+        "        return \"wrong\"\n"
+        "    return \"correct\"\n"
+        "test2()"
+    );
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("correct", result.as.string);
+    vm_release(result);
+    
+    // Test 3: Return in both if and else blocks
+    result = test_execute_expression(
+        "def test3() =\n"
+        "    if true then\n"
+        "        return \"from_if\"\n"
+        "    else\n"
+        "        return \"from_else\"\n"
+        "    return \"should_not_reach\"\n"
+        "test3()"
+    );
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("from_if", result.as.string);
+    vm_release(result);
+    
+    // Test 4: Return in else block
+    result = test_execute_expression(
+        "def test4() =\n"
+        "    if false then\n"
+        "        return \"from_if\"\n"
+        "    else\n"
+        "        return \"from_else\"\n"
+        "    return \"should_not_reach\"\n"
+        "test4()"
+    );
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("from_else", result.as.string);
+    vm_release(result);
+    
+    // Test 5: Nested if with returns
+    result = test_execute_expression(
+        "def test5() =\n"
+        "    if true then\n"
+        "        if true then\n"
+        "            return \"nested_correct\"\n"
+        "        return \"outer_if\"\n"
+        "    return \"function_end\"\n"
+        "test5()"
+    );
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("nested_correct", result.as.string);
+    vm_release(result);
+    
+    // Test 6: Return with other statements in block
+    result = test_execute_expression(
+        "def test6() =\n"
+        "    val x = 0\n"
+        "    if true then\n"
+        "        val y = 1\n"
+        "        return x + y\n"
+        "    return 99\n"
+        "test6()"
+    );
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(1, result.as.int32);
+    
+    // Test 7: Single-line if with return
+    result = test_execute_expression(
+        "def test7() = if true then return \"single_line_works\"\n"
+        "test7()"
+    );
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("single_line_works", result.as.string);
+    vm_release(result);
+    
+    // Test 8: Return with value expression
+    result = test_execute_expression(
+        "def test8() =\n"
+        "    val base = 10\n"
+        "    if true then\n"
+        "        return base * 2 + 5\n"
+        "    return 0\n"
+        "test8()"
+    );
+    TEST_ASSERT_EQUAL_INT(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL_INT32(25, result.as.int32);
+    
+    // Test 9: Return in elif block
+    result = test_execute_expression(
+        "def test9() =\n"
+        "    if false then\n"
+        "        return \"if\"\n"
+        "    elif true then\n"
+        "        return \"elif_correct\"\n"
+        "    else\n"
+        "        return \"else\"\n"
+        "    return \"end\"\n"
+        "test9()"
+    );
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("elif_correct", result.as.string);
+    vm_release(result);
+    
+    // Test 10: Complex condition with return
+    result = test_execute_expression(
+        "def test10(x) =\n"
+        "    if x > 0 && x < 10 then\n"
+        "        return \"in_range\"\n"
+        "    return \"out_of_range\"\n"
+        "test10(5)"
+    );
+    TEST_ASSERT_EQUAL_INT(VAL_STRING, result.type);
+    TEST_ASSERT_EQUAL_STRING("in_range", result.as.string);
+    vm_release(result);
+}
+
 // Test suite runner
 void test_conditionals_suite(void) {
     // Test all implemented single-line syntax variations
@@ -883,4 +1016,7 @@ void test_conditionals_suite(void) {
     RUN_TEST(test_complex_block_expressions);
     RUN_TEST(test_direct_if_blocks);
     RUN_TEST(test_edge_cases);
+    
+    // Regression test for return statements in if blocks bug
+    RUN_TEST(test_return_in_if_blocks);
 }

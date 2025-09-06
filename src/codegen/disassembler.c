@@ -6,14 +6,22 @@
 
 // Debug functions
 void chunk_disassemble(bytecode_chunk* chunk, const char* name) {
+    chunk_disassemble_with_vm(chunk, name, NULL);
+}
+
+void chunk_disassemble_with_vm(bytecode_chunk* chunk, const char* name, vm_t* vm) {
     printf("== %s ==\n", name);
     
     for (size_t offset = 0; offset < chunk->count;) {
-        offset = disassemble_instruction(chunk, offset);
+        offset = disassemble_instruction_with_vm(chunk, offset, vm);
     }
 }
 
 size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset) {
+    return disassemble_instruction_with_vm(chunk, offset, NULL);
+}
+
+size_t disassemble_instruction_with_vm(bytecode_chunk* chunk, size_t offset, vm_t* vm) {
     printf("%04zu ", offset);
     
     uint8_t instruction = chunk->code[offset];
@@ -40,7 +48,7 @@ size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset) {
                         .constants = func->constants,
                         .constant_count = func->constant_count
                     };
-                    chunk_disassemble(&func_chunk, func->name ? func->name : "<anonymous>");
+                    chunk_disassemble_with_vm(&func_chunk, func->name ? func->name : "<anonymous>", vm);
                     printf("\n");
                 }
             }
@@ -58,9 +66,27 @@ size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset) {
                 print_value(NULL, index_val);
                 printf("'\n");
                 
-                // For closure, the constant is a function index, not the function itself
-                // We can't easily access the VM's function table from here, so just note it
-                if (index_val.type == VAL_INT32) {
+                // For closure, the constant is a function index
+                if (index_val.type == VAL_INT32 && vm) {
+                    int32_t func_index = index_val.as.int32;
+                    printf("                     (function index: %d)\n", func_index);
+                    
+                    // Disassemble the function if we have VM access
+                    if (func_index >= 0 && (size_t)func_index < da_length(vm->functions)) {
+                        function_t* func = da_get(vm->functions, func_index);
+                        if (func) {
+                            printf("\n");
+                            bytecode_chunk func_chunk = {
+                                .code = func->bytecode,
+                                .count = func->bytecode_length,
+                                .constants = func->constants,
+                                .constant_count = func->constant_count
+                            };
+                            chunk_disassemble_with_vm(&func_chunk, func->name ? func->name : "<anonymous>", vm);
+                            printf("\n");
+                        }
+                    }
+                } else if (index_val.type == VAL_INT32) {
                     printf("                     (function index: %d)\n", index_val.as.int32);
                 }
             }
