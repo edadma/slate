@@ -98,180 +98,77 @@ The module system redesign is **100% complete and deployed**. All major architec
 
 ---
 
-## CRITICAL: Variable Shadowing Architecture Bug 🚨
+## ✅ RESOLVED: Variable Shadowing Architecture Bug 
 
-### Status: IDENTIFIED BUT NOT FIXED - Needs Complete Architecture Redesign
+### Status: FIXED AND TESTED - Built-in shadowing now works completely
+
+---
+
+## CRITICAL: Stack Overflow Bug in While Loops with Return Statements 🚨
+
+### Status: IDENTIFIED BUT NOT FIXED - Critical VM Bug
 
 ### Problem Summary
-**Variable shadowing is completely broken** due to fundamental architectural flaw in variable declaration system. This affects ALL kinds of definitions - built-in functions, variables, constants, etc. This is NOT a simple bug - it's a core language design issue that needs proper scoping system implementation.
+**Stack overflow occurs when using `return` statements inside `while` loops with certain numeric ranges**. This is a critical VM interpreter bug affecting control flow, not a computational complexity issue.
 
-### Current Broken Behavior
+### Bug Details ❌ CRITICAL
+**Symptom**: Functions containing `while` loops with `return` statements fail instantly with "Stack overflow: cannot push more values" when processing numbers above a certain threshold (~1-5 million range).
+
+**Affected Pattern**:
 ```slate
-var input = "test"     // ❌ Error: "Variable 'input' is already declared"  
-var print = "shadow"   // ❌ Error: "Variable 'print' is already declared"
-var abs = 5            // ❌ Error: "Variable 'abs' is already declared"
-def input() = "user"   // ❌ Error: "Variable 'input' is already declared"
+def isPrime(n) =
+    var i = 5
+    while i * i <= n do
+        if n % i == 0 then
+            return false  // ← This causes stack overflow with large n
+        i = i + 6
+    true
 ```
 
-**Expected Behavior (Proper Scoped Shadowing)**:
-```slate
-// Built-in shadowing at any scope - ANY kind of definition
-var input = "global shadow"        // Should shadow built-in input()
-def print(msg) = builtin_print(msg) // Should shadow built-in print()
-var abs = "not a function"         // Should shadow built-in abs()
+**Evidence of Bug**:
+- ✅ `isPrime(100003)` works fine
+- ❌ `isPrime(5000011)` fails instantly with stack overflow
+- ✅ Simple while loops work: `var i = 1; while i <= 1000000 do i = i + 1`
+- ✅ Arithmetic operations work: `print(5000011 * 5000011)` 
+- ❌ **Isolated test case**: Same pattern fails with `return` in `while` loop
 
-// Function parameter shadowing  
-def test(input) = print(input)      // Parameter shadows global or built-in
+### Root Cause Analysis
+**The bug is NOT**:
+- ❌ Computational complexity - should take time, not fail instantly
+- ❌ While loop implementation - simple loops work fine
+- ❌ Large number arithmetic - operations work correctly
+- ❌ Stack space for iterations - while loops should use fixed stack space
 
-// Loop variable shadowing
-for var i = 0; i < 3; i += 1 do
-    print(i)  // Loop variable shadows any outer 'i'
-// 'i' from outer scope (if any) should be available here
-
-// Block scoping
-{
-    var input = "block local"       // Should shadow outer input
-    print(input)
-}
-print(input)  // Should use outer scope input
-```
-
-### Root Cause Analysis ✅ COMPLETE
-
-#### Current Architecture Problem
-**Slate has TWO separate variable declaration systems**:
-
-1. **✅ Local Variables** (`src/codegen/scope.c`) - **CORRECT IMPLEMENTATION**
-   - Proper lexical scoping with `scope_depth` tracking
-   - Conflict detection within current scope only (lines 100-108)
-   - Variable resolution chain: local → upvalue → global
-   - Proper scope entry/exit with cleanup
-   - **Perfect shadowing behavior**: `if (local->depth < codegen->scope.scope_depth) break;`
-
-2. **❌ Global Variables** (`src/opcodes/op_define_global.c`) - **BROKEN IMPLEMENTATION**
-   - No scoping - treats ALL globals as single flat namespace
-   - Prevents ANY redeclaration in script context
-   - Cannot distinguish between built-ins and user variables
-   - **Line 45**: `if (existing_value && vm->context == CTX_SCRIPT)` prevents all shadowing
-
-#### Evidence of Correct Scoping System
-**Found in `src/codegen/scope.c:100-108`** - this is the CORRECT implementation:
-```c
-// Check if variable already exists in current scope
-for (int i = codegen->scope.local_count - 1; i >= 0; i--) {
-    local_var_t* local = &codegen->scope.locals[i];
-    if (local->depth < codegen->scope.scope_depth) {
-        break; // Found variable from outer scope, no conflict ✅
-    }
-    if (strcmp(local->name, name) == 0) {
-        // Variable already exists in CURRENT scope only ✅
-    }
-}
-```
-
-### Files Involved in Architecture
-
-#### ✅ Correct Scoping Implementation
-- **`src/codegen/scope.c`** - Complete lexical scoping system with:
-  - `codegen_begin_scope()` / `codegen_end_scope()`
-  - `codegen_declare_variable()` - proper current-scope conflict detection
-  - `codegen_resolve_variable()` - proper lookup chain
-  - Full upvalue and closure support
-
-#### ❌ Broken Global System  
-- **`src/opcodes/op_define_global.c:45`** - Problematic check:
-  ```c
-  if (existing_value && vm->context == CTX_SCRIPT) {
-      // This prevents ALL global shadowing including built-ins
-  }
-  ```
-
-#### 🎯 Integration Points
-- **`src/codegen/statements.c`** - Routes declarations to global vs local systems
-- **Built-in registration** - Built-ins stored as `VAL_NATIVE` in global namespace during VM init
-
-### Failed "Bandaid" Fix Attempt ❌
-**Attempted**: Added `&& existing_value->type != VAL_NATIVE` to allow shadowing built-ins only
-**Problem**: This was a bandaid that didn't fix the fundamental architecture issue
-**Reverted**: Yes - returned to original broken state for proper fix later
-
-### Proper Solution Architecture 🎯
-
-#### Required Changes
-1. **Unify Variable Declaration Systems**
-   - Make global scope work like any other scope in the scoping system
-   - Route ALL variable declarations through `scope.c` system
-   - Eliminate the separate global declaration path
-
-2. **Extend Scope System for Global Handling**  
-   - Treat global scope as `scope_depth = 0`
-   - Built-ins exist in "pre-global" scope (depth = -1) 
-   - User globals exist in normal global scope (depth = 0)
-   - Allow shadowing from depth -1 to depth 0+
-
-3. **Fix Integration Points**
-   - Update `src/codegen/statements.c` variable routing
-   - Ensure module namespace system works with unified scoping
-   - Preserve REPL vs script context behaviors
-
-#### Implementation Strategy
-```c
-// In scope.c - extend to handle global scope properly
-int codegen_declare_variable(codegen_t* codegen, const char* name, int is_immutable) {
-    if (codegen->scope.scope_depth == 0) {
-        // Global scope - check for conflicts with user globals only
-        // Allow shadowing of built-ins (stored at depth = -1)
-        // Use existing conflict detection logic but with depth awareness
-    }
-    // ... existing local scope logic
-}
-```
-
-#### Files Needing Changes
-1. **`src/codegen/scope.c`** - Extend to handle global scope properly
-2. **`src/codegen/statements.c`** - Route all declarations through unified system  
-3. **`src/opcodes/op_define_global.c`** - Simplify or eliminate separate path
-4. **VM initialization** - Register built-ins at special depth (-1)
-5. **Module system integration** - Ensure compatibility with namespace system
-
-### Test Cases for Verification
-```slate
-// Global shadowing - ALL kinds of definitions
-var input = "shadows built-in"        // Should work
-def print(msg) = "custom print"       // Should work  
-var abs = "not math"                  // Should work
-var x = 1; var x = 2                 // Should fail (user variable conflict)
-
-// Function parameter shadowing
-def test(input) = print(input)        // Should work
-def func(print) = print("test")       // Should work
-
-// Loop variable shadowing  
-for var input = 0; input < 3; input += 1 do
-    print(input)                      // Should work - shadows all outer
-// Built-in input() should work here   // Should work
-
-// Block scoping
-{
-    var input = "block"               // Should shadow outer
-    def print(x) = "block print"      // Should shadow outer
-}
-// Original definitions available here // Should work
-```
+**The bug IS**:
+- ✅ **Return statements inside while loops** with specific numeric thresholds
+- ✅ VM bug in stack frame cleanup or control flow interaction
+- ✅ Critical interpreter issue affecting function returns in loop contexts
 
 ### Impact Assessment
-- **Severity**: HIGH - Core language feature completely broken
-- **Complexity**: HIGH - Requires significant architecture changes
-- **Examples Affected**: `examples/strings.sl` fails due to `var input = "secret123"`
-- **User Impact**: Cannot shadow any built-in definitions (functions, variables, etc.), limiting language expressiveness
+- **Severity**: CRITICAL - Functions with returns in loops are unusable above threshold
+- **Scope**: Any function using `return` inside `while` loops with moderate-to-large numbers
+- **User Impact**: "isPrime and similar algorithms completely broken"
+- **Examples Affected**: `examples/modules/math/advanced.sl` isPrime function fails
 
-### Files Currently Broken Due to This Issue
-- **`examples/strings.sl`** - Line 120: `var input = "secret123"` fails  
-- Any script trying to use common variable names like `input`, `print`, `abs`, etc.
+### Investigation Results ✅ COMPLETE
+- **Threshold identified**: Between ~1M and 5M numeric range
+- **Pattern isolated**: `return` statements inside `while` loops trigger the bug
+- **VM component**: Likely stack frame management or loop/return interaction
+- **Reproducible**: Consistent failure with isolated test cases
 
-### Future Session TODO
-1. **Design unified scoping architecture** - How to integrate global and local systems
-2. **Implement scope depth extension** - Handle depth -1 for built-ins, depth 0+ for user code
-3. **Update variable routing** - Make all declarations go through `scope.c` 
-4. **Test extensively** - Ensure no regression in module system or existing functionality
-5. **Update examples** - Remove any workarounds for this issue
+### Next Steps 🎯
+1. **CRITICAL**: Debug VM stack frame management in while loop + return interaction
+2. Examine `OP_RETURN` implementation within loop contexts
+3. Check stack frame cleanup when returning from nested control structures
+4. Verify loop opcodes (`OP_LOOP`, `OP_JUMP_IF_FALSE`) vs return opcode interaction
+5. Fix the VM bug causing improper stack management
+
+This is a **critical VM interpreter bug** that needs immediate attention to restore functionality of loops with returns.
+
+---
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
