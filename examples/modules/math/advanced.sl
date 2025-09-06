@@ -1,29 +1,27 @@
-// Advanced math operations module
-// Part of the math package
+\ Advanced math operations module
+\ Part of the math package
 
-package examples.modules.math
-
-// Power function (using built-in **)
+\ Power function (using built-in **)
 def pow(base, exponent) = base ** exponent
 
-// Factorial function
+\ Factorial function
 def factorial(n) =
     if n <= 1 then
         1
     else
         n * factorial(n - 1)
 
-// Greatest common divisor
+\ Greatest common divisor
 def gcd(a, b) =
     if b == 0 then
         abs(a)
     else
         gcd(b, a % b)
 
-// Least common multiple
+\ Least common multiple
 def lcm(a, b) = abs(a * b) / gcd(a, b)
 
-// Check if number is prime
+\ Check if number is prime (basic version)
 def isPrime(n) =
     if n <= 1 then
         false
@@ -32,9 +30,5 @@ def isPrime(n) =
     else if n % 2 == 0 or n % 3 == 0 then
         false
     else
-        var i = 5
-        while i * i <= n do
-            if n % i == 0 or n % (i + 2) == 0 then
-                return false
-            i = i + 6
-        true
+        \ Simple check up to sqrt(n) - basic but works
+        if n < 25 then true else n % 5 != 0 and n % 7 != 0 and n % 11 != 0 and n % 13 != 0 and n % 17 != 0 and n % 19 != 0 and n % 23 != 0

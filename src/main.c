@@ -389,6 +389,9 @@ static void repl_with_args(int argc, char** argv, char** include_paths, int incl
     // Set REPL context for error handling
     vm->context = CTX_INTERACTIVE;
     
+    // Initialize module system
+    module_system_init(vm);
+    
     // Configure module search paths
     configure_search_paths(vm, include_paths, include_count);
 
@@ -713,6 +716,7 @@ int main(int argc, char* argv[]) {
         if (source) {
             vm_t* vm = vm_create_with_args(script_argc, script_argv);
             vm->context = CTX_SCRIPT;
+            module_system_init(vm);
             module_add_search_path(vm, ".");  // Current directory
             add_env_search_paths(vm); // Environment paths
             interpret_with_vm_mode(source, vm, 0); // Hide undefined results
@@ -800,6 +804,7 @@ int main(int argc, char* argv[]) {
             // Create a shared VM to maintain state and show results
             vm_t* vm = vm_create_with_args(script_argc, script_argv);
             vm->context = CTX_INTERACTIVE;  // Set REPL context to allow redeclaration
+            module_system_init(vm);
             configure_search_paths(vm, include_paths, include_count);
 
             // Split by lines and interpret each one
@@ -819,6 +824,7 @@ int main(int argc, char* argv[]) {
         // Execute script content directly with result display
         vm_t* vm = vm_create_with_args(script_argc, script_argv);
         vm->context = CTX_SCRIPT;  // Set script context for --script option too
+        module_system_init(vm);
         configure_search_paths(vm, include_paths, include_count);
         interpret_with_vm_mode(script_content, vm, 1);
         vm_destroy(vm);
@@ -828,6 +834,7 @@ int main(int argc, char* argv[]) {
         if (source) {
             vm_t* vm = vm_create_with_args(script_argc, script_argv);
             vm->context = CTX_SCRIPT;  // Set script context
+            module_system_init(vm);
             configure_search_paths(vm, include_paths, include_count);
             
             // In script mode, we don't use setjmp because runtime_error will call exit(1)
