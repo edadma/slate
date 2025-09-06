@@ -173,6 +173,7 @@ void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
                         codegen_emit_op(codegen, OP_DUP);  // Duplicate for return value
                         codegen_emit_op(codegen, OP_SET_LOCAL);
                         chunk_write_byte(codegen->chunk, (uint8_t)slot);
+                        codegen_emit_op(codegen, OP_POP);  // Remove the duplicate left by DUP since SET_LOCAL uses peek
                         break;
                     case UN_PRE_DECREMENT:
                         // Load, decrement, store, leave new value on stack
@@ -182,6 +183,7 @@ void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
                         codegen_emit_op(codegen, OP_DUP);  // Duplicate for return value
                         codegen_emit_op(codegen, OP_SET_LOCAL);
                         chunk_write_byte(codegen->chunk, (uint8_t)slot);
+                        codegen_emit_op(codegen, OP_POP);  // Remove the duplicate left by DUP since SET_LOCAL uses peek
                         break;
                     case UN_POST_INCREMENT:
                         // Load, duplicate (for return), increment, store
@@ -191,6 +193,7 @@ void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
                         codegen_emit_op(codegen, OP_INCREMENT);
                         codegen_emit_op(codegen, OP_SET_LOCAL);
                         chunk_write_byte(codegen->chunk, (uint8_t)slot);
+                        codegen_emit_op(codegen, OP_POP);  // Remove the incremented value, leaving original
                         break;
                     case UN_POST_DECREMENT:
                         // Load, duplicate (for return), decrement, store
@@ -200,6 +203,7 @@ void codegen_emit_unary_op(codegen_t* codegen, ast_unary_op* node) {
                         codegen_emit_op(codegen, OP_DECREMENT);
                         codegen_emit_op(codegen, OP_SET_LOCAL);
                         chunk_write_byte(codegen->chunk, (uint8_t)slot);
+                        codegen_emit_op(codegen, OP_POP);  // Remove the decremented value, leaving original
                         break;
                     default: break;
                 }
