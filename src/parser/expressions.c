@@ -580,6 +580,11 @@ ast_node* parse_primary(parser_t* parser) {
         return parse_continue_statement(parser);
     }
     
+    // Check for indented block as expression
+    if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
+        return parse_indented_block(parser);
+    }
+    
     parser_error_at_current(parser, "Expected expression.");
     // Advance to avoid infinite loop on error
     parser_advance(parser);

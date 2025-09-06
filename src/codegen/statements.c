@@ -290,7 +290,7 @@ void codegen_emit_block_with_context(codegen_t* codegen, ast_block* node, block_
     // Begin new scope for the block
     codegen_begin_scope(codegen);
     
-    if (context == BLOCK_INDENTED) {
+    if (context == BLOCK_INDENTED || context == BLOCK_FUNCTION_EXPR) {
         // Block expression - all statements except last are executed normally, 
         // last statement's value is left on stack
         for (size_t i = 0; i < node->statement_count - 1; i++) {
@@ -303,9 +303,17 @@ void codegen_emit_block_with_context(codegen_t* codegen, ast_block* node, block_
             ast_node* last_stmt = node->statements[node->statement_count - 1];
             
             if (last_stmt->type == AST_RETURN) {
-                // Return statements are invalid in block expressions
-                codegen_error(codegen, "Return statement not allowed in block expression");
-                return;
+                if (context == BLOCK_INDENTED) {
+                    // Return statements are invalid in block expressions
+                    codegen_error(codegen, "Return statement not allowed in block expression");
+                    return;
+                } else {
+                    // BLOCK_FUNCTION_EXPR - emit return statement normally
+                    codegen_emit_statement(codegen, last_stmt);
+                    // End scope (return statement handles termination)
+                    codegen_end_scope(codegen);
+                    return;
+                }
             } else if (last_stmt->type == AST_EXPRESSION_STMT) {
                 // Expression statement - emit the expression directly
                 ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
@@ -317,8 +325,14 @@ void codegen_emit_block_with_context(codegen_t* codegen, ast_block* node, block_
             }
         }
         
-        // End scope but keep top value (block expression result)
-        codegen_end_scope_keep_top(codegen);
+        if (context == BLOCK_FUNCTION_EXPR) {
+            // Function expression - emit return with the expression value on stack
+            codegen_emit_op(codegen, OP_RETURN);
+            codegen_end_scope(codegen);
+        } else {
+            // BLOCK_INDENTED - end scope but keep top value (block expression result)
+            codegen_end_scope_keep_top(codegen);
+        }
         
     } else {
         // Statement block or function block - execute all statements normally
