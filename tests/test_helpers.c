@@ -3,6 +3,7 @@
 #include "codegen.h"
 #include "lexer.h"
 #include "parser.h"
+#include <sys/stat.h>
 
 // Helper function to compile and execute a source string, returning the result value
 // This version includes proper error handling with setjmp/longjmp for CTX_TEST context
@@ -133,21 +134,35 @@ void copy_global_to_namespace(const char* key, void* data, size_t size, void* co
 
 // Helper to get the full path to a test module file
 char* test_get_module_path(const char* module_name) {
-    // Get current working directory
-    char* cwd = getcwd(NULL, 0);
-    if (!cwd) return NULL;
+    // Try multiple possible paths to find the test modules directory
+    const char* possible_paths[] = {
+        "../tests/modules/",           // One level up (cmake-build-debug-ninja)
+        "tests/modules/",              // Same level (if running from source root)
+        "../../tests/modules/",        // Two levels up (nested build dirs)
+        "../../../tests/modules/",     // Three levels up (deeply nested)
+        NULL
+    };
     
-    // Build path: cwd/tests/modules/module_name.slate
-    size_t path_len = strlen(cwd) + strlen("/tests/modules/") + strlen(module_name) + strlen(".slate") + 1;
-    char* full_path = malloc(path_len);
-    if (!full_path) {
-        free(cwd);
-        return NULL;
+    size_t base_len = strlen(module_name) + strlen(".slate") + 1;
+    
+    for (int i = 0; possible_paths[i] != NULL; i++) {
+        size_t path_len = strlen(possible_paths[i]) + base_len;
+        char* full_path = malloc(path_len);
+        if (!full_path) continue;
+        
+        snprintf(full_path, path_len, "%s%s.slate", possible_paths[i], module_name);
+        
+        // Check if this path exists
+        struct stat st;
+        if (stat(full_path, &st) == 0 && S_ISREG(st.st_mode)) {
+            return full_path; // Found it!
+        }
+        
+        free(full_path);
     }
     
-    snprintf(full_path, path_len, "%s/tests/modules/%s.slate", cwd, module_name);
-    free(cwd);
-    return full_path;
+    // If nothing worked, fall back to the original approach
+    return NULL;
 }
 
 // Create a temporary module from source code for testing
@@ -233,15 +248,25 @@ value_t test_execute_with_imports(const char* source) {
     module_system_init(vm);
     
     // Add tests/modules directory to module search paths
-    char* cwd = getcwd(NULL, 0);
-    if (cwd) {
-        char* test_modules_path = malloc(strlen(cwd) + strlen("/tests/modules") + 1);
-        if (test_modules_path) {
-            snprintf(test_modules_path, strlen(cwd) + strlen("/tests/modules") + 1, "%s/tests/modules", cwd);
-            module_add_search_path(vm, test_modules_path);
-            free(test_modules_path);
+    // Try multiple possible paths to find the test modules directory
+    const char* possible_search_paths[] = {
+        "../tests/modules",           // One level up (cmake-build-debug-ninja)
+        "tests/modules",              // Same level (if running from source root)
+        "../../tests/modules",        // Two levels up (nested build dirs)
+        "../../../tests/modules",     // Three levels up (deeply nested)
+        NULL
+    };
+    
+    for (int i = 0; possible_search_paths[i] != NULL; i++) {
+        // Check if this search path exists by testing a known file
+        char test_path[512];
+        snprintf(test_path, sizeof(test_path), "%s/declarations.slate", possible_search_paths[i]);
+        
+        struct stat st;
+        if (stat(test_path, &st) == 0 && S_ISREG(st.st_mode)) {
+            module_add_search_path(vm, possible_search_paths[i]);
+            break; // Found a valid path, stop searching
         }
-        free(cwd);
     }
     
     codegen_t* codegen = codegen_create(vm);
@@ -303,15 +328,25 @@ bool test_expect_import_error(const char* import_source, ErrorKind expected_erro
     module_system_init(vm);
     
     // Add tests/modules directory to module search paths for error testing too
-    char* cwd = getcwd(NULL, 0);
-    if (cwd) {
-        char* test_modules_path = malloc(strlen(cwd) + strlen("/tests/modules") + 1);
-        if (test_modules_path) {
-            snprintf(test_modules_path, strlen(cwd) + strlen("/tests/modules") + 1, "%s/tests/modules", cwd);
-            module_add_search_path(vm, test_modules_path);
-            free(test_modules_path);
+    // Try multiple possible paths to find the test modules directory
+    const char* possible_search_paths2[] = {
+        "../tests/modules",           // One level up (cmake-build-debug-ninja)
+        "tests/modules",              // Same level (if running from source root)
+        "../../tests/modules",        // Two levels up (nested build dirs)
+        "../../../tests/modules",     // Three levels up (deeply nested)
+        NULL
+    };
+    
+    for (int i = 0; possible_search_paths2[i] != NULL; i++) {
+        // Check if this search path exists by testing a known file
+        char test_path[512];
+        snprintf(test_path, sizeof(test_path), "%s/declarations.slate", possible_search_paths2[i]);
+        
+        struct stat st;
+        if (stat(test_path, &st) == 0 && S_ISREG(st.st_mode)) {
+            module_add_search_path(vm, possible_search_paths2[i]);
+            break; // Found a valid path, stop searching
         }
-        free(cwd);
     }
     
     codegen_t* codegen = codegen_create(vm);
