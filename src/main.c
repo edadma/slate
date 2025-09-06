@@ -404,7 +404,12 @@ static void repl_with_args(int argc, char** argv, char** include_paths, int incl
         }
         fflush(stdout);
 
-        get_line_with_editing(line, sizeof(line));
+        int input_result = get_line_with_editing(line, sizeof(line));
+        
+        // Check for EOF
+        if (input_result == -1) {
+            break;
+        }
 
         if (strcmp(line, "exit") == 0)
             break;
@@ -490,10 +495,13 @@ static void repl_with_args(int argc, char** argv, char** include_paths, int incl
         stderr = old_stderr;
 
         if (parser.had_error) {
-            // Check if this was an "unexpected end of input" error
+            // Check if this was an "error at end" or incomplete control structure (incomplete input)
             rewind(error_capture);
             char error_msg[512];
-            if (fgets(error_msg, sizeof(error_msg), error_capture) && strstr(error_msg, "Error at end")) {
+            if (fgets(error_msg, sizeof(error_msg), error_capture) && 
+                (strstr(error_msg, "Error at end") || 
+                 strstr(error_msg, "Expected 'do' or indented block") ||
+                 strstr(error_msg, "Expected dedent after block"))) {
 
                 // This looks like incomplete input - enter continuation mode
                 if (!in_continuation) {

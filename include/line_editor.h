@@ -42,7 +42,8 @@ typedef struct {
 } history_buffer_t;
 
 // Platform-independent line editing - main entry point
-void get_line_with_editing(char* buffer, size_t max_len);
+// Returns 0 on success, -1 on EOF
+int get_line_with_editing(char* buffer, size_t max_len);
 
 // History management
 void history_init(history_buffer_t* hist);

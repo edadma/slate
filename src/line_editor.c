@@ -703,7 +703,8 @@ static void handle_key_event(line_buffer_t *line, key_event_t event) {
 }
 
 // Main line editing function
-void get_line_with_editing(char *buffer, size_t max_len) {
+// Returns 0 on success, -1 on EOF
+int get_line_with_editing(char *buffer, size_t max_len) {
     line_buffer_t line = {0};
 
     // Initialize history on first use
@@ -715,10 +716,15 @@ void get_line_with_editing(char *buffer, size_t max_len) {
 
     terminal_raw_mode_enter();
 
+    bool eof_encountered = false;
     while (1) {
         key_event_t event = parse_key_sequence();
 
         if (event.type == KEY_ENTER) {
+            // Check if this was caused by EOF on an empty line
+            if (line.length == 0 && feof(stdin)) {
+                eof_encountered = true;
+            }
             break;
         }
 
@@ -742,4 +748,6 @@ void get_line_with_editing(char *buffer, size_t max_len) {
 
     printf("\n");
     fflush(stdout);
+    
+    return eof_encountered ? -1 : 0;
 }

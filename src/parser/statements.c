@@ -76,7 +76,7 @@ ast_node* parse_indented_block(parser_t* parser) {
         // If the last expression is a block, validate it recursively
         if (last_stmt->type == AST_EXPRESSION_STMT) {
             ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
-            if (!validate_block_expression(expr_stmt->expression, parser->mode)) {
+            if (expr_stmt->expression == NULL || !validate_block_expression(expr_stmt->expression, parser->mode)) {
                 parser_error(parser, "Nested block expressions must ultimately end with a non-block expression");
                 return NULL;
             }
@@ -334,6 +334,10 @@ int validate_block_expression(ast_node* expr, parser_mode_t mode) {
     
     // Recursively validate the last expression
     ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
+    if (expr_stmt->expression == NULL) {
+        // Expression is null (likely due to parse error), treat as invalid
+        return 0;
+    }
     return validate_block_expression(expr_stmt->expression, mode);
 }
 
