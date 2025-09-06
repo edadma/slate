@@ -302,10 +302,36 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             
         case AST_IF:
             codegen_emit_if(codegen, (ast_if*)stmt);
+            // If used as statement should discard its result value
+            codegen_emit_op(codegen, OP_POP);
             break;
             
         case AST_MATCH:
             codegen_emit_match(codegen, (ast_match*)stmt);
+            break;
+            
+        case AST_WHILE:
+            codegen_emit_while(codegen, (ast_while*)stmt);
+            // While used as statement should discard its result value
+            codegen_emit_op(codegen, OP_POP);
+            break;
+            
+        case AST_FOR:
+            codegen_emit_for(codegen, (ast_for*)stmt);
+            // For used as statement should discard its result value
+            codegen_emit_op(codegen, OP_POP);
+            break;
+            
+        case AST_DO_WHILE:
+            codegen_emit_do_while(codegen, (ast_do_while*)stmt);
+            // Do-while used as statement should discard its result value
+            codegen_emit_op(codegen, OP_POP);
+            break;
+            
+        case AST_LOOP:
+            codegen_emit_infinite_loop(codegen, (ast_loop*)stmt);
+            // Infinite loop used as statement should discard its result value
+            codegen_emit_op(codegen, OP_POP);
             break;
             
         case AST_BREAK:
@@ -322,10 +348,14 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             
         case AST_ASSIGNMENT:
             codegen_emit_assignment(codegen, (ast_assignment*)stmt);
+            // Assignment used as statement should discard its result value
+            codegen_emit_op(codegen, OP_POP);
             break;
             
         case AST_COMPOUND_ASSIGNMENT:
             codegen_emit_compound_assignment(codegen, (ast_compound_assignment*)stmt);
+            // Compound assignment used as statement should discard its result value
+            codegen_emit_op(codegen, OP_POP);
             break;
             
         case AST_IMPORT:

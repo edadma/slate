@@ -167,6 +167,98 @@ This is a **critical VM interpreter bug** that needs immediate attention to rest
 
 ---
 
+## COMPLETE BUG INVENTORY 🐛
+
+### 1. Critical VM Stack Overflow Bug ❌ SHOW STOPPER
+**Status**: ACTIVE - Under Investigation  
+**Location**: While loops with assignments and conditionals  
+**Symptom**: `InternalError: Stack overflow: cannot push more values` after ~125 iterations  
+**Root Cause**: Expressions used as statements don't discard their result values  
+**Stack Analysis**: ~2 values leaked per iteration (256 stack capacity ÷ 125 iterations = ~2)
+
+**Sub-components causing stack leakage**:
+- **Assignment statements**: `i = i + 1` uses `OP_DUP` + `OP_SET_LOCAL` (peeks), leaving 1 value
+  - Evidence: `src/codegen/statements.c:59,68`
+- **If statements**: Push null when condition is false (else branch)
+  - Evidence: `src/codegen/statements.c:381` - "If no else branch, push null as the result"  
+- **While loops**: Push `OP_PUSH_UNDEFINED` at completion when used as statements
+  - Evidence: `src/codegen/control_flow.c:46` - "Loops are expressions that evaluate to undefined"
+
+**Critical Test Case**:
+```slate
+def test(n) =
+    var i = 5
+    while i * i <= n do
+        if n % i == 0 then
+            return false
+        i = i + 6
+    return true
+test(5000011) // Fails with stack overflow
+test(1000000) // Works fine
+```
+
+### 2. Return Statement Bug in If Blocks ❌ CRITICAL
+**Status**: PARTIALLY FIXED  
+**Location**: Return statements inside if blocks with trailing code  
+**Symptom**: Return doesn't exit function, continues executing trailing code  
+**Failing Pattern**:
+```slate
+def failing_case() =
+    if true then
+        return "should_return_this"
+    return "but_returns_this_instead"  // This executes instead!
+```
+**Working Patterns**:
+```slate
+def working_case() = if true then return "works"  // Single line works
+def also_works() =
+    if true then
+        return "works" 
+    // No trailing code, so this works too
+```
+**Partial Fix Applied**: `src/codegen/statements.c:341-343` - Don't push null after return statements
+
+### 3. Built-in Function Shadowing Architecture Bug ❌ HIGH  
+**Status**: IDENTIFIED - Requires Architecture Redesign  
+**Location**: Variable declaration system conflict  
+**Symptom**: Cannot shadow built-in functions with user variables  
+**Error Examples**:
+```slate
+var input = "test"     // Error: "Variable 'input' is already declared"  
+var print = "shadow"   // Error: "Variable 'print' is already declared"
+```
+**Root Cause**: Two conflicting variable declaration systems:
+- ✅ **Local Variables** (`src/codegen/scope.c`) - Correct lexical scoping with proper shadowing
+- ❌ **Global Variables** (`src/opcodes/op_define_global.c:45`) - Flat namespace, prevents ALL redeclaration
+
+**Evidence of Correct vs Broken**:
+- `src/codegen/scope.c:100-108` - **CORRECT**: Only checks conflicts in current scope depth
+- `src/opcodes/op_define_global.c:45` - **BROKEN**: `if (existing_value && vm->context == CTX_SCRIPT)` prevents all shadowing
+
+**Files Needing Architecture Changes**:
+1. `src/codegen/scope.c` - Extend to handle global scope properly  
+2. `src/codegen/statements.c` - Route all declarations through unified system
+3. `src/opcodes/op_define_global.c` - Simplify or eliminate separate path
+4. VM initialization - Register built-ins at special depth (-1)
+5. Module system integration - Ensure compatibility
+
+**Affected Files**: `examples/strings.sl` line 120 fails due to `var input = "secret123"`
+
+### 4. DEBUNKED: Scope Per Loop Iteration Bug ✅ FALSE ALARM
+**Status**: CORRECTED - This was my misdiagnosis  
+**What I incorrectly said**: "Every iteration begins a new scope but never ends it"  
+**What actually happens**: One scope for the whole loop (lines 15,40 in `control_flow.c`)  
+**Verdict**: Scope management is correct - NOT the cause of stack overflow
+
+---
+
+## Priority Order for Fixes
+1. **Stack Overflow Bug** - Language unusable without this fix
+2. **Return Statement Bug** - Core control flow broken  
+3. **Shadowing Bug** - Limits language expressiveness but not critical
+
+---
+
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
