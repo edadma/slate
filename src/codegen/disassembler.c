@@ -25,9 +25,44 @@ size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset) {
             if (constant >= chunk->constant_count) {
                 printf("'[INVALID INDEX - max: %zu]'\n", chunk->constant_count - 1);
             } else {
+                value_t value = chunk->constants[constant];
                 printf("'");
-                print_value(NULL, chunk->constants[constant]);
+                print_value(NULL, value);
                 printf("'\n");
+                
+                // If this is a function, disassemble it too
+                if (value.type == VAL_FUNCTION) {
+                    printf("\n");
+                    function_t* func = value.as.function;
+                    bytecode_chunk func_chunk = {
+                        .code = func->bytecode,
+                        .count = func->bytecode_length,
+                        .constants = func->constants,
+                        .constant_count = func->constant_count
+                    };
+                    chunk_disassemble(&func_chunk, func->name ? func->name : "<anonymous>");
+                    printf("\n");
+                }
+            }
+            return offset + 3;
+        }
+        
+        case OP_CLOSURE: {
+            uint16_t constant = chunk->code[offset + 1] | (chunk->code[offset + 2] << 8);
+            printf("%-16s %4d ", opcode_name(instruction), constant);
+            if (constant >= chunk->constant_count) {
+                printf("'[INVALID INDEX - max: %zu]'\n", chunk->constant_count - 1);
+            } else {
+                value_t index_val = chunk->constants[constant];
+                printf("'");
+                print_value(NULL, index_val);
+                printf("'\n");
+                
+                // For closure, the constant is a function index, not the function itself
+                // We can't easily access the VM's function table from here, so just note it
+                if (index_val.type == VAL_INT32) {
+                    printf("                     (function index: %d)\n", index_val.as.int32);
+                }
             }
             return offset + 3;
         }
@@ -35,7 +70,6 @@ size_t disassemble_instruction(bytecode_chunk* chunk, size_t offset) {
         case OP_BUILD_ARRAY:
         case OP_BUILD_OBJECT:
         case OP_CALL:
-        case OP_CLOSURE:
         case OP_GET_GLOBAL:
         case OP_SET_GLOBAL:
         case OP_DEFINE_GLOBAL:
