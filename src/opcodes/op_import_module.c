@@ -67,30 +67,14 @@ vm_result op_import_module(vm_t* vm) {
     int is_wildcard = (flags == 0xFF);
     int is_namespace = (flags == 0xFE);
     
-    // Load the module
-    module_t* module = module_load(vm, module_path);
-    if (!module) {
-        runtime_error(vm, "Module not found: %s", module_path);
-        return VM_RUNTIME_ERROR;
-    }
-    
-    if (is_wildcard) {
-        // Wildcard import - import all module exports into current globals
-        // Skip the next byte (unused for wildcard)
-        vm->ip++;
-        
-        
-        // Copy all module exports to VM globals
-        do_foreach_property(module->exports, copy_export_to_globals, vm);
-        
-    } else if (is_namespace) {
-        // Namespace import - create namespace object containing all module exports
-        
+    // For namespace imports, read the namespace name before loading the module
+    // (loading the module may change the VM state)
+    value_t namespace_name_value;
+    if (is_namespace) {
         // Read namespace name constant index
         uint8_t namespace_idx = *vm->ip++;
         
         // Get the namespace name from constants (context-aware)
-        value_t namespace_name_value;
         if (vm->frame_count == 0) {
             // Main program execution
             if (namespace_idx >= vm->constant_count) {
@@ -112,7 +96,26 @@ vm_result op_import_module(vm_t* vm) {
             slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, "Namespace name must be a string");
             return VM_RUNTIME_ERROR;
         }
+    }
+    
+    // Load the module
+    module_t* module = module_load(vm, module_path);
+    if (!module) {
+        runtime_error(vm, "Module not found: %s", module_path);
+        return VM_RUNTIME_ERROR;
+    }
+    
+    if (is_wildcard) {
+        // Wildcard import - import all module exports into current globals
+        // Skip the next byte (unused for wildcard)
+        vm->ip++;
         
+        
+        // Copy all module exports to VM globals
+        do_foreach_property(module->exports, copy_export_to_globals, vm);
+        
+    } else if (is_namespace) {
+        // Namespace import - create namespace object containing all module exports
         const char* namespace_name = namespace_name_value.as.string;
         
         // Create a new object to hold the module exports

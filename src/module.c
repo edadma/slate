@@ -1,6 +1,9 @@
 #include "module.h"
 #include "value.h"
 #include "vm.h"
+#include "lexer.h"
+#include "parser.h"
+#include "codegen.h"
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -232,24 +235,24 @@ module_t* module_load_from_file(struct slate_vm* vm, const char* file_path) {
     
     module->state = MODULE_LOADING;
     
-    // Push module context - all global operations will now use this module's namespace
-    module_push_context(vm, module);
-    
-    // Execute module in the shared VM with namespace isolation
-    vm_result result = vm_interpret(vm, source);
-    
-    // Copy module namespace to module exports (for import system)
-    if (result == VM_OK) {
-        // Copy all variables from the module's namespace to the module's exports
-        do_foreach_property(module->namespace, copy_global_to_exports, module);
-    }
-    
-    // Pop module context to restore previous state
-    module_pop_context(vm);
-    
+    // Compile the module source code
+    function_t* module_function = module_compile(vm, source, file_path);
     free(source);
     
-    if (result == VM_OK) {
+    if (!module_function) {
+        module->state = MODULE_UNLOADED;
+        return NULL;
+    }
+    
+    // Execute the module in context
+    int success = module_execute_in_context(vm, module_function, module);
+    
+    // Don't store the function - it gets destroyed during execution
+    // The module exports are what matter
+    
+    if (success) {
+        // Copy module namespace to module exports (for import system)
+        do_foreach_property(module->namespace, copy_global_to_exports, module);
         module->state = MODULE_LOADED;
     } else {
         module->state = MODULE_UNLOADED;
@@ -384,6 +387,113 @@ char* module_resolve_path_with_search_paths(struct slate_vm* vm, const char* mod
     
     free(fs_path);
     return NULL;
+}
+
+// === MODULE COMPILATION AND EXECUTION ===
+
+// Compile module source code to a function without executing it
+struct function* module_compile(struct slate_vm* vm, const char* source, const char* module_name) {
+    if (!vm || !source) return NULL;
+    
+    // Tokenize
+    lexer_t lexer;
+    lexer_init(&lexer, source);
+    
+    // Parse
+    parser_t parser;
+    parser_init(&parser, &lexer);
+    ast_program* program = parse_program(&parser);
+    
+    if (parser.had_error || !program) {
+        lexer_cleanup(&lexer);
+        return NULL;
+    }
+    
+    // Generate code
+    codegen_t* codegen = codegen_create(vm);
+    function_t* function = codegen_compile(codegen, program);
+    
+    if (codegen->had_error || !function) {
+        if (function) function_destroy(function);
+        codegen_destroy(codegen);
+        ast_free((ast_node*)program);
+        lexer_cleanup(&lexer);
+        return NULL;
+    }
+    
+    // Set function name for debugging
+    if (function->name) free(function->name);
+    function->name = module_name ? strdup(module_name) : strdup("<module>");
+    
+    // Cleanup
+    codegen_destroy(codegen);
+    ast_free((ast_node*)program);
+    lexer_cleanup(&lexer);
+    
+    return function;
+}
+
+// Execute a compiled module function within the current VM context
+int module_execute_in_context(struct slate_vm* vm, struct function* function, module_t* module) {
+    if (!vm || !function || !module) return 0;
+    
+    // Push module context for namespace isolation
+    module_push_context(vm, module);
+    
+    // Create a closure for the function
+    closure_t* closure = closure_create(function);
+    if (!closure) {
+        module_pop_context(vm);
+        return 0;
+    }
+    
+    // Check if we have room for another call frame
+    if (vm->frame_count >= vm->frame_capacity) {
+        closure_destroy(closure);
+        module_pop_context(vm);
+        return 0;
+    }
+    
+    // Save current instruction pointer
+    uint8_t* saved_ip = vm->ip;
+    uint8_t* saved_bytecode = vm->bytecode;
+    
+    // Set up new call frame for the module
+    call_frame* frame = &vm->frames[vm->frame_count++];
+    frame->closure = closure;
+    frame->ip = saved_ip; // Save return address
+    frame->slots = vm->stack_top; // Module starts with current stack top
+    
+    // Switch execution to the module
+    vm->ip = function->bytecode;
+    vm->bytecode = function->bytecode;
+    
+    // Run the module code - it will return when it hits OP_RETURN or end of bytecode
+    vm_result result = vm_run(vm);
+    
+    // If the module ended without an explicit return (common for modules),
+    // we need to clean up the frame ourselves
+    if (vm->frame_count > 0 && vm->frames[vm->frame_count - 1].closure == closure) {
+        // Module didn't return explicitly, clean up the frame
+        vm->frame_count--;
+        vm->stack_top = frame->slots; // Reset stack to before module execution
+    }
+    
+    // Restore the IP and bytecode
+    vm->ip = saved_ip;
+    vm->bytecode = saved_bytecode;
+    
+    // Pop module context
+    module_pop_context(vm);
+    
+    // Clean up closure if frame wasn't cleaned up by op_return
+    if (vm->frame_count > 0 && vm->frames[vm->frame_count - 1].closure == closure) {
+        // Frame wasn't cleaned up by op_return, so we need to clean it up manually
+        closure_destroy(closure);
+    }
+    // If frame was cleaned up by op_return, the closure was already destroyed
+    
+    return (result == VM_OK) ? 1 : 0;
 }
 
 // === MODULE NAMESPACE CONTEXT MANAGEMENT ===

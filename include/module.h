@@ -43,6 +43,10 @@ module_t* module_load(struct slate_vm* vm, const char* module_path);
 module_t* module_load_from_file(struct slate_vm* vm, const char* file_path);
 module_t* module_load_from_directory(struct slate_vm* vm, const char* dir_path);
 
+// Module compilation and execution
+struct function* module_compile(struct slate_vm* vm, const char* source, const char* module_name);
+int module_execute_in_context(struct slate_vm* vm, struct function* function, module_t* module);
+
 // Module resolution
 char* module_resolve_path(const char* module_name, const char* current_dir);
 char* module_resolve_path_with_search_paths(struct slate_vm* vm, const char* module_name, const char* current_dir);

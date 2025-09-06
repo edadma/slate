@@ -13,6 +13,21 @@
 
 #define STACK_MAX 256
 #define FRAMES_MAX 64
+
+// Wrapper functions for dynamic_array callbacks with ds_string
+static void string_array_retain(void* str_ptr) {
+    ds_string* ds_ptr = (ds_string*)str_ptr;
+    if (ds_ptr && *ds_ptr) {
+        *ds_ptr = ds_retain(*ds_ptr);
+    }
+}
+
+static void string_array_release(void* str_ptr) {
+    ds_string* ds_ptr = (ds_string*)str_ptr;
+    if (ds_ptr) {
+        ds_release(ds_ptr);
+    }
+}
 #define CONSTANTS_MAX 256
 
 // Global VM pointer for library assert access
@@ -60,8 +75,8 @@ vm_t* vm_create(void) {
 
     // Initialize module search paths
     vm->module_search_paths = da_create(sizeof(ds_string), 4, 
-                                       (void (*)(void*))ds_retain, 
-                                       (void (*)(void*))ds_release);
+                                       (void (*)(void*))string_array_retain, 
+                                       (void (*)(void*))string_array_release);
     if (!vm->module_search_paths) {
         vm_destroy(vm);
         return NULL;

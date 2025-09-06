@@ -120,6 +120,17 @@ bool test_expect_error(const char* source, ErrorKind expected_error) {
 // Forward declaration of helper function from module.c
 void copy_global_to_exports(const char* key, void* data, size_t size, void* context);
 
+// Helper function to copy global variables to module namespace
+void copy_global_to_namespace(const char* key, void* data, size_t size, void* context) {
+    module_t* module = (module_t*)context;
+    if (!module || !key || !data || size != sizeof(value_t)) {
+        return;
+    }
+    
+    value_t* value = (value_t*)data;
+    do_set(module->namespace, key, value, sizeof(value_t));
+}
+
 // Helper to get the full path to a test module file
 char* test_get_module_path(const char* module_name) {
     // Get current working directory
@@ -170,7 +181,7 @@ module_t* test_create_temp_module(const char* name, const char* source) {
         return NULL;
     }
 
-    // Create the module
+    // Create the module (for testing, we don't need VM reference)
     module_t* module = module_create(name, "", vm);
     module->init_function = init_function;
     
@@ -178,8 +189,9 @@ module_t* test_create_temp_module(const char* name, const char* source) {
     if (setjmp(vm->trap) == 0) {
         vm_result result = vm_execute(vm, init_function);
         if (result == VM_OK) {
-            // Copy globals to module exports
-            do_foreach_property(vm->globals, copy_global_to_exports, module);
+            // Copy VM globals to module namespace, then to exports
+            do_foreach_property(vm->globals, copy_global_to_namespace, module);
+            do_foreach_property(module->namespace, copy_global_to_exports, module);
             module->state = MODULE_LOADED;
         } else {
             module_destroy(module);
