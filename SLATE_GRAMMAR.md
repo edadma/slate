@@ -1,7 +1,7 @@
 # Slate Language Grammar
 
 ## Overview
-Slate is a dynamically-typed programming language with expression-oriented syntax. This document describes the formal grammar and syntax rules.
+Slate is a dynamically-typed programming language with expression-oriented syntax. Control flow constructs are expressions that return values, while declarations and imports are statements that do not return values.
 
 ## Lexical Elements
 
@@ -30,10 +30,11 @@ identifier     ::= [a-zA-Z_][a-zA-Z0-9_]*
 
 ### Keywords
 ```
-keywords       ::= 'var' | 'const' | 'def' | 'if' | 'then' | 'elif' | 'else'
+keywords       ::= 'var' | 'val' | 'def' | 'if' | 'then' | 'elif' | 'else'
                  | 'while' | 'do' | 'for' | 'loop' | 'break' | 'continue'
-                 | 'return' | 'import' | 'match' | 'case' | 'default'
-                 | 'true' | 'false' | 'null' | 'undefined' | 'end'
+                 | 'return' | 'import' | 'package' | 'private' | 'match' | 'case' | 'default' | 'data'
+                 | 'true' | 'false' | 'null' | 'undefined' | 'NaN' | 'Infinity'
+                 | 'and' | 'or' | 'not' | 'in' | 'instanceof' | 'mod' | 'step' | 'end'
 ```
 
 ## Expressions
@@ -41,36 +42,96 @@ keywords       ::= 'var' | 'const' | 'def' | 'if' | 'then' | 'elif' | 'else'
 ### Primary Expressions
 ```
 primary        ::= identifier
-                 | literal
+                 | number
+                 | string
+                 | template_literal
+                 | boolean
+                 | null
+                 | undefined
+                 | NaN
+                 | Infinity
                  | '(' expression ')'
                  | array_literal
                  | object_literal
-                 | function_expression
+                 | indented_block
+                 | anonymous_function
+                 | if_expression
+                 | while_expression
+                 | do_while_expression
+                 | for_expression
+                 | loop_expression
+                 | match_expression
+                 | break_expression
+                 | continue_expression
+                 | return_expression
 ```
 
 ### Literals
 ```
-array_literal  ::= '[' (expression (',' expression)*)? ']'
-object_literal ::= '{' (property (',' property)*)? '}'
-property       ::= identifier ':' expression
-                 | string ':' expression
+array_literal     ::= '[' (expression (',' expression)*)? ']'
+object_literal    ::= '{' (property (',' property)*)? '}'
+property          ::= identifier ':' expression
+                    | string ':' expression
+template_literal  ::= '`' template_part* '`'
+template_part     ::= template_text
+                    | '$' identifier
+                    | '${' expression '}'
 ```
 
-### Function Expressions
+### Anonymous Functions
 ```
-function_expr  ::= 'def' '(' parameters? ')' '=' expression
-                 | 'def' '(' parameters? ')' '=' NEWLINE INDENT block DEDENT
-parameters     ::= identifier (',' identifier)*
+anonymous_function ::= identifier '->' expression                  // single parameter
+                     | '(' ')' '->' expression                    // no parameters
+                     | '(' parameters ')' '->' expression         // multiple parameters
+```
+
+### Control Flow Expressions
+```
+if_expression  ::= 'if' expression 'then' expression elif_part* else_part?
+                 | 'if' expression indented_block elif_part* else_part?
+
+elif_part      ::= 'elif' expression 'then' expression
+                 | 'elif' expression indented_block
+
+else_part      ::= 'else' expression
+
+while_expression ::= 'while' expression 'do' expression
+                   | 'while' expression indented_block
+
+do_while_expression ::= 'do' expression 'while' expression
+
+for_expression ::= 'for' (var_decl | expression)? ';' expression? ';' expression?
+                   ('do' expression | indented_block)
+
+loop_expression ::= 'loop' expression
+                  | 'loop' indented_block
+
+match_expression ::= 'match' expression indented_match_block
+
+indented_match_block ::= NEWLINE INDENT
+                        match_arm+
+                        (default_arm)?
+                        DEDENT
+
+match_arm      ::= 'case' pattern 'do' expression
+                 | 'case' pattern expression
+default_arm    ::= 'default' expression
+pattern        ::= expression
+```
+
+### Special Expressions (parsed as statements but usable in expression contexts)
+```
+break_expression    ::= 'break'
+continue_expression ::= 'continue'  
+return_expression   ::= 'return' expression?
 ```
 
 ### Postfix Expressions
 ```
 postfix        ::= primary postfix_op*
-postfix_op     ::= '[' expression ']'                    // array indexing
+postfix_op     ::= '(' arguments? ')'                     // function call or array access
                  | '.' identifier                        // property access
-                 | '(' arguments? ')'                    // function call
                  | '?.' identifier                       // optional chaining
-                 | '?[' expression ']'                   // optional indexing
 arguments      ::= expression (',' expression)*
 ```
 
@@ -78,172 +139,172 @@ arguments      ::= expression (',' expression)*
 ```
 unary          ::= postfix
                  | unary_op unary
-unary_op       ::= '+' | '-' | '!' | '~' | '++' | '--'
+unary_op       ::= '+' | '-' | '!' | 'not' | '~' | '++' | '--'
 ```
 
 ### Binary Expressions (by precedence, highest to lowest)
 ```
-multiplicative ::= unary (('*' | '/' | '//' | '%') unary)*
+power          ::= unary ('**' unary)*                   // right-associative
+multiplicative ::= power (('*' | '/' | '//' | '%' | 'mod') power)*
 additive       ::= multiplicative (('+' | '-') multiplicative)*
 shift          ::= additive (('<<' | '>>' | '>>>') additive)*
-bitwise_and    ::= shift ('&' shift)*
+range          ::= shift (('..' | '..<') shift ['step' shift])?
+bitwise_and    ::= range ('&' range)*
 bitwise_xor    ::= bitwise_and ('^' bitwise_and)*
 bitwise_or     ::= bitwise_xor ('|' bitwise_xor)*
 relational     ::= bitwise_or (('<' | '<=' | '>' | '>=' | 'in' | 'instanceof') bitwise_or)*
 equality       ::= relational (('==' | '!=') relational)*
-logical_and    ::= equality ('&&' equality)*
-logical_or     ::= logical_and ('||' logical_and)*
+logical_and    ::= equality (('&&' | 'and') equality)*
+logical_or     ::= logical_and (('||' | 'or') logical_and)*
 null_coalesce  ::= logical_or ('??' logical_or)*
 ```
 
 ### Assignment Expressions
 ```
-assignment     ::= null_coalesce assignment_op null_coalesce
-                 | null_coalesce
-assignment_op  ::= '=' | '+=' | '-=' | '*=' | '/=' | '//=' | '%='
+assignment     ::= ternary assignment_op assignment
+                 | ternary
+assignment_op  ::= '=' | '+=' | '-=' | '*=' | '/=' | '//=' | '%=' | '**='
                  | '<<=' | '>>=' | '>>>=' | '&=' | '^=' | '|='
                  | '&&=' | '||=' | '??='
 ```
 
-### Conditional Expressions
+### Ternary Conditional
 ```
-conditional    ::= assignment ('?' assignment ':' assignment)?
+ternary        ::= null_coalesce ('?' assignment ':' assignment)?
 ```
 
-### Expression
+### Expression Definition
 ```
-expression     ::= conditional
+expression     ::= assignment
+                 | anonymous_function
 ```
 
 ## Statements
 
+Statements are language constructs that do not return values. They are used for declarations, imports, and other side effects.
+
 ### Variable Declarations
 ```
 var_decl       ::= 'var' identifier ('=' expression)?
-const_decl     ::= 'const' identifier '=' expression
+val_decl       ::= 'val' identifier '=' expression
 ```
 
 ### Function Declarations
 ```
 function_decl  ::= 'def' identifier '(' parameters? ')' '=' expression
-                 | 'def' identifier '(' parameters? ')' '=' NEWLINE INDENT block DEDENT
-```
-
-### Control Flow
-```
-if_stmt        ::= 'if' expression 'then' statement_or_block
-                   ('elif' expression 'then' statement_or_block)*
-                   ('else' statement_or_block)?
-
-while_stmt     ::= 'while' expression ('do' statement_or_block | NEWLINE INDENT block DEDENT)
-
-do_while_stmt  ::= 'do' statement_or_block 'while' expression
-
-for_stmt       ::= 'for' (var_decl | expression)? ';' expression? ';' expression?
-                   ('do' statement_or_block | NEWLINE INDENT block DEDENT)
-
-loop_stmt      ::= 'loop' (statement_or_block | NEWLINE INDENT block DEDENT)
-
-break_stmt     ::= 'break'
-continue_stmt  ::= 'continue'
-return_stmt    ::= 'return' expression?
-```
-
-### Match Statements
-```
-match_stmt     ::= 'match' expression NEWLINE INDENT
-                   match_arm+
-                   (default_arm)?
-                   DEDENT
-
-match_arm      ::= 'case' pattern ':' statement_or_block
-default_arm    ::= 'default' ':' statement_or_block
-pattern        ::= expression  // Pattern matching syntax
+parameters     ::= identifier (',' identifier)*
 ```
 
 ### Import Statements
 ```
-import_stmt    ::= 'import' module_path ('.' '{' import_list '}')?
+import_stmt    ::= 'import' module_path '.' '_'                    // wildcard import
+                 | 'import' module_path '.' '{' import_list '}'    // selective import
+                 | 'import' module_path '.' identifier             // single item import
+                 | 'import' module_path                            // namespace import
+
 module_path    ::= identifier ('.' identifier)*
-import_list    ::= identifier (',' identifier)*
+import_list    ::= import_spec (',' import_spec)*
+import_spec    ::= identifier ('=>' identifier)?                   // with optional alias
+```
+
+### Package Statements
+```
+package_stmt   ::= 'package' package_path
+package_path   ::= identifier ('.' identifier)*
+```
+
+### Data Type Declarations
+```
+data_decl      ::= ['private'] 'data' identifier ['(' parameters ')']
+                   (NEWLINE INDENT data_constructor* DEDENT)?
+                   ['end' identifier]
+
+data_constructor ::= 'case' identifier ['(' parameters ')']
 ```
 
 ### Statement Types
 ```
 statement      ::= var_decl
-                 | const_decl  
+                 | val_decl  
                  | function_decl
-                 | if_stmt
-                 | while_stmt
-                 | do_while_stmt
-                 | for_stmt
-                 | loop_stmt
-                 | break_stmt
-                 | continue_stmt
-                 | return_stmt
-                 | match_stmt
                  | import_stmt
+                 | package_stmt
+                 | data_decl
                  | expression_stmt
 
 expression_stmt ::= expression
-
-statement_or_block ::= statement
-                     | NEWLINE INDENT block DEDENT
-
-block          ::= statement*
 ```
 
-## Language Features
+### Block and Program Structure
+```
+indented_block ::= NEWLINE INDENT block DEDENT
 
-### Expression Functions
-Slate supports both single-line and multi-line expression functions:
+block          ::= (statement | expression)*
 
-```slate
-\ Single-line expression function
-def add(a, b) = a + b
-
-\ Multi-line expression function
-def complex_calc(x) =
-    var temp = x * 2
-    var result = temp + 10
-    result  \ Last expression is returned
+program        ::= block
 ```
 
-### Block Expressions  
-Indented blocks can be used as expressions, returning the value of the last expression:
+## Language Semantics
 
+### Expression Return Values
+
+**Control Flow Expressions:**
+- **if expression**: Returns value of executed branch. If condition is false and no `else`, returns `undefined`
+- **while/do-while/for/loop expressions**: Return `undefined`
+- **match expression**: Returns value of matched case or default
+- **break/continue expressions**: Return `undefined` (but cause control flow change)
+- **return expression**: Returns the specified value (or `undefined` if no value given)
+
+**Other Expressions:**
+- **Assignment expressions**: Return the assigned value
+- **Arithmetic/logical expressions**: Return computed result
+- **Function calls**: Return function result
+- **Literals**: Return their literal value
+
+### Statement vs Expression Distinction
+
+**Statements** (do not return values):
+- Variable declarations (`var`, `val`)
+- Function declarations (`def`)  
+- Import statements (`import`)
+- Expression statements (expressions used as statements)
+
+**Expressions** (return values):
+- All control flow constructs (`if`, `while`, `for`, `loop`, `match`)
+- Assignments, arithmetic, function calls, literals
+- `break`, `continue`, `return` (parsed as statements but usable in expression contexts)
+
+### Special Handling of break/continue/return
+
+These are parsed as statements to allow them at the end of blocks (which are expressions), but they can appear in expression contexts. The parser/codegen handles them specially:
+
+- They can appear as the final element in a block expression
+- When used in expression context, they evaluate to `undefined` before causing control flow change
+- They require special codegen handling due to their dual nature
+
+### Block Expressions
+
+**Indented blocks** (`indented_block`) are a type of expression that uses indentation syntax. Like any expression, they return values. An indented block is created by:
+- A newline followed by increased indentation
+- A sequence of statements and/or expressions  
+- A dedent (return to previous indentation level)
+
+Since indented blocks are expressions, they can be used anywhere an expression is expected. The value of an indented block is:
+1. The value of the last expression in the block, OR
+2. `undefined` if the block ends with a statement, OR  
+3. `undefined` if the block is empty
+
+Examples:
 ```slate
 var result = 
-    var x = 5
-    var y = 10
-    x + y  \ Returns 15
-```
+    var x = 5      \ Statement - doesn't contribute to block value
+    x + 10         \ Expression - block evaluates to 15
 
-### Assignment Expressions
-Assignments return the assigned value, enabling chained assignments and assignments within expressions:
-
-```slate
-var a = b = c = 5  \ All variables get value 5
-while (i = i - 1) > 0 do print(i)  \ Assignment in condition
-```
-
-### Optional Chaining
-Safe property access with null/undefined checking:
-
-```slate
-obj?.property      \ Returns null if obj is null/undefined
-arr?[index]        \ Returns null if arr is null/undefined
-```
-
-### Pattern Matching
-Match expressions provide sophisticated control flow:
-
-```slate
-match value
-    case 0: "zero"
-    case 1: "one"  
-    case x if x > 10: "big number"
-    default: "other"
+var result2 =
+    print("hello") \ Expression statement - block evaluates to undefined
+    
+var result3 =
+    if true then 5 else 10  \ Expression - block evaluates to 5
 ```
 
 ## Indentation and Scoping
@@ -265,11 +326,18 @@ Slate uses significant whitespace (indentation) to define code blocks:
 - Each `.sl` file is a module
 - Modules execute in shared VM with namespace-based isolation
 - Import statements bring module symbols into current namespace
-- Selective imports supported: `import module.{symbol1, symbol2}`
+
+**Import Forms:**
+```slate
+import math._                       \ Wildcard - imports all exports
+import math.{sin, cos => cosine}    \ Selective - imports specific items with optional aliases
+import math.sqrt                    \ Single item - imports just sqrt
+import math                         \ Namespace - imports as namespace object
+```
 
 ## Operator Precedence (highest to lowest)
 
-1. **Postfix**: `[]` `.` `()` `?.` `?[]` `++` `--`
+1. **Postfix**: `()` `.` `?.` `++` `--`
 2. **Unary**: `+` `-` `!` `~` `++` `--` (prefix)
 3. **Power**: `**` (right-associative)
 4. **Multiplicative**: `*` `/` `//` `%`
@@ -284,6 +352,7 @@ Slate uses significant whitespace (indentation) to define code blocks:
 13. **Logical OR**: `||`
 14. **Null Coalescing**: `??`
 15. **Assignment**: `=` `+=` `-=` `*=` `/=` `//=` `%=` `<<=` `>>=` `>>>=` `&=` `^=` `|=` `&&=` `||=` `??=`
+16. **Ternary Conditional**: `? :`
 
 ## Built-in Functions
 
@@ -333,4 +402,84 @@ Slate is dynamically typed with these built-in types:
 - Floor division produces integer: `5 // 2 → 2`
 - String concatenation coerces operands to strings
 
-This grammar specification covers the current implementation of Slate as of the latest version.
+## Examples
+
+### Declarations (Statements)
+```slate
+\ Variable declarations are statements - they don't return values
+var mutable = 5          \ Mutable variable (can be reassigned)
+val constant = 10        \ Immutable variable (cannot be reassigned)
+
+\ Function declarations are statements - they don't return values
+def add(a, b) = a + b
+def complex(x) =
+    val temp = x * 2     \ Using val for immutable local variables
+    temp + 10
+```
+
+### Control Flow as Expressions
+```slate
+\ if expression returns value of executed branch
+var result = if x > 0 then "positive" else "non-positive"
+
+\ 'then' is optional with indented blocks
+var result2 = if x > 0
+    print("positive!")
+    "positive"
+else
+    "non-positive"
+
+\ if with no else returns undefined when condition is false
+var maybe = if false then "value"  \ maybe gets undefined
+
+\ while expression with 'do'
+var status = while condition do process_item()
+
+\ 'do' is optional with indented blocks
+while i < 10
+    print(i)
+    i = i + 1
+
+\ for loop - 'do' optional with indented block
+for var i = 0; i < 10; i += 1
+    print(i)
+```
+
+### Block Expressions
+```slate
+var computed = 
+    var a = 5
+    var b = 10
+    a * b + 2  \ Block returns 52
+
+var sideEffect =
+    print("Computing...")
+    computeValue()  \ Block returns whatever computeValue() returns
+```
+
+### Array Access
+```slate
+\ Array access uses parentheses (like Scala)
+var arr = [1, 2, 3]
+print(arr(0))       \ Prints: 1
+print(arr(2))       \ Prints: 3
+```
+
+### Match Expressions
+```slate
+\ Match expressions support flexible case syntax
+var result = match value
+    case 0 do "zero"                    \ Single-line with 'do'
+    case 1                              \ Multi-line without 'do'
+        "one"
+    case x do                           \ Multi-line with 'do'
+        if x > 10 then "big" else "small"
+    default "other"                     \ Default case (no 'do' needed)
+
+\ Variable binding in patterns
+match person
+    case john do print("Found John!")   \ Binds the value to 'john'
+    default print("Someone else")       \ Default case (no 'do' needed)
+```
+
+This grammar specification accurately reflects Slate's expression-oriented design where control flow constructs are expressions that return values, while declarations and imports are statements.
