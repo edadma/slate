@@ -572,10 +572,10 @@ static void repl_with_args(int argc, char** argv, char** include_paths, int incl
 
 // Helper function to check if a parsed program contains data declarations that should trigger continuation mode
 static int should_continue_for_data_declaration(ast_program* program) {
-    if (!program || !program->statements) return 0;
+    if (!program || !program->body) return 0;
     
-    for (int i = 0; i < program->statement_count; i++) {
-        ast_node* stmt = program->statements[i];
+    for (int i = 0; i < program->body->statement_count; i++) {
+        ast_node* stmt = program->body->statements[i];
         if (stmt && stmt->type == AST_DATA_DECLARATION) {
             // For data declarations, always enter continuation mode to allow cases/methods
             return 1;

@@ -476,15 +476,14 @@ ast_block* ast_create_block(ast_node** statements, size_t statement_count, int l
     return node;
 }
 
-ast_program* ast_create_program(ast_node** statements, size_t statement_count, int line, int column) {
+ast_program* ast_create_program(ast_block* body, int line, int column) {
     ast_program* node = malloc(sizeof(ast_program));
     if (!node) return NULL;
     
     node->base.type = AST_PROGRAM;
     node->base.line = line;
     node->base.column = column;
-    node->statements = statements;
-    node->statement_count = statement_count;
+    node->body = body;
     
     return node;
 }
@@ -779,10 +778,9 @@ void ast_free(ast_node* node) {
         
         case AST_PROGRAM: {
             ast_program* prog_node = (ast_program*)node;
-            for (size_t i = 0; i < prog_node->statement_count; i++) {
-                ast_free(prog_node->statements[i]);
+            if (prog_node->body) {
+                ast_free((ast_node*)prog_node->body);
             }
-            free(prog_node->statements);
             break;
         }
         
@@ -1025,9 +1023,9 @@ void ast_print(ast_node* node, int indent) {
         
         case AST_PROGRAM: {
             ast_program* prog_node = (ast_program*)node;
-            printf(": %zu statements\n", prog_node->statement_count);
-            for (size_t i = 0; i < prog_node->statement_count; i++) {
-                ast_print(prog_node->statements[i], indent + 1);
+            printf("\n");
+            if (prog_node->body) {
+                ast_print((ast_node*)prog_node->body, indent + 1);
             }
             break;
         }

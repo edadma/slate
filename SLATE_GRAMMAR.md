@@ -88,7 +88,7 @@ anonymous_function ::= identifier '->' expression                  // single par
 ### Control Flow Expressions
 ```
 if_expression  ::= 'if' expression 'then' expression elif_part* else_part?
-                 | 'if' expression indented_block elif_part* else_part?
+                 | 'if' expression indented_block elif_part* else_part? ['end' 'if']
 
 elif_part      ::= 'elif' expression 'then' expression
                  | 'elif' expression indented_block
@@ -96,17 +96,17 @@ elif_part      ::= 'elif' expression 'then' expression
 else_part      ::= 'else' expression
 
 while_expression ::= 'while' expression 'do' expression
-                   | 'while' expression indented_block
+                   | 'while' expression indented_block ['end' 'while']
 
 do_while_expression ::= 'do' expression 'while' expression
 
 for_expression ::= 'for' (var_decl | expression)? ';' expression? ';' expression?
-                   ('do' expression | indented_block)
+                   ('do' expression | indented_block ['end' 'for'])
 
 loop_expression ::= 'loop' expression
-                  | 'loop' indented_block
+                  | 'loop' indented_block ['end' 'loop']
 
-match_expression ::= 'match' expression indented_match_block
+match_expression ::= 'match' expression indented_match_block ['end' 'match']
 
 indented_match_block ::= NEWLINE INDENT
                         match_arm+
@@ -192,6 +192,7 @@ val_decl       ::= 'val' identifier '=' expression
 ### Function Declarations
 ```
 function_decl  ::= 'def' identifier '(' parameters? ')' '=' expression
+                 | 'def' identifier '(' parameters? ')' '=' indented_block ['end' identifier]
 parameters     ::= identifier (',' identifier)*
 ```
 
@@ -243,6 +244,72 @@ block          ::= (statement | expression)*
 
 program        ::= block
 ```
+
+## End Markers
+
+Slate supports optional end markers for constructs that use indented blocks. End markers provide visual clarity and help with error checking, especially in large blocks.
+
+### End Marker Rules
+
+**End markers are only available when using indented blocks:**
+- Single-line forms (using `do`, `then`, or direct expressions) do not support end markers
+- Multi-line indented block forms support optional end markers
+
+**Supported end markers:**
+- **Control flow**: `end if`, `end while`, `end for`, `end loop`, `end match`
+- **Function declarations**: `end <function_name>` (where `<function_name>` is the actual function name)  
+- **Data declarations**: `end <DataTypeName>` (where `<DataTypeName>` is the actual data type name)
+
+### Examples
+
+```slate
+\ Control flow with end markers
+if condition
+    do_something()
+    result = compute()
+    result
+end if
+
+while condition
+    process_item()
+    update_condition()
+end while
+
+for var i = 0; i < 10; i += 1
+    print(i)
+end for
+
+loop
+    if should_exit() then break
+    process()
+end loop
+
+match value
+    case 1 do "one"
+    case 2 do "two"
+    default "other"
+end match
+
+\ Function with end marker
+def fibonacci(n) =
+    if n <= 1 then
+        return n
+    fibonacci(n-1) + fibonacci(n-2)
+end fibonacci
+
+\ Data declaration with end marker
+data BinaryTree(value)
+    case Leaf
+    case Node(left, right)
+        
+    def size() =
+        match this
+            case Leaf do 0
+            case Node(l, r) do 1 + l.size() + r.size()
+end BinaryTree
+```
+
+**Note:** `do...while` loops are self-delimiting and do not support end markers since they end with the `while` keyword.
 
 ## Language Semantics
 

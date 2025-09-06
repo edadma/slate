@@ -38,6 +38,14 @@ typedef enum {
     LOOP_INFINITE   // Continue jumps to loop start
 } loop_type_t;
 
+// Block compilation contexts
+typedef enum {
+    BLOCK_PROGRAM,        // Top-level program block (emit OP_HALT)
+    BLOCK_FUNCTION_EXPR,  // Function expression body (emit OP_RETURN)
+    BLOCK_FUNCTION_BLOCK, // Function block body (emit OP_RETURN)
+    BLOCK_INDENTED        // Regular indented block (no terminator)
+} block_context_t;
+
 // Individual loop context for nested loop support
 typedef struct {
     loop_type_t type;           // Type of loop for continue behavior
@@ -148,6 +156,7 @@ void codegen_emit_data_declaration(codegen_t* codegen, ast_data_declaration* nod
 void codegen_emit_expression_stmt(codegen_t* codegen, ast_expression_stmt* node);
 void codegen_emit_block(codegen_t* codegen, ast_block* node);
 void codegen_emit_block_expression(codegen_t* codegen, ast_block* node);
+void codegen_emit_block_with_context(codegen_t* codegen, ast_block* node, block_context_t context);
 void codegen_emit_if(codegen_t* codegen, ast_if* node);
 void codegen_emit_match(codegen_t* codegen, ast_match* node);
 void codegen_emit_while(codegen_t* codegen, ast_while* node);

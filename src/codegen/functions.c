@@ -74,27 +74,17 @@ function_t* codegen_compile_function(codegen_t* parent_codegen, ast_function* fu
     if (func_node->is_expression) {
         // Expression function: compile body as expression and return result
         if (func_node->body->type == AST_BLOCK) {
-            // Multi-statement expression function body - emit as block expression
-            codegen_emit_block_expression(func_codegen, (ast_block*)func_node->body);
+            // Multi-statement expression function body - use unified compiler
+            codegen_emit_block_with_context(func_codegen, (ast_block*)func_node->body, BLOCK_FUNCTION_EXPR);
         } else {
             // Single expression function body
             codegen_emit_expression(func_codegen, func_node->body);
-        }
-        codegen_emit_op(func_codegen, OP_RETURN);
-    } else {
-        // Block function: compile statements
-        ast_block* block = (ast_block*)func_node->body;
-        for (size_t i = 0; i < block->statement_count; i++) {
-            codegen_emit_statement(func_codegen, block->statements[i]);
-            if (func_codegen->had_error) break;
-        }
-        
-        // If no explicit return, return null
-        if (!func_codegen->had_error) {
-            codegen_emit_op_operand(func_codegen, OP_PUSH_CONSTANT, 
-                                  chunk_add_constant(func_codegen->chunk, make_null()));
             codegen_emit_op(func_codegen, OP_RETURN);
         }
+    } else {
+        // Block function: use unified compiler
+        ast_block* block = (ast_block*)func_node->body;
+        codegen_emit_block_with_context(func_codegen, block, BLOCK_FUNCTION_BLOCK);
     }
     
     // Check for compilation errors

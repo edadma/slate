@@ -263,17 +263,96 @@ void codegen_emit_expression_stmt(codegen_t* codegen, ast_expression_stmt* node)
     codegen_emit_op(codegen, OP_SET_RESULT); // Pop and store in result register
 }
 
-void codegen_emit_block(codegen_t* codegen, ast_block* node) {
+// Unified block compiler with context awareness
+void codegen_emit_block_with_context(codegen_t* codegen, ast_block* node, block_context_t context) {
+    if (node->statement_count == 0) {
+        // Empty block handling
+        switch (context) {
+            case BLOCK_PROGRAM:
+                // Empty program - just halt
+                codegen_emit_op(codegen, OP_HALT);
+                break;
+            case BLOCK_FUNCTION_EXPR:
+            case BLOCK_FUNCTION_BLOCK:
+                // Empty function - return null
+                codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT,
+                                      chunk_add_constant(codegen->chunk, make_null()));
+                codegen_emit_op(codegen, OP_RETURN);
+                break;
+            case BLOCK_INDENTED:
+                // Empty indented block - push null as expression value
+                codegen_emit_op(codegen, OP_PUSH_NULL);
+                break;
+        }
+        return;
+    }
+    
     // Begin new scope for the block
     codegen_begin_scope(codegen);
     
-    for (size_t i = 0; i < node->statement_count; i++) {
-        codegen_emit_statement(codegen, node->statements[i]);
-        if (codegen->had_error) break;
+    if (context == BLOCK_INDENTED) {
+        // Block expression - all statements except last are executed normally, 
+        // last statement's value is left on stack
+        for (size_t i = 0; i < node->statement_count - 1; i++) {
+            codegen_emit_statement(codegen, node->statements[i]);
+            if (codegen->had_error) break;
+        }
+        
+        if (!codegen->had_error) {
+            // Handle the last statement as an expression
+            ast_node* last_stmt = node->statements[node->statement_count - 1];
+            
+            if (last_stmt->type == AST_RETURN) {
+                // Return statements are invalid in block expressions
+                codegen_error(codegen, "Return statement not allowed in block expression");
+                return;
+            } else if (last_stmt->type == AST_EXPRESSION_STMT) {
+                // Expression statement - emit the expression directly
+                ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
+                codegen_emit_expression(codegen, expr_stmt->expression);
+            } else {
+                // Other statement types - emit normally then push null
+                codegen_emit_statement(codegen, last_stmt);
+                codegen_emit_op(codegen, OP_PUSH_NULL);
+            }
+        }
+        
+        // End scope but keep top value (block expression result)
+        codegen_end_scope_keep_top(codegen);
+        
+    } else {
+        // Statement block or function block - execute all statements normally
+        for (size_t i = 0; i < node->statement_count; i++) {
+            codegen_emit_statement(codegen, node->statements[i]);
+            if (codegen->had_error) break;
+        }
+        
+        // Add terminator based on context
+        if (!codegen->had_error) {
+            switch (context) {
+                case BLOCK_PROGRAM:
+                    codegen_emit_op(codegen, OP_HALT);
+                    break;
+                case BLOCK_FUNCTION_EXPR:
+                case BLOCK_FUNCTION_BLOCK:
+                    // If no explicit return, return null
+                    codegen_emit_op_operand(codegen, OP_PUSH_CONSTANT,
+                                          chunk_add_constant(codegen->chunk, make_null()));
+                    codegen_emit_op(codegen, OP_RETURN);
+                    break;
+                case BLOCK_INDENTED:
+                    // Already handled above
+                    break;
+            }
+        }
+        
+        // End scope (clean up local variables)
+        codegen_end_scope(codegen);
     }
-    
-    // End scope (this will emit OP_POP_N to clean up local variables)
-    codegen_end_scope(codegen);
+}
+
+void codegen_emit_block(codegen_t* codegen, ast_block* node) {
+    codegen_emit_block_with_context(codegen, node, BLOCK_INDENTED);
 }
 
 // Helper function to emit a node that can be either expression or statement
@@ -495,63 +574,7 @@ void codegen_emit_match(codegen_t* codegen, ast_match* node) {
 }
 
 void codegen_emit_block_expression(codegen_t* codegen, ast_block* node) {
-    if (node->statement_count == 0) {
-        // Empty block returns null
-        codegen_emit_op(codegen, OP_PUSH_NULL);
-        return;
-    }
-    
-    // Begin new scope for the block expression
-    codegen_begin_scope(codegen);
-    
-    // Execute all statements except the last one normally
-    for (size_t i = 0; i < node->statement_count - 1; i++) {
-        codegen_emit_statement(codegen, node->statements[i]);
-        if (codegen->had_error) break;
-    }
-    
-    if (!codegen->had_error) {
-        // Handle the last statement based on its type
-        ast_node* last_stmt = node->statements[node->statement_count - 1];
-        
-        if (last_stmt->type == AST_RETURN) {
-            // Return statement - emit it as a statement (it will emit OP_RETURN)
-            codegen_emit_statement(codegen, last_stmt);
-            // Return exits the function, so we don't need scope cleanup
-            return;
-        } else if (last_stmt->type == AST_EXPRESSION_STMT) {
-            // Expression statement - emit its expression to leave value on stack
-            ast_expression_stmt* expr_stmt = (ast_expression_stmt*)last_stmt;
-            codegen_emit_expression(codegen, expr_stmt->expression);
-        } else {
-            // Handle other allowed block endings
-            codegen_emit_expression_or_statement(codegen, last_stmt);
-        }
-    }
-    
-    // End scope with result preservation
-    // The result is on the stack top and must be preserved during cleanup
-    if (codegen->scope.scope_depth == 0) {
-        codegen_error(codegen, "Cannot end global scope");
-        return;
-    }
-    
-    // Count how many locals need to be popped
-    int locals_to_pop = 0;
-    for (int i = codegen->scope.local_count - 1; i >= 0; i--) {
-        if (codegen->scope.locals[i].depth < codegen->scope.scope_depth) {
-            break; // Found variable from outer scope
-        }
-        locals_to_pop++;
-    }
-    
-    // Use OP_POP_N_PRESERVE_TOP to clean up local variables while preserving the result
-    if (locals_to_pop > 0) {
-        codegen_emit_op_operand(codegen, OP_POP_N_PRESERVE_TOP, (uint16_t)locals_to_pop);
-        codegen->scope.local_count -= locals_to_pop;
-    }
-    
-    codegen->scope.scope_depth--;
+    codegen_emit_block_with_context(codegen, node, BLOCK_INDENTED);
 }
 
 void codegen_emit_import(codegen_t* codegen, ast_import* node) {

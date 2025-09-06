@@ -41,31 +41,9 @@ static ast_node* parse_ternary(parser_t* parser) {
     return expr;
 }
 
-// Parse single-parameter lambda or fallback to assignment
-ast_node* parse_lambda_or_assignment(parser_t* parser) {
-    // Check for single-parameter lambda: IDENTIFIER -> expression
-    if (parser_check(parser, TOKEN_IDENTIFIER)) {
-        parser_advance(parser); // consume identifier
-        
-        if (parser_check(parser, TOKEN_ARROW)) {
-            // This is a single-parameter lambda: x -> expr
-            char* param_name = token_to_string(&parser->previous);
-            char** parameters = malloc(sizeof(char*));
-            parameters[0] = param_name;
-            
-            return parse_arrow_function(parser, parameters, 1);
-        } else {
-            // Not a lambda, push back and parse normally
-            parser_pushback(parser);
-        }
-    }
-    
-    return parse_assignment(parser);
-}
-
 // Parse expression
 ast_node* parse_expression(parser_t* parser) {
-    return parse_lambda_or_assignment(parser);
+    return parse_assignment(parser);
 }
 
 // Parse assignment
@@ -535,10 +513,21 @@ ast_node* parse_primary(parser_t* parser) {
     }
     
     if (parser_match(parser, TOKEN_IDENTIFIER)) {
-        char* name = token_to_string(&parser->previous);
-        ast_node* result = (ast_node*)ast_create_identifier(name, parser->previous.line, parser->previous.column);
-        free(name);
-        return result;
+        // Check for single-parameter lambda: IDENTIFIER -> expression
+        if (parser_check(parser, TOKEN_ARROW)) {
+            // This is a single-parameter lambda: x -> expr
+            char* param_name = token_to_string(&parser->previous);
+            char** parameters = malloc(sizeof(char*));
+            parameters[0] = param_name;
+            
+            return parse_arrow_function(parser, parameters, 1);
+        } else {
+            // Regular identifier
+            char* name = token_to_string(&parser->previous);
+            ast_node* result = (ast_node*)ast_create_identifier(name, parser->previous.line, parser->previous.column);
+            free(name);
+            return result;
+        }
     }
     
     if (parser_match(parser, TOKEN_TEMPLATE_START)) {

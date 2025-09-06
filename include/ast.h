@@ -368,11 +368,10 @@ typedef struct {
     size_t statement_count;
 } ast_block;
 
-// Program node (root)
+// Program node (root) - contains a single block
 typedef struct {
     ast_node base;
-    ast_node** statements;
-    size_t statement_count;
+    ast_block* body;
 } ast_program;
 
 // Import specifier (for selective imports)
@@ -469,7 +468,7 @@ ast_return* ast_create_return(ast_node* value, int line, int column);
 
 ast_expression_stmt* ast_create_expression_stmt(ast_node* expression, int line, int column);
 ast_block* ast_create_block(ast_node** statements, size_t statement_count, int line, int column);
-ast_program* ast_create_program(ast_node** statements, size_t statement_count, int line, int column);
+ast_program* ast_create_program(ast_block* body, int line, int column);
 
 ast_import* ast_create_import(const char* module_path, import_specifier* specifiers, size_t specifier_count, 
                               int is_wildcard, int line, int column);

@@ -6,16 +6,12 @@
 
 // Main compilation function
 function_t* codegen_compile(codegen_t* codegen, ast_program* program) {
-    if (!codegen || !program) return NULL;
+    if (!codegen || !program || !program->body) return NULL;
     
-    // Generate code for all statements
-    for (size_t i = 0; i < program->statement_count; i++) {
-        codegen_emit_statement(codegen, program->statements[i]);
-        if (codegen->had_error) return NULL;
-    }
+    // Use unified block compiler with PROGRAM context
+    codegen_emit_block_with_context(codegen, program->body, BLOCK_PROGRAM);
     
-    // Emit halt instruction
-    codegen_emit_op(codegen, OP_HALT);
+    if (codegen->had_error) return NULL;
     
     // Create function from chunk
     function_t* function = function_create("main");

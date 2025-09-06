@@ -17,9 +17,9 @@ void test_parse_infinite_loop(void) {
     ast_program* program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.had_error);
-    TEST_ASSERT_EQUAL_INT(1, program->statement_count);
+    TEST_ASSERT_EQUAL_INT(1, program->body->statement_count);
 
-    ast_node* stmt = program->statements[0];
+    ast_node* stmt = program->body->statements[0];
     TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
     
     ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
@@ -47,9 +47,9 @@ void test_infinite_loop_parsing_only(void) {
     ast_program* program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.had_error);
-    TEST_ASSERT_EQUAL_INT(1, program->statement_count);
+    TEST_ASSERT_EQUAL_INT(1, program->body->statement_count);
 
-    ast_node* stmt = program->statements[0];
+    ast_node* stmt = program->body->statements[0];
     TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
     
     ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
@@ -73,9 +73,9 @@ void test_single_line_loop_expression(void) {
     ast_program* program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.had_error); // Should parse successfully
-    TEST_ASSERT_EQUAL_INT(1, program->statement_count);
+    TEST_ASSERT_EQUAL_INT(1, program->body->statement_count);
 
-    ast_node* stmt = program->statements[0];
+    ast_node* stmt = program->body->statements[0];
     TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
     
     ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
@@ -106,10 +106,10 @@ void test_loop_ast_structure(void) {
     ast_program* program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.had_error);
-    TEST_ASSERT_EQUAL_INT(1, program->statement_count);
+    TEST_ASSERT_EQUAL_INT(1, program->body->statement_count);
 
     // Verify the loop AST structure
-    ast_node* stmt = program->statements[0];
+    ast_node* stmt = program->body->statements[0];
     TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
     
     ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
@@ -141,9 +141,9 @@ void test_loop_without_end_marker(void) {
     ast_program* program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.had_error);
-    TEST_ASSERT_EQUAL_INT(1, program->statement_count);
+    TEST_ASSERT_EQUAL_INT(1, program->body->statement_count);
 
-    ast_node* stmt = program->statements[0];
+    ast_node* stmt = program->body->statements[0];
     TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
     
     ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;
@@ -168,9 +168,9 @@ void test_loop_with_optional_end_marker(void) {
     ast_program* program = parse_program(&parser);
     TEST_ASSERT_NOT_NULL(program);
     TEST_ASSERT_FALSE(parser.had_error);
-    TEST_ASSERT_EQUAL_INT(1, program->statement_count);
+    TEST_ASSERT_EQUAL_INT(1, program->body->statement_count);
 
-    ast_node* stmt = program->statements[0];
+    ast_node* stmt = program->body->statements[0];
     TEST_ASSERT_EQUAL_INT(AST_EXPRESSION_STMT, stmt->type);
     
     ast_expression_stmt* expr_stmt = (ast_expression_stmt*)stmt;

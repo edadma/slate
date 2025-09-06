@@ -121,12 +121,43 @@ ast_node* parse_def_declaration(parser_t* parser) {
     
     // Parse function body - support both single-line and indented block forms
     ast_node* body = NULL;
+    int has_indented_body = 0;
     if (parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_INDENT)) {
         // Indented block form: def name(params) =\n  <block>
         body = parse_indented_block(parser);
+        has_indented_body = 1;
     } else {
         // Single-line form: def name(params) = expr
         body = parse_expression(parser);
+    }
+    
+    // Check for optional end marker: end <function_name> (only if there was an indented body)
+    if (has_indented_body && parser_match(parser, TOKEN_END)) {
+        if (parser_check(parser, TOKEN_IDENTIFIER)) {
+            char* end_name = token_to_string(&parser->current);
+            if (strcmp(end_name, func_name) != 0) {
+                parser_error_at_current(parser, "End marker function name does not match declaration");
+                free(end_name);
+                free(func_name);
+                // Clean up parameters
+                for (size_t i = 0; i < param_count; i++) {
+                    free(parameters[i]);
+                }
+                free(parameters);
+                return NULL;
+            }
+            free(end_name);
+            parser_advance(parser); // consume the function name
+        } else {
+            parser_error_at_current(parser, "Expected function name after 'end'");
+            free(func_name);
+            // Clean up parameters
+            for (size_t i = 0; i < param_count; i++) {
+                free(parameters[i]);
+            }
+            free(parameters);
+            return NULL;
+        }
     }
     
     // Create function AST node (both forms are treated as expressions)

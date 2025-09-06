@@ -294,6 +294,15 @@ ast_program* parse_program(parser_t* parser) {
         while (parser_match(parser, TOKEN_NEWLINE));
     }
     
-    return ast_create_program(statements, statement_count, 
-                             parser->previous.line, parser->previous.column);
+    // Create a block from the collected statements
+    ast_block* body = ast_create_block(statements, statement_count,
+                                      parser->previous.line, parser->previous.column);
+    if (!body) {
+        // Clean up statements array on failure
+        free(statements);
+        return NULL;
+    }
+    
+    // Create program with the block body
+    return ast_create_program(body, parser->previous.line, parser->previous.column);
 }
