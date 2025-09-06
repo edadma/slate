@@ -3,10 +3,16 @@
 
 // Stack operations
 void vm_push(vm_t* vm, value_t value) {
-    if (!(vm->stack_top - vm->stack < vm->stack_capacity)) {
+    size_t current_size = vm->stack_top - vm->stack;
+    if (!(current_size < vm->stack_capacity)) {
+        printf("STACK OVERFLOW at size=%zu\n", current_size);
         slate_runtime_error(vm, ERR_ASSERT, __FILE__, __LINE__, -1, 
                            "Stack overflow: cannot push more values");
     }
+    // Debug: Show every 10th push to track growth pattern
+    // if (current_size > 0 && current_size % 10 == 0) {
+    //     printf("STACK: %zu\n", current_size);
+    // }
     *vm->stack_top = vm_retain(value);
     vm->stack_top++;
 }

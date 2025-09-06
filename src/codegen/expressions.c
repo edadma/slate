@@ -347,13 +347,13 @@ void codegen_emit_statement(codegen_t* codegen, ast_node* stmt) {
             break;
             
         case AST_ASSIGNMENT:
-            codegen_emit_assignment(codegen, (ast_assignment*)stmt);
+            codegen_emit_expression(codegen, (ast_node*)stmt);
             // Assignment used as statement should discard its result value
             codegen_emit_op(codegen, OP_POP);
             break;
             
         case AST_COMPOUND_ASSIGNMENT:
-            codegen_emit_compound_assignment(codegen, (ast_compound_assignment*)stmt);
+            codegen_emit_expression(codegen, (ast_node*)stmt);
             // Compound assignment used as statement should discard its result value
             codegen_emit_op(codegen, OP_POP);
             break;

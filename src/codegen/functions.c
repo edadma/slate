@@ -70,10 +70,16 @@ function_t* codegen_compile_function(codegen_t* parent_codegen, ast_function* fu
         func_codegen->scope.locals[slot].is_initialized = 1;
     }
     
-    // Compile function body
+    // Compile function body based on type
     if (func_node->is_expression) {
-        // Single expression function: compile expression and return result
-        codegen_emit_expression(func_codegen, func_node->body);
+        // Expression function: compile body as expression and return result
+        if (func_node->body->type == AST_BLOCK) {
+            // Multi-statement expression function body - emit as block expression
+            codegen_emit_block_expression(func_codegen, (ast_block*)func_node->body);
+        } else {
+            // Single expression function body
+            codegen_emit_expression(func_codegen, func_node->body);
+        }
         codegen_emit_op(func_codegen, OP_RETURN);
     } else {
         // Block function: compile statements

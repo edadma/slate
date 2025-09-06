@@ -49,7 +49,7 @@ void codegen_emit_var_declaration(codegen_t* codegen, ast_var_declaration* node)
     }
 }
 
-void codegen_emit_assignment(codegen_t* codegen, ast_assignment* node) {
+void __unused_codegen_emit_assignment(codegen_t* codegen, ast_assignment* node) {
     if (node->target->type == AST_IDENTIFIER) {
         // Variable assignment: var = value
         // Generate the value first
@@ -300,10 +300,14 @@ void codegen_emit_expression_or_statement(codegen_t* codegen, ast_node* node) {
         case AST_WHILE:
         case AST_DO_WHILE:
         case AST_LOOP:
+            // These are statements that manage their own stack cleanup
+            // Don't push null since OP_POP was already emitted in statement dispatcher
+            codegen_emit_statement(codegen, node);
+            break;
         case AST_BREAK:
         case AST_CONTINUE:
         case AST_RETURN:
-            // These are statements - emit as statements and push null as result
+            // These statements don't leave values on stack and may need null result
             codegen_emit_statement(codegen, node);
             codegen_emit_op(codegen, OP_PUSH_NULL);
             break;

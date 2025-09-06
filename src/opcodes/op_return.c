@@ -8,6 +8,14 @@ vm_result op_return(vm_t* vm) {
     // Get frame we're returning from BEFORE decrementing frame_count
     call_frame* current_frame = &vm->frames[vm->frame_count - 1];  // Frame we're in
     
+    // Check for stack leakage during function execution (for debugging)
+    // size_t current_stack_size = vm->stack_top - vm->stack;
+    // size_t expected_stack_pos = current_frame->slots - vm->stack;
+    // if (current_stack_size > expected_stack_pos) {
+    //     printf("STACK LEAK: Function had %zu stack slots, expected %zu (leaked %zu slots)\n", 
+    //            current_stack_size, expected_stack_pos, current_stack_size - expected_stack_pos);
+    // }
+    
     // Pop module context if this function had one
     if (current_frame->closure && current_frame->closure->module) {
         module_pop_context(vm);
