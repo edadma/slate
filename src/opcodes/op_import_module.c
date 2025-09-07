@@ -2,6 +2,8 @@
 #include "module.h"
 #include "runtime_error.h"
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 // Callback to copy an export to VM globals for wildcard import
 void copy_export_to_globals(const char* key, void* data, size_t size, void* context) {
@@ -98,11 +100,21 @@ vm_result op_import_module(vm_t* vm) {
         }
     }
     
-    // Load the module
-    module_t* module = module_load(vm, module_path);
-    if (!module) {
-        runtime_error(vm, "Module not found: %s", module_path);
-        return VM_RUNTIME_ERROR;
+    // For namespace imports, we'll try loading the module but handle failure differently
+    // For other import types, we need the module to exist
+    module_t* module = NULL;
+    
+    if (!is_namespace) {
+        // For wildcard and specific imports, the module must exist
+        module = module_load(vm, module_path);
+        if (!module) {
+            runtime_error(vm, "Module not found: %s", module_path);
+            return VM_RUNTIME_ERROR;
+        }
+    } else {
+        // For namespace imports, try to load but don't fail yet
+        module = module_load(vm, module_path);
+        // If it fails, we'll try the item import interpretation below
     }
     
     if (is_wildcard) {
@@ -115,18 +127,65 @@ vm_result op_import_module(vm_t* vm) {
         do_foreach_property(module->exports, copy_export_to_globals, vm);
         
     } else if (is_namespace) {
-        // Namespace import - create namespace object containing all module exports
-        const char* namespace_name = namespace_name_value.as.string;
+        // Namespace import - but need to handle ambiguous bare imports
+        // For bare imports like "import a.b.c", we try:
+        // 1. Load "a.b.c" as a module (namespace import)
+        // 2. If that fails, load "a.b" and import item "c"
         
-        // Create a new object to hold the module exports
-        do_object namespace_obj = do_create(NULL);
-        value_t namespace_object = make_object(namespace_obj);
-        
-        // Copy all module exports to the namespace object
-        do_foreach_property(module->exports, copy_export_to_namespace_object, namespace_obj);
-        
-        // Add the namespace object to VM globals
-        do_set(vm->globals, namespace_name, &namespace_object, sizeof(value_t));
+        // Check if we successfully loaded the module
+        if (module) {
+            // Success - treat as namespace import
+            const char* namespace_name = namespace_name_value.as.string;
+            
+            // Create a new object to hold the module exports
+            do_object namespace_obj = do_create(NULL);
+            value_t namespace_object = make_object(namespace_obj);
+            
+            // Copy all module exports to the namespace object
+            do_foreach_property(module->exports, copy_export_to_namespace_object, namespace_obj);
+            
+            // Add the namespace object to VM globals
+            do_set(vm->globals, namespace_name, &namespace_object, sizeof(value_t));
+        } else {
+            // Module not found - try as item import by splitting at last dot
+            const char* last_dot = strrchr(module_path, '.');
+            if (last_dot && last_dot != module_path) {
+                // Split into parent module and item name
+                size_t parent_len = last_dot - module_path;
+                char* parent_path = malloc(parent_len + 1);
+                strncpy(parent_path, module_path, parent_len);
+                parent_path[parent_len] = '\0';
+                
+                const char* item_name = last_dot + 1;
+                
+                // Try to load the parent module
+                module_t* parent_module = module_load(vm, parent_path);
+                
+                if (parent_module) {
+                    // Get the item from the parent module
+                    value_t item_value = module_get_export(parent_module, item_name);
+                    if (item_value.type != VAL_UNDEFINED) {
+                        // Success - add the item to globals
+                        do_set(vm->globals, item_name, &item_value, sizeof(value_t));
+                        free(parent_path);
+                    } else {
+                        slate_runtime_error(vm, ERR_TYPE, __FILE__, __LINE__, -1, 
+                            "Export '%s' not found in module %s", item_name, parent_path);
+                        free(parent_path);
+                        return VM_RUNTIME_ERROR;
+                    }
+                } else {
+                    // Neither interpretation worked
+                    free(parent_path);
+                    runtime_error(vm, "Module not found: %s", module_path);
+                    return VM_RUNTIME_ERROR;
+                }
+            } else {
+                // No dot to split on, or dot is at the beginning
+                runtime_error(vm, "Module not found: %s", module_path);
+                return VM_RUNTIME_ERROR;
+            }
+        }
         
     } else {
         // Specific imports
