@@ -38,7 +38,7 @@ value_t builtin_array_map(vm_t* vm, int arg_count, value_t* args) {
         call_args[1] = make_int32((int32_t)i);         // index
         call_args[2] = vm_retain(receiver);            // array
 
-        value_t mapped = vm_call_function(vm, mapper, 3, call_args);
+        value_t mapped = vm_call_slate_function_safe(vm, mapper, 3, call_args);
 
         // Release our retained args (ownership of return is ours)
         vm_release(call_args[0]);
@@ -84,7 +84,7 @@ value_t builtin_array_filter(vm_t* vm, int arg_count, value_t* args) {
         call_args[1] = make_int32((int32_t)i);         // index
         call_args[2] = vm_retain(receiver);            // array
 
-        value_t result = vm_call_function(vm, predicate, 3, call_args);
+        value_t result = vm_call_slate_function_safe(vm, predicate, 3, call_args);
 
         // Release our retained args
         vm_release(call_args[0]);
@@ -131,7 +131,7 @@ value_t builtin_array_flatmap(vm_t* vm, int arg_count, value_t* args) {
         call_args[1] = make_int32((int32_t)i);
         call_args[2] = vm_retain(receiver);
 
-        value_t mapped = vm_call_function(vm, mapper, 3, call_args);
+        value_t mapped = vm_call_slate_function_safe(vm, mapper, 3, call_args);
 
         vm_release(call_args[0]);
         vm_release(call_args[2]);

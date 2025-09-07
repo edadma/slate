@@ -287,8 +287,35 @@ value_t vm_peek(vm_t* vm, int distance);
 // Function calling helper for builtin methods
 value_t vm_call_function(vm_t* vm, value_t callable, int arg_count, value_t* args);
 
+// VM call state for safe function calling
+typedef struct {
+    // Execution context
+    uint8_t* bytecode;
+    uint8_t* ip;
+    uint8_t* current_instruction;
+    
+    // Stack state  
+    value_t* stack_top;
+    
+    // Call frame state
+    size_t frame_count;
+    
+    // Constants context
+    value_t* constants;
+    size_t constant_count;
+    
+    // Module context
+    struct module_t* current_module;
+    
+    // Result register
+    value_t result;
+} vm_call_state;
+
 // Function calling helper for calling Slate functions from C code (uses isolated VM)
 value_t vm_call_slate_function_from_c(vm_t* vm, value_t callable, int arg_count, value_t* args);
+
+// Safe function calling with complete VM state isolation
+value_t vm_call_slate_function_safe(vm_t* vm, value_t callable, int arg_count, value_t* args);
 
 // Utility function to call toString method on values (returns value_t)
 value_t call_toString_method(vm_t* vm, value_t value);

@@ -30,7 +30,7 @@ vm_result op_call_method(vm_t* vm) {
         }
         
         // Call the method with receiver + args
-        value_t result = vm_call_function(vm, method, arg_count + 1, method_args);
+        value_t result = vm_call_slate_function_safe(vm, method, arg_count + 1, method_args);
         vm_push(vm, result);
         
         free(method_args);
