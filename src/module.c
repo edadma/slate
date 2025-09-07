@@ -62,11 +62,11 @@ void module_system_cleanup(struct slate_vm* vm) {
 
 // Check if a file exists
 int module_file_exists(const char* path) {
-    char cwd[PATH_MAX];
-
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        printf("Current working dir: %s\n", cwd);
-    }
+    // char cwd[PATH_MAX];
+    //
+    // if (getcwd(cwd, sizeof(cwd)) != NULL) {
+    //     printf("Current working dir: %s\n", cwd);
+    // }
 
     if (!path)
         return 0;
@@ -101,7 +101,6 @@ char* module_resolve_path(const char* module_name, const char* current_dir) {
     // Try different search locations
     char* full_path = NULL;
 
-    printf("relative path: %s\n", fs_path);
     // 1. Try as relative path from current directory
     if (current_dir) {
         size_t full_len = strlen(current_dir) + 1 + strlen(fs_path) + 1;
