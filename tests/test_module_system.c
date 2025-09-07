@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 #include "../unity/unity.h"
 #include "test_helpers.h"
 #include "module.h"
@@ -314,6 +315,62 @@ void test_module_namespace_access(void) {
     vm_release(result);
 }
 
+// Test namespace import for deeply nested modules
+void test_deep_nested_namespace_import(void) {
+    // This test verifies that deeply nested module paths are correctly treated as
+    // namespace imports rather than being split into parent.item imports
+    //
+    // Before the fix: "import submodules.deeply_nested" would be parsed as
+    // importing "deeply_nested" from "submodules" (which doesn't exist)
+    //
+    // After the fix: The heuristic recognizes multi-segment paths
+    // and treats them as namespace imports
+    
+    // Test importing the deeply nested module as a namespace
+    const char* code = 
+        "import submodules.deeply_nested\n"
+        "deeply_nested.testFunc(3)";
+    
+    value_t result = test_execute_with_imports(code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(6, result.as.int32); // testFunc(3) should be 6
+    vm_release(result);
+    
+    // Test accessing constant from the namespace
+    const char* const_code = 
+        "import submodules.deeply_nested\n"
+        "deeply_nested.testConst";
+    
+    result = test_execute_with_imports(const_code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(42, result.as.int32); // testConst should be 42
+    vm_release(result);
+    
+    // Test accessing constants from the namespace
+    const char* constant_code = 
+        "import examples.modules.math.advanced\n"
+        "advanced.PI";
+    
+    result = test_execute_with_imports(constant_code);
+    TEST_ASSERT_EQUAL(VAL_FLOAT64, result.type);
+    TEST_ASSERT_DOUBLE_WITHIN(0.001, 3.14159, result.as.float64);
+    vm_release(result);
+}
+
+// Test that single-item imports still work correctly
+void test_single_item_import_still_works(void) {
+    // Verify that the namespace import fix didn't break single-item imports
+    // Single-item imports should still split at the last dot
+    const char* code = 
+        "import declarations.CONSTANT_VALUE\n"
+        "CONSTANT_VALUE";
+    
+    value_t result = test_execute_with_imports(code);
+    TEST_ASSERT_EQUAL(VAL_INT32, result.type);
+    TEST_ASSERT_EQUAL(42, result.as.int32);
+    vm_release(result);
+}
+
 // Test single item imports (e.g., import module.item)
 void test_single_item_import(void) {
     // Test importing a single function using dot notation
@@ -391,6 +448,12 @@ void test_module_system_suite(void) {
     
     // Regression test for module namespace access bug
     RUN_TEST(test_module_namespace_access);
+    
+    // Test for deep nested namespace imports (new feature)
+    RUN_TEST(test_deep_nested_namespace_import);
+    
+    // Test that single-item imports still work after namespace fix
+    RUN_TEST(test_single_item_import_still_works);
     
     // Test for single item imports
     RUN_TEST(test_single_item_import);

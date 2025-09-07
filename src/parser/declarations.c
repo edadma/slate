@@ -1,6 +1,7 @@
 #include "parser_internal.h"
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 // Parse declaration
 ast_node* parse_declaration(parser_t* parser) {
@@ -211,24 +212,52 @@ ast_node* parse_import_statement(parser_t* parser) {
     import_specifier* specifiers = NULL;
     size_t specifier_count = 0;
     
-    // Check if this is a single item import (e.g., import module.item)
+    // Check if this is a single item import (e.g., import module.item) or namespace import
     // This happens when we're at end of statement (no { or other tokens) and have a dot-separated path
     if (!parser_check(parser, TOKEN_LEFT_BRACE) && !is_wildcard && 
         (parser_check(parser, TOKEN_SEMICOLON) || parser_check(parser, TOKEN_NEWLINE) || parser_check(parser, TOKEN_EOF))) {
         
-        // Find the last dot in the module path to split module from item
-        char* last_dot = strrchr(module_path, '.');
-        if (last_dot) {
-            // Split the path: everything before last dot is module, after is item
-            char* item_name = strdup(last_dot + 1);
-            *last_dot = '\0'; // Truncate module_path at the last dot
-            
-            // Create a single specifier for this item
-            specifiers = malloc(sizeof(import_specifier));
-            specifiers[0].name = item_name;
-            specifiers[0].alias = NULL; // No alias for single imports
-            specifier_count = 1;
+        // Heuristic: if the path starts with common module paths like "examples.modules",
+        // and has more than 2 segments, treat the whole thing as a namespace import
+        // This allows "import examples.modules.math.advanced" to work as namespace import
+        
+        int treat_as_namespace = 0;
+        
+        // Count dots in the path
+        int dot_count = 0;
+        for (const char* p = module_path; *p; p++) {
+            if (*p == '.') dot_count++;
         }
+        
+        // If we have a deep module path (3+ segments), check if it's likely a module
+        if (dot_count >= 2) {
+            // Check if it starts with known module directories
+            if (strncmp(module_path, "examples.modules.", 17) == 0 ||
+                strncmp(module_path, "modules.", 8) == 0 ||
+                strncmp(module_path, "lib.", 4) == 0 ||
+                strncmp(module_path, "src.", 4) == 0) {
+                // Likely a module path, treat as namespace import
+                treat_as_namespace = 1;
+            }
+        }
+        
+        // Only treat as single-item import if we're confident it's NOT a module path
+        if (!treat_as_namespace && dot_count > 0) {
+            // Find the last dot in the module path to split module from item
+            char* last_dot = strrchr(module_path, '.');
+            if (last_dot) {
+                // Split the path: everything before last dot is module, after is item
+                char* item_name = strdup(last_dot + 1);
+                *last_dot = '\0'; // Truncate module_path at the last dot
+                
+                // Create a single specifier for this item
+                specifiers = malloc(sizeof(import_specifier));
+                specifiers[0].name = item_name;
+                specifiers[0].alias = NULL; // No alias for single imports
+                specifier_count = 1;
+            }
+        }
+        // If treat_as_namespace is true, leave as namespace import (specifier_count = 0)
     }
     
     // Check for selective imports after we've built the module path

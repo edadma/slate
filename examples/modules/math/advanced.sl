@@ -1,6 +1,8 @@
 \ Advanced math operations module
 \ Part of the math package
 
+package examples.modules.math.advanced
+
 \ Factorial function
 def factorial(n) =
     if n <= 1 then
